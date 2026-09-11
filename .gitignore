@@ -41,7 +41,8 @@ env.bak/
 .python-version
 Pipfile.lock
 poetry.lock
-uv.lock
+# uv.lock is intentionally NOT ignored — this is an application, and the
+# lock file should be committed for reproducible installs across dev/CI.
 
 ### ---------------------------------------------------------------
 ### Django
@@ -120,8 +121,12 @@ out/
 
 ### ---------------------------------------------------------------
 ### Cursor
+### Project rules (.cursor/rules/*.mdc) are meant to be committed —
+### only ignore Cursor's local/session state.
 ### ---------------------------------------------------------------
-.cursor/
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
 .cursorignore
 .cursorrules.local
 
