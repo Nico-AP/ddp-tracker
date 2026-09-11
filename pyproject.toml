@@ -8,6 +8,7 @@ dependencies = [
     "django-csp>=4.0,<5",  # https://github.com/mozilla/django-csp
     "django-environ>=0.11,<1",  # https://github.com/joke2k/django-environ
     "django-guid>=3.6.1,<4",  # https://github.com/snok/django-guid
+    "mkdocs-material>=9.7.7",
 ]
 
 [tool.uv]

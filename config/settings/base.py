@@ -11,6 +11,7 @@ import environ
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
+MKDOCS_ROOT = BASE_DIR / "docs/site"
 
 env = environ.Env()
 env.read_env(BASE_DIR / ".env")  # no-op if the file doesn't exist
@@ -87,7 +88,6 @@ ADMINS = [tuple(x.split(":")) for x in env.list("DJANGO_ADMINS", default=["admin
 MANAGERS = ADMINS
 SERVER_EMAIL = "webapp@ddp-tracker.com"
 EMAIL_SUBJECT_PREFIX = "[DDP Tracker] "
-
 
 # Logging
 # ------------------------------------------------------------------------------
