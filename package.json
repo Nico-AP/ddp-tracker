@@ -1,0 +1,12 @@
+{
+  "name": "ddp-tracker-assets",
+  "private": true,
+  "description": "Sass build for ddp-tracker's static assets. Source lives in assets/scss/; compiled output goes to static/css/ (gitignored, rebuilt by `npm run build`).",
+  "scripts": {
+    "build": "sass assets/scss/main.scss static/css/main.css --no-source-map --style=compressed",
+    "watch": "sass --watch assets/scss/main.scss:static/css/main.css"
+  },
+  "devDependencies": {
+    "sass": "^1.83.0"
+  }
+}

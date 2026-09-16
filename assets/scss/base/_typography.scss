@@ -1,0 +1,19 @@
+@use "../abstracts/variables" as *;
+
+body {
+  font-family: $font-family-base;
+  font-size: $font-size-base;
+  color: $color-text;
+  background: $color-bg;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+}
+
+p {
+  color: $color-text-muted;
+}

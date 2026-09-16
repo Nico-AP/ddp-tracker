@@ -10,11 +10,27 @@ uv sync
 uv run pre-commit install
 cp .env.example .env   # only needed if you want to override local defaults (e.g. Postgres)
 uv run manage.py migrate
+npm install
+npm run build          # compiles assets/scss/ -> static/css/main.css
 uv run manage.py runserver
 ```
 
 Run any project command through `uv run` (e.g. `uv run manage.py shell`, `uv run ruff check .`)
 so it uses the project's `.venv` rather than whatever Python happens to be on your `PATH`.
+
+## Frontend assets (Sass)
+
+Sass source lives in `assets/scss/` (following a lightweight [7-1-style layout](https://sass-guidelin.es/#the-7-1-pattern):
+`abstracts/` for variables/mixins, `base/` for resets and typography, `components/`, `layout/`, all pulled together
+by `main.scss`). It's compiled with:
+
+```bash
+npm run build   # one-off compile to static/css/main.css
+npm run watch   # recompile on change while developing
+```
+
+Partials use Sass's `@use` module system, not the older `@import` — each partial
+pulls in exactly the abstracts it needs via `@use "../abstracts/..." as *;`.
 
 ## Testing
 
@@ -54,7 +70,8 @@ uv run manage.py test
 ```
 
 The same checks (minus pip-audit's "only when deps changed" gating — it always runs in CI) run
-again in GitHub Actions on every push and pull request; a PR can't merge with them red.
+again in GitHub Actions on every push and pull request, alongside a Node job that runs
+`npm ci && npm run build` to catch broken Sass; a PR can't merge with any of them red.
 
 ## Settings
 
@@ -77,13 +94,12 @@ uv add --group dev <package>   # dev-only dependency
 uv sync                   # after pulling a branch with new deps
 ```
 
-Commit the updated `uv.lock` alongside `pyproject.toml`. `pip-audit` runs automatically on commit
-when either file changes.
+Commit the updated `uv.lock` alongside `pyproject.toml`. `pip-audit` runs
+automatically on commit when either file changes.
 
 ## Git workflow
 
-- Branch off `main` (or `dev`, if that's the current integration branch) with a short descriptive
-  name, e.g. `feature/ddp-diff-view`, `fix/htmx-partial-refresh`.
+- Branch off `dev` with a short descriptive name, e.g. `feat/ddp-diff-view`, `fix/htmx-partial-refresh`.
 - Keep commits scoped to one logical change. Write commit messages in the imperative mood
   (`add DDP diff endpoint`, not `added` / `adds`) — a short prefix like `feat:`, `fix:`, `chore:`,
   `refactor:`, or `docs:` is encouraged but not enforced.

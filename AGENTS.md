@@ -8,7 +8,8 @@ or any other assistant. Human contributors follow the same conventions; see also
 
 Django + HTMX + Alpine.js application to track changes in platform DDPs (data deletion policies).
 Server-rendered Django templates with HTMX for interactivity and Alpine.js for light client-side
-state — not a SPA, no separate frontend build unless a future change explicitly introduces one.
+state — not a SPA. The only frontend build step is Sass → CSS (via Node, see below); there is no
+JS bundler and none should be introduced without an explicit decision to do so.
 
 ## Toolchain — always use `uv`
 
@@ -36,15 +37,30 @@ config/
     production.py    # deploy (all secrets required, no defaults)
     cicd.py          # GitHub Actions (in-memory sqlite)
   urls.py, wsgi.py, asgi.py
-core/                # skeleton app — health check + index view; first real app should follow
-  this same shape (models.py, views.py, urls.py, tests.py, templates/<app>/)
+apps/
+  core/              # skeleton app — health check + index view; new apps go in apps/<name>/
+    following this same shape (models.py, views.py, urls.py, tests.py, templates/<app>/)
+assets/scss/         # Sass source (not Django-served) — see "Frontend assets" below
 templates/           # project-level templates (base.html)
-static/              # project-level static assets
+static/              # project-level static assets; static/css/ is compiled output, gitignored
 ```
 
-Django apps live at the repo root (not nested under `apps/` or `src/`). Each app owns its own
+Django apps live under `apps/<name>/`, not the repo root. Each app owns its own
 `templates/<app_name>/` directory (Django's `APP_DIRS` convention) so template names never collide
 across apps.
+
+## Frontend assets (Sass)
+
+Sass compiles with plain Node tooling (`npm run build` / `npm run watch`), not a Python/Django
+package — deliberately kept out of `pyproject.toml` and `uv`'s dependency tree.
+
+- Source: `assets/scss/` (7-1-lite: `abstracts/`, `base/`, `components/`, `layout/`, `main.scss`).
+- Output: `static/css/main.css` — a build artifact, gitignored, never hand-edited or committed.
+- `templates/base.html` links it with the plain `{% static 'css/main.css' %}` tag.
+- Partials use the `@use` module system (`@use "../abstracts/variables" as *;`), not the legacy
+  `@import` — Dart Sass (the compiler `npm run build` invokes) deprecates `@import`.
+- CI runs `npm ci && npm run build` on every push/PR to catch breakage; there's no local
+  pre-commit hook for it (add one if Sass changes become frequent enough to warrant it).
 
 ## Testing
 

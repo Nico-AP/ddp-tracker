@@ -1,0 +1,15 @@
+// Design tokens — colors, spacing, typography scale.
+// Keep this the single source of truth; don't hardcode values elsewhere.
+
+$color-primary: #2563eb;
+$color-primary-dark: #1d4ed8;
+$color-text: #111827;
+$color-text-muted: #6b7280;
+$color-bg: #ffffff;
+$color-border: #e5e7eb;
+
+$font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+$font-size-base: 16px;
+
+$spacing-unit: 8px;
+$radius-base: 6px;

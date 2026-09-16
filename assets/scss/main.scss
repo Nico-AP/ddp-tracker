@@ -1,0 +1,12 @@
+// Entry point compiled by the Node/Dart Sass build (see package.json).
+// Add new partials to the matching folder (abstracts/base/components/layout).
+// Each partial that needs a token or mixin pulls it in itself via
+// `@use "../abstracts/..." as *;`, so the order below doesn't matter — list
+// new partials that produce actual CSS output here.
+
+@use "base/reset";
+@use "base/typography";
+
+@use "components/buttons";
+
+@use "layout/header";

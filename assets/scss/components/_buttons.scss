@@ -1,0 +1,18 @@
+@use "../abstracts/variables" as *;
+@use "../abstracts/mixins" as *;
+
+.btn {
+  display: inline-block;
+  border: none;
+  border-radius: $radius-base;
+  background: $color-primary;
+  color: #fff;
+  padding: $spacing-unit ($spacing-unit * 2);
+  cursor: pointer;
+
+  @include focus-ring;
+
+  &:hover {
+    background: $color-primary-dark;
+  }
+}

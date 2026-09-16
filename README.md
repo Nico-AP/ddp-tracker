@@ -3,16 +3,18 @@
 A web application to track changes in platform DDPs.
 
 Django + [HTMX](https://htmx.org/) + [Alpine.js](https://alpinejs.dev/) — server-rendered
-templates, no separate frontend build.
+templates, with a small Node/Sass build for CSS only.
 
 ## Quickstart
 
-Requires [uv](https://docs.astral.sh/uv/).
+Requires [uv](https://docs.astral.sh/uv/) and [Node](https://nodejs.org/).
 
 ```bash
 uv sync
 uv run pre-commit install
 uv run manage.py migrate
+npm install
+npm run build
 uv run manage.py runserver
 ```
 
