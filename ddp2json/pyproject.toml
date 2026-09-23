@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ddp2json"
+version = "0.1.0"
+description = "Convert DDP ZIP archives into nested JSON schema / content trees"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+    "beautifulsoup4>=4.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black==26.5.1",
+    "pytest>=8.0",
+]
+
+[project.scripts]
+ddp2json = "ddp2json.engine.cli:main"
+
+[project.urls]
+Repository = "https://github.com/REPLACE_ORG/ddp2json"
+Documentation = "https://github.com/REPLACE_ORG/ddp2json#readme"
+
+[tool.setuptools.packages.find]
+include = ["ddp2json*"]
+
+[tool.setuptools.package-data]
+"ddp2json.policy.html" = ["**/*"]
+"ddp2json.policy.scrub" = ["**/*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+include = '\.pyi?$'
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[dependency-groups]
+dev = ["black==26.5.1", "pytest>=8.0"]
