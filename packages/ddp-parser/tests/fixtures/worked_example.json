@@ -1,0 +1,361 @@
+{
+  "spec_version": "1.0",
+  "parser_version": "0.1.0",
+  "created_at": "2026-09-24T10:00:00+02:00",
+  "source": {
+    "name": "export.zip",
+    "size_bytes": 688,
+    "sha256": "a5b8b88090b64465fa41d6a1f49226a89b1fccf1e905dda95a4a23d8209b47aa"
+  },
+  "options": {
+    "samples": false,
+    "max_samples": 3,
+    "shape_threshold": 0.95,
+    "max_depth": 3,
+    "max_entries": 200000,
+    "max_entry_size": 268435456,
+    "max_total_size": 4294967296,
+    "keep_ignored": false,
+    "collapse_folders": [],
+    "keep_folders": []
+  },
+  "warnings": [],
+  "root": {
+    "kind": "container",
+    "name": "export.zip",
+    "path": "",
+    "size_bytes": 688,
+    "ext": ".zip",
+    "mime": "application/zip",
+    "mime_source": "magic",
+    "children": [
+      {
+        "kind": "file",
+        "name": "logins.csv",
+        "path": "/logins.csv",
+        "size_bytes": 92,
+        "modified": "2026-09-20T14:02:10",
+        "ext": ".csv",
+        "mime": "text/csv",
+        "mime_source": "extension",
+        "encoding": "utf-8",
+        "parser": "csv",
+        "csv": {
+          "delimiter": ",",
+          "quotechar": "\""
+        },
+        "type": "array",
+        "length": {
+          "min": 3,
+          "max": 3
+        },
+        "stats": {
+          "count": 1,
+          "present": 1,
+          "null": 0
+        },
+        "items": {
+          "kind": "data",
+          "name": null,
+          "path": "/logins.csv/[]",
+          "type": "object",
+          "stats": {
+            "count": 3,
+            "present": 3,
+            "null": 0
+          },
+          "properties": {
+            "timestamp": {
+              "kind": "data",
+              "name": "timestamp",
+              "path": "/logins.csv/[]/timestamp",
+              "type": "integer",
+              "shape": "unix_timestamp",
+              "format": "s",
+              "stats": {
+                "count": 3,
+                "present": 3,
+                "null": 0
+              },
+              "shapes": {
+                "unix_timestamp": 3
+              }
+            },
+            "action": {
+              "kind": "data",
+              "name": "action",
+              "path": "/logins.csv/[]/action",
+              "type": "string",
+              "shape": "alpha",
+              "length": {
+                "min": 5,
+                "max": 6
+              },
+              "stats": {
+                "count": 3,
+                "present": 3,
+                "null": 0
+              },
+              "shapes": {
+                "alpha": 3
+              }
+            },
+            "device": {
+              "kind": "data",
+              "name": "device",
+              "path": "/logins.csv/[]/device",
+              "type": "string",
+              "shape": "alpha",
+              "length": {
+                "min": 0,
+                "max": 7
+              },
+              "stats": {
+                "count": 3,
+                "present": 3,
+                "null": 0
+              },
+              "shapes": {
+                "alpha": 2,
+                "empty": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "kind": "file",
+        "name": "profile.json",
+        "path": "/profile.json",
+        "size_bytes": 378,
+        "modified": "2026-09-20T14:02:10",
+        "ext": ".json",
+        "mime": "application/json",
+        "mime_source": "extension",
+        "encoding": "utf-8",
+        "parser": "json",
+        "type": "object",
+        "stats": {
+          "count": 1,
+          "present": 1,
+          "null": 0
+        },
+        "properties": {
+          "user": {
+            "kind": "data",
+            "name": "user",
+            "path": "/profile.json/user",
+            "type": "object",
+            "stats": {
+              "count": 1,
+              "present": 1,
+              "null": 0
+            },
+            "properties": {
+              "name": {
+                "kind": "data",
+                "name": "name",
+                "path": "/profile.json/user/name",
+                "type": "string",
+                "shape": "text",
+                "length": {
+                  "min": 11,
+                  "max": 11
+                },
+                "stats": {
+                  "count": 1,
+                  "present": 1,
+                  "null": 0
+                },
+                "shapes": {
+                  "text": 1
+                }
+              },
+              "email": {
+                "kind": "data",
+                "name": "email",
+                "path": "/profile.json/user/email",
+                "type": "string",
+                "shape": "email",
+                "length": {
+                  "min": 16,
+                  "max": 16
+                },
+                "stats": {
+                  "count": 1,
+                  "present": 1,
+                  "null": 0
+                },
+                "shapes": {
+                  "email": 1
+                }
+              },
+              "joined": {
+                "kind": "data",
+                "name": "joined",
+                "path": "/profile.json/user/joined",
+                "type": "string",
+                "shape": "datetime",
+                "format": "%Y-%m-%dT%H:%M:%SZ",
+                "length": {
+                  "min": 20,
+                  "max": 20
+                },
+                "stats": {
+                  "count": 1,
+                  "present": 1,
+                  "null": 0
+                },
+                "shapes": {
+                  "datetime": 1
+                }
+              }
+            }
+          },
+          "settings": {
+            "kind": "data",
+            "name": "settings",
+            "path": "/profile.json/settings",
+            "type": "object",
+            "stats": {
+              "count": 1,
+              "present": 1,
+              "null": 0
+            },
+            "properties": {
+              "language": {
+                "kind": "data",
+                "name": "language",
+                "path": "/profile.json/settings/language",
+                "type": "string",
+                "shape": "alpha",
+                "length": {
+                  "min": 2,
+                  "max": 2
+                },
+                "stats": {
+                  "count": 1,
+                  "present": 1,
+                  "null": 0
+                },
+                "shapes": {
+                  "alpha": 1
+                }
+              },
+              "notifications": {
+                "kind": "data",
+                "name": "notifications",
+                "path": "/profile.json/settings/notifications",
+                "type": "boolean",
+                "stats": {
+                  "count": 1,
+                  "present": 1,
+                  "null": 0
+                }
+              }
+            }
+          },
+          "posts": {
+            "kind": "data",
+            "name": "posts",
+            "path": "/profile.json/posts",
+            "type": "array",
+            "length": {
+              "min": 3,
+              "max": 3
+            },
+            "stats": {
+              "count": 1,
+              "present": 1,
+              "null": 0
+            },
+            "items": {
+              "kind": "data",
+              "name": null,
+              "path": "/profile.json/posts/[]",
+              "type": "object",
+              "stats": {
+                "count": 3,
+                "present": 3,
+                "null": 0
+              },
+              "properties": {
+                "id": {
+                  "kind": "data",
+                  "name": "id",
+                  "path": "/profile.json/posts/[]/id",
+                  "type": "integer",
+                  "shape": "plain",
+                  "stats": {
+                    "count": 3,
+                    "present": 3,
+                    "null": 0
+                  },
+                  "shapes": {
+                    "plain": 3
+                  }
+                },
+                "text": {
+                  "kind": "data",
+                  "name": "text",
+                  "path": "/profile.json/posts/[]/text",
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "shape": "text",
+                  "length": {
+                    "min": 11,
+                    "max": 16
+                  },
+                  "stats": {
+                    "count": 3,
+                    "present": 3,
+                    "null": 1
+                  },
+                  "shapes": {
+                    "text": 2
+                  }
+                },
+                "likes": {
+                  "kind": "data",
+                  "name": "likes",
+                  "path": "/profile.json/posts/[]/likes",
+                  "type": "integer",
+                  "shape": "plain",
+                  "stats": {
+                    "count": 3,
+                    "present": 3,
+                    "null": 0
+                  },
+                  "shapes": {
+                    "plain": 3
+                  }
+                },
+                "location": {
+                  "kind": "data",
+                  "name": "location",
+                  "path": "/profile.json/posts/[]/location",
+                  "type": "string",
+                  "shape": "alpha",
+                  "length": {
+                    "min": 6,
+                    "max": 6
+                  },
+                  "stats": {
+                    "count": 3,
+                    "present": 1,
+                    "null": 0
+                  },
+                  "shapes": {
+                    "alpha": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

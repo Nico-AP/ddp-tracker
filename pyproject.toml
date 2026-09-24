@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Django + HTMX + Alpine application to track changes in platform DDPs"
 requires-python = ">=3.12"
 dependencies = [
+    "ddp-parser",
     "django>=5.2,<6.0",  # https://github.com/django/django
     "django-csp>=4.0,<5",  # https://github.com/mozilla/django-csp
     "django-environ>=0.11,<1",  # https://github.com/joke2k/django-environ
@@ -13,6 +14,14 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+[tool.uv.workspace]
+members = [
+    "packages/ddp-parser",
+]
+
+[tool.uv.sources]
+ddp-parser = { workspace = true }
 
 # --- Dev dependency group ---
 [dependency-groups]
@@ -48,7 +57,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["migrations"]
+extend-exclude = ["migrations", "ddp2json"]  # ddp2json: vendored prototype, reference only
 
 [tool.ruff.lint]
 select = [
@@ -137,8 +146,12 @@ suppress-none-returning = true   # don't force `-> None` on every view/handler
 "manage.py" = ["T20", "ANN", "PLC0415", "TRY003", "EM101"]  # Django's own manage.py boilerplate
 "conftest.py" = ["ANN", "S101"]
 
+[tool.ruff.lint.flake8-type-checking]
+# msgspec resolves Struct annotations at runtime, so their imports can't move under TYPE_CHECKING
+runtime-evaluated-base-classes = ["msgspec.Struct"]
+
 [tool.ruff.lint.isort]
-known-first-party = ["config", "core"]
+known-first-party = ["config", "core", "ddp_parser"]
 section-order = ["future", "standard-library", "django", "third-party", "first-party", "local-folder"]
 
 [tool.ruff.lint.isort.sections]
@@ -164,7 +177,7 @@ ignore = "H006"  # img alt attribute — revisit once real templates exist
 [tool.mypy]
 python_version = "3.12"
 plugins = ["mypy_django_plugin.main"]
-exclude = ["migrations/"]
+exclude = ["migrations/", "^ddp2json/"]  # ddp2json: vendored prototype, reference only
 ignore_missing_imports = true
 check_untyped_defs = true
 warn_unused_ignores = true
@@ -181,6 +194,7 @@ django_settings_module = "config.settings.local"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.local"
 python_files = ["test_*.py", "*_test.py", "tests.py"]
+norecursedirs = ["ddp2json", "node_modules", ".*"]  # ddp2json: vendored prototype, reference only
 addopts = "--reuse-db --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=80"
 filterwarnings = [
     "error",
@@ -194,6 +208,7 @@ filterwarnings = [
 source = ["."]
 omit = [
     "*/migrations/*",
+    "ddp2json/*",
     "*/tests/*",
     "*/test_*.py",
     "manage.py",

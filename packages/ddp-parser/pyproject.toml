@@ -1,0 +1,17 @@
+[project]
+name = "ddp-parser"
+version = "0.1.0"
+description = "Derive a privacy-preserving schema from a platform data download package (DDP)"
+readme = "README.md"
+authors = [
+    { name = "Nico-AP", email = "pfiffner.nico@proton.me" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "filetype>=1.2.0",
+    "msgspec>=0.21.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13.0"]
+build-backend = "uv_build"
