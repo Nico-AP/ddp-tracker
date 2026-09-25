@@ -1,0 +1,22 @@
+<section class="annotation">
+  <h2>Description</h2>
+  {% if annotation.description %}
+    <p>{{ annotation.description|linebreaksbr }}</p>
+  {% else %}
+    <p class="muted">No description yet.</p>
+  {% endif %}
+  {% if annotation.note %}
+    <p class="muted">{{ annotation.note|linebreaksbr }}</p>
+  {% endif %}
+  {% if user.is_authenticated %}
+    <button
+      type="button"
+      class="btn btn--small"
+      hx-get="{% url 'annotations:edit' annotation.pk %}"
+      hx-target="closest .annotation"
+      hx-swap="outerHTML"
+    >
+      Edit
+    </button>
+  {% endif %}
+</section>

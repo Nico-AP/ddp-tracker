@@ -1,0 +1,10 @@
+{# Renders a form's fields; the caller provides the <form> element and the submit button. #}
+{% if form.non_field_errors %}<div class="form__errors">{{ form.non_field_errors }}</div>{% endif %}
+{% for field in form %}
+  <div class="form__field{% if field.errors %} form__field--error{% endif %}">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% if field.help_text %}<small class="form__help">{{ field.help_text }}</small>{% endif %}
+    {% for error in field.errors %}<small class="form__error">{{ error }}</small>{% endfor %}
+  </div>
+{% endfor %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Annotations · {{ platform }} · DDP Tracker{% endblock %}
+{% block content %}
+  <p class="breadcrumbs">
+    <a href="{{ platform.get_absolute_url }}">{{ platform }}</a> / annotations
+  </p>
+  <h1>Annotations of {{ platform }}</h1>
+  <p class="lead">
+    Each annotation describes one data point.
+  </p>
+  {% if annotations %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Annotation</th>
+          <th>Description</th>
+          <th>Locations</th>
+          <th>Last seen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for annotation in annotations %}
+          <tr>
+            <td>
+              <a href="{{ annotation.get_absolute_url }}">{{ annotation.name }}</a>
+            </td>
+            <td>{{ annotation.description|truncatewords:15|default:"–" }}</td>
+            <td>{{ annotation.location_count }}</td>
+            <td>{{ annotation.last_seen|default:"–" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No annotations yet. They are created while reviewing uploads.</p>
+  {% endif %}
+{% endblock %}

@@ -4,10 +4,33 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {# The CSP allows no inline styles and no eval: keep htmx from needing either. #}
+    <meta name="htmx-config"
+          content='{"includeIndicatorStyles": false, "allowEval": false, "allowScriptTags": false}'>
     <title>{% block title %}DDP Tracker{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
   </head>
-  <body>
-    {% block content %}{% endblock %}
+  <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <header class="site-header">
+      <a class="site-header__brand" href="{% url 'core:index' %}">DDP Tracker</a>
+      <nav class="site-nav">
+        <a href="{% url 'core:index' %}">Platforms</a>
+        {% if user.is_authenticated %}
+          <a href="{% url 'ddps:uploads' %}">Uploads</a>
+          <a class="btn btn--small" href="{% url 'ddps:upload-create' %}">Upload a DDP</a>
+          <form method="post" action="{% url 'logout' %}" class="inline-form">
+            {% csrf_token %}
+            <button type="submit" class="link-button">Log out</button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}">Log in</a>
+        {% endif %}
+      </nav>
+    </header>
+    <main class="container">
+      {% for message in messages %}<p class="message message--{{ message.tags }}">{{ message }}</p>{% endfor %}
+      {% block content %}{% endblock %}
+    </main>
   </body>
 </html>

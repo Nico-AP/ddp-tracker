@@ -1,0 +1,24 @@
+<form
+  class="annotation form form--narrow"
+  hx-post="{% url 'annotations:edit' annotation.pk %}"
+  hx-target="this"
+  hx-swap="outerHTML"
+>
+  <h2>Edit {{ annotation }}</h2>
+  {% include "includes/form.html" %}
+  <button
+    type="submit"
+    class="btn btn--small"
+  >
+    Save
+  </button>
+  <button
+    type="button"
+    class="link-button"
+    hx-get="{% url 'annotations:details' annotation.pk %}"
+    hx-target="closest .annotation"
+    hx-swap="outerHTML"
+  >
+    Cancel
+  </button>
+</form>

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{{ upload.file_name }} · DDP Tracker{% endblock %}
+{% block content %}
+  <p class="breadcrumbs">
+    <a href="{% url 'ddps:uploads' %}">Uploads</a> / {{ upload.file_name }}
+  </p>
+  <h1>{{ upload.file_name }}</h1>
+  <dl class="facts">
+    <dt>Platform</dt>
+    <dd>
+      <a href="{{ upload.platform.get_absolute_url }}">{{ upload.platform }}</a>
+    </dd>
+    <dt>Requested</dt>
+    <dd>
+      {{ upload.requested_at }}
+    </dd>
+    <dt>Account language</dt>
+    <dd>
+      {{ upload.get_language_display|default:"unknown" }}
+    </dd>
+    <dt>Uploaded</dt>
+    <dd>
+      {{ upload.created_at|date:"Y-m-d H:i" }} by {{ upload.uploaded_by|default:"–" }}
+    </dd>
+    {% if upload.size_bytes %}
+      <dt>Size</dt>
+      <dd>
+        {{ upload.size_bytes|filesizeformat }}
+      </dd>
+    {% endif %}
+  </dl>
+  {% if not upload.is_finished %}
+    {% include "ddps/_upload_status.html" %}
+  {% elif upload.status == "failed" %}
+    <p class="message message--error">The file could not be read: {{ upload.error }}</p>
+  {% else %}
+    {% if duplicates %}
+      <p class="message message--warning">
+        The same file was uploaded before:
+        {% for other in duplicates %}
+          <a href="{{ other.get_absolute_url }}">#{{ other.pk }}</a>
+        {% endfor %}
+      </p>
+    {% endif %}
+    <h2>Review</h2>
+    {% if upload.registered_at %}
+      <p>
+        <a class="btn" href="{% url 'schemas:review' upload.pk %}">Review this upload</a>
+        <span class="muted">against everything collected for {{ upload.platform }}: new data points to assign, changes, missing data points.</span>
+      </p>
+    {% else %}
+      <p class="muted">Not yet added to the collected schema.</p>
+    {% endif %}
+    <h2>Parser warnings</h2>
+    {% if upload.warnings %}
+      <ul class="warnings">
+        {% for warning in upload.warnings %}
+          <li>
+            <code>{{ warning.code }}</code>
+            {% if warning.path %}at <code>{{ warning.path }}</code>{% endif %}
+            {% if warning.message %}: {{ warning.message }}{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">None.</p>
+    {% endif %}
+  {% endif %}
+{% endblock %}

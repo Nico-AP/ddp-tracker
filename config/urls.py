@@ -7,9 +7,16 @@ from django.views.static import serve
 urlpatterns: list[URLPattern | URLResolver] = [
     path("admin/", admin.site.urls),
     re_path(
-        r"^docs/(?P<path>.*)$", serve, {"document_root": settings.MKDOCS_ROOT, "show_indexes": True}
+        r"^docs/(?P<path>.*)$",
+        serve,
+        {"document_root": settings.MKDOCS_ROOT, "show_indexes": True},
+        name="docs",
     ),
-    path("", include("apps.core.urls")),
+    path("accounts/", include("django.contrib.auth.urls")),
+    path("uploads/", include("ddp_tracker.ddps.urls")),
+    path("annotations/", include("ddp_tracker.annotations.urls")),
+    path("", include("ddp_tracker.schemas.urls")),
+    path("", include("ddp_tracker.core.urls")),
 ]
 
 if settings.DEBUG:

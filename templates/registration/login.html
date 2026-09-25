@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Log in · DDP Tracker{% endblock %}
+{% block content %}
+  <h1>Log in</h1>
+  <form method="post" class="form form--narrow">
+    {% csrf_token %}
+    {% include "includes/form.html" %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="btn">Log in</button>
+  </form>
+{% endblock %}

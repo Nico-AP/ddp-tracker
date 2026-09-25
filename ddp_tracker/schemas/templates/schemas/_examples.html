@@ -1,0 +1,21 @@
+<div class="examples">
+  <h3>Example values</h3>
+  {% if location.example_values %}
+    <p>
+      {% for value in location.example_values %}<code>{{ value }}</code>{% endfor %}
+    </p>
+  {% else %}
+    <p class="muted">None yet.</p>
+  {% endif %}
+  {% if user.is_authenticated %}
+    <button
+      type="button"
+      class="btn btn--small"
+      hx-get="{% url 'schemas:examples' location.pk %}"
+      hx-target="closest .examples"
+      hx-swap="outerHTML"
+    >
+      Edit examples
+    </button>
+  {% endif %}
+</div>

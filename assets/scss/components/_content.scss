@@ -1,0 +1,123 @@
+@use "sass:color";
+@use "../abstracts/variables" as *;
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    border-bottom: 1px solid $color-border;
+    padding: $spacing-unit;
+    text-align: left;
+  }
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: ($spacing-unit * 0.5) ($spacing-unit * 2);
+
+  dt {
+    color: $color-text-muted;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: $spacing-unit * 2;
+  list-style: none;
+  padding: 0;
+}
+
+.card {
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: $spacing-unit * 2;
+}
+
+.card__title {
+  font-weight: 700;
+}
+
+.plain-list {
+  padding-left: $spacing-unit * 2;
+}
+
+.raw pre {
+  overflow-x: auto;
+}
+
+.annotation {
+  margin-top: $spacing-unit * 2;
+  border-top: 1px solid $color-border;
+  padding-top: $spacing-unit;
+}
+
+@mixin message($color) {
+  border-left: 4px solid $color;
+  background: color.scale($color, $lightness: 90%);
+}
+
+.message {
+  padding: $spacing-unit ($spacing-unit * 2);
+  border-radius: $radius-base;
+  color: $color-text;
+
+  &--success {
+    @include message($color-success);
+  }
+
+  &--warning {
+    @include message($color-warning);
+  }
+
+  &--error {
+    @include message($color-danger);
+  }
+
+  &--info {
+    @include message($color-primary);
+  }
+}
+
+.status-box {
+  padding: $spacing-unit * 2;
+  background: $color-surface;
+}
+
+.triage {
+  list-style: none;
+  margin-bottom: $spacing-unit * 1.5;
+  border-left: 3px solid $color-border;
+  padding-left: $spacing-unit * 1.5;
+}
+
+.triage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-unit;
+
+  input[type="text"],
+  select {
+    border: 1px solid $color-border;
+    border-radius: $radius-base;
+    padding: ($spacing-unit * 0.5) $spacing-unit;
+    font: inherit;
+  }
+}
+
+.triage-group {
+  margin-top: $spacing-unit * 3;
+}
+
+.button-row {
+  display: flex;
+  gap: $spacing-unit;
+}

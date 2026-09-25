@@ -11,6 +11,7 @@ import msgspec
 
 from ddp_parser.errors import InvalidDocumentError
 from ddp_parser.model.document import Document
+from ddp_parser.model.nodes import FilesystemNode
 
 
 def to_json(document: Document, *, indent: int = 2) -> str:
@@ -37,4 +38,18 @@ def from_dict(data: dict[str, Any]) -> Document:
         return msgspec.convert(data, type=Document)
     except msgspec.ValidationError as exc:
         msg = f"invalid schema document: {exc}"
+        raise InvalidDocumentError(msg) from exc
+
+
+def node_to_dict(node: FilesystemNode) -> dict[str, Any]:
+    """A tree (e.g. a merged version's root) as plain JSON data."""
+    data: dict[str, Any] = msgspec.json.decode(msgspec.json.encode(node))
+    return data
+
+
+def node_from_dict(data: dict[str, Any]) -> FilesystemNode:
+    try:
+        return msgspec.convert(data, type=FilesystemNode)
+    except msgspec.ValidationError as exc:
+        msg = f"invalid schema tree: {exc}"
         raise InvalidDocumentError(msg) from exc

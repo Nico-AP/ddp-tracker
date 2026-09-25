@@ -39,7 +39,7 @@ repos:
 
       - id: djlint
         name: djlint (Django templates)
-        entry: uv run djlint --check
+        entry: uv run djlint --lint
         language: system
         types: [html]
         require_serial: true

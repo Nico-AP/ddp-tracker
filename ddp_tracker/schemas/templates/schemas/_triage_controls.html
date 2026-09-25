@@ -1,0 +1,67 @@
+{# What a data point is: its annotation, "not a data point", or (for curators) the choices to decide. #}
+<div class="triage__state">
+  {% if location.annotation %}
+    <p>
+      → <a href="{{ location.annotation.get_absolute_url }}">{{ location.annotation }}</a>
+    </p>
+  {% elif location.ignored %}
+    <p class="muted">Not a data point.</p>
+  {% elif not user.is_authenticated %}
+    <p class="muted">Not assigned to an annotation yet.</p>
+  {% endif %}
+  {% if user.is_authenticated %}
+    {% if location.annotation or location.ignored %}
+      <form hx-post="{% url 'schemas:triage' location.pk %}"
+            hx-target="closest .triage"
+            hx-swap="outerHTML">
+        <input type="hidden" name="action" value="reset">
+        <input type="hidden" name="upload" value="{{ observation.upload_id }}">
+        <button type="submit" class="link-button">Change</button>
+      </form>
+    {% else %}
+      <div class="triage__actions">
+        {% for choice in choices %}
+          <form hx-post="{% url 'schemas:triage' location.pk %}"
+                hx-target="closest .triage"
+                hx-swap="outerHTML">
+            <input type="hidden" name="action" value="link">
+            <input type="hidden" name="annotation" value="{{ choice.annotation.pk }}">
+            <input type="hidden" name="upload" value="{{ observation.upload_id }}">
+            <button type="submit" class="btn btn--small">{{ choice.annotation }}</button>
+            <small class="muted">{{ choice.reason }} from <code>{{ choice.via }}</code> ({{ choice.score }})</small>
+          </form>
+        {% endfor %}
+        <form hx-post="{% url 'schemas:triage' location.pk %}"
+              hx-target="closest .triage"
+              hx-swap="outerHTML">
+          <input type="hidden" name="action" value="new">
+          <input type="hidden" name="upload" value="{{ observation.upload_id }}">
+          <input type="text"
+                 name="name"
+                 value="{{ location.default_name }}"
+                 aria-label="Name of the new annotation">
+          <button type="submit" class="btn btn--small">New annotation</button>
+        </form>
+        {% if annotations %}
+          <form hx-post="{% url 'schemas:triage' location.pk %}"
+                hx-target="closest .triage"
+                hx-swap="outerHTML">
+            <input type="hidden" name="action" value="link">
+            <input type="hidden" name="upload" value="{{ observation.upload_id }}">
+            <select name="annotation" aria-label="Existing annotation">
+              {% for annotation in annotations %}<option value="{{ annotation.pk }}">{{ annotation }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="btn btn--small">Link</button>
+          </form>
+        {% endif %}
+        <form hx-post="{% url 'schemas:triage' location.pk %}"
+              hx-target="closest .triage"
+              hx-swap="outerHTML">
+          <input type="hidden" name="action" value="ignore">
+          <input type="hidden" name="upload" value="{{ observation.upload_id }}">
+          <button type="submit" class="link-button">Not a data point</button>
+        </form>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>

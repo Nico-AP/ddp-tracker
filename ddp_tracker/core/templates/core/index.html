@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>{{ project_name }}</h1>
+  <p class="lead">
+    Schemas of the data download packages (DDPs) platforms provide:
+    what they contain, how they change, and what their data means.
+  </p>
+  <h2>Platforms</h2>
+  {% if platforms %}
+    <ul class="cards">
+      {% for platform in platforms %}
+        <li class="card">
+          <a class="card__title" href="{{ platform.get_absolute_url }}">{{ platform.name }}</a>
+          <p>
+            {{ platform.annotation_count }} annotation{{ platform.annotation_count|pluralize }} ·
+            {{ platform.upload_count }} upload{{ platform.upload_count|pluralize }}
+          </p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No platforms yet. Add them in the admin.</p>
+  {% endif %}
+{% endblock %}

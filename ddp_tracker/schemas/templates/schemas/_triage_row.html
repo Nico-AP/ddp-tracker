@@ -1,0 +1,13 @@
+<li class="triage">
+  <div class="triage__head">
+    <code class="path">{{ location.path }}</code>
+    {% if is_new %}<span class="badge badge--added">new</span>{% endif %}
+    {% if observation.type %}<span class="tree__type">{{ observation.type }}</span>{% endif %}
+    {% if observation.shape %}
+      <span class="tree__shape">{{ observation.shape }}
+        {% if observation.format %}· {{ observation.format }}{% endif %}
+      </span>
+    {% endif %}
+  </div>
+  {% include "schemas/_triage_controls.html" %}
+</li>

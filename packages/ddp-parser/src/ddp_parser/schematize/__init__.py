@@ -4,6 +4,6 @@ Values are observed one at a time into ``NodeBuilder``s and never kept, so memor
 schema, not with the export.
 """
 
-from ddp_parser.schematize.builder import NodeBuilder, data_fields
+from ddp_parser.schematize.builder import NodeBuilder, data_fields, dominant_shape, type_union
 
-__all__ = ["NodeBuilder", "data_fields"]
+__all__ = ["NodeBuilder", "data_fields", "dominant_shape", "type_union"]

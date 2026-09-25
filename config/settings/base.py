@@ -26,7 +26,13 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_guid",
-    "apps.core",
+    "django_tasks",
+    "django_tasks_db",
+    "ddp_tracker.core",
+    "ddp_tracker.ddps",
+    "ddp_tracker.schemas",
+    "ddp_tracker.annotations",
+    "ddp_tracker.users",
 ]
 
 MIDDLEWARE = [
@@ -77,6 +83,33 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
+
+# Authentication
+# ------------------------------------------------------------------------------
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "core:index"
+LOGOUT_REDIRECT_URL = "core:index"
+AUTH_USER_MODEL = "users.User"
+
+
+# Background tasks (django-tasks) - https://github.com/RealOrangeOne/django-tasks
+# ------------------------------------------------------------------------------
+# Parsing an upload runs as a task. The immediate backend runs it inside the request, which is
+# fine for development and tests; production uses the database backend and a ``db_worker``.
+TASKS = {
+    "default": {
+        "BACKEND": env.str(
+            "TASKS_BACKEND", default="django_tasks.backends.immediate.ImmediateBackend"
+        ),
+    }
+}
+
+# DDP uploads
+# ------------------------------------------------------------------------------
+# Uploaded DDPs contain personal data and are never stored: they wait here (outside MEDIA, never
+# served) only until the parse task has read them, and are deleted right after.
+DDP_INCOMING_DIR = env.path("DDP_INCOMING_DIR", default=BASE_DIR / "var" / "incoming")
+DDP_MAX_UPLOAD_SIZE = env.int("DDP_MAX_UPLOAD_SIZE", default=2 * 1024**3)  # bytes
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]

@@ -23,14 +23,14 @@ Every node has:
 
 ### Kinds
 
-| Kind        | Represents                                                 | Holds its content in       |
-|-------------|------------------------------------------------------------|----------------------------|
-| `container` | A zip archive (top level or nested)                        | `children` (list of nodes) |
+| Kind        | Represents                                                                                              | Holds its content in       |
+|-------------|---------------------------------------------------------------------------------------------------------|----------------------------|
+| `container` | A zip archive (top level or nested)                                                                     | `children` (list of nodes) |
 | `folder`    | A directory inside a container, or collapsed look-alike ones (`folders`, [§3.5](#35-collapsed-folders)) | `children` (list of nodes) |
-| `file`      | A file that was **successfully parsed** (JSON, CSV, …)     | `properties` / `items`     |
-| `media`     | An image / video / audio file (not parsed, metadata only)  | –                          |
-| `unmatched` | Any other file, or a file whose parse failed               | –                          |
-| `data`      | A value inside parsed content: scalar, object or array     | `properties` / `items`     |
+| `file`      | A file that was **successfully parsed** (JSON, CSV, …)                                                  | `properties` / `items`     |
+| `media`     | An image / video / audio file (not parsed, metadata only)                                               | –                          |
+| `unmatched` | Any other file, or a file whose parse failed                                                            | –                          |
+| `data`      | A value inside parsed content: scalar, object or array                                                  | `properties` / `items`     |
 
 Filesystem-like kinds (`container`, `folder`, `file`, `media`, `unmatched`) all
 carry the **file metadata** from [§4](#4-file-metadata). A `file` node also
@@ -355,13 +355,13 @@ schema fields of their parsed content (as in [§3.1](#31-fields)):
 }
 ```
 
-| Key        | Description                                                                           |
-|------------|---------------------------------------------------------------------------------------|
-| `encoding` | Detected text encoding (`utf-8`, `utf-8-sig` for BOM, `utf-16-le`, `cp1252`, …).      |
-| `parser`   | Which parser read it (see [§6](#6-supported-file-types)).                             |
+| Key        | Description                                                                              |
+|------------|------------------------------------------------------------------------------------------|
+| `encoding` | Detected text encoding (`utf-8`, `utf-8-sig` for BOM, `utf-16-le`, `cp1252`, …).         |
+| `parser`   | Which parser read it (see [§6](#6-supported-file-types)).                                |
 | `csv`      | CSV dialect. CSV content is an array of objects, one per row; `length` is the row count. |
-| `wrapper`  | For `js-json`: the prefix that was stripped, e.g. `window.YTD.tweets.part0 =`.        |
-| `files`    | For a group of merged files (see [§3.4](#34-unification)): how many files were merged. |
+| `wrapper`  | For `js-json`: the prefix that was stripped, e.g. `window.YTD.tweets.part0 =`.           |
+| `files`    | For a group of merged files (see [§3.4](#34-unification)): how many files were merged.   |
 
 ---
 
@@ -404,16 +404,16 @@ schema fields of their parsed content (as in [§3.1](#31-fields)):
 
 ## 6. Supported file types
 
-| Parser     | Files                                                   | Notes                                                        | Status    |
-|------------|---------------------------------------------------------|--------------------------------------------------------------|-----------|
-| `zip`      | `.zip`                                                  | Becomes a `container`.                                       | supported |
-| `json`     | `.json`                                                 | Falls back to `jsonl` if the file has one value per line.    | supported |
-| `jsonl`    | `.jsonl`, `.ndjson`, or `.json` with one value per line | Content is an array of the line values.                      | supported |
-| `js-json`  | `.js` with `name = <json>`                              | JSON assigned to a variable, as in some platform exports.    | supported |
+| Parser     | Files                                                   | Notes                                                             | Status    |
+|------------|---------------------------------------------------------|-------------------------------------------------------------------|-----------|
+| `zip`      | `.zip`                                                  | Becomes a `container`.                                            | supported |
+| `json`     | `.json`                                                 | Falls back to `jsonl` if the file has one value per line.         | supported |
+| `jsonl`    | `.jsonl`, `.ndjson`, or `.json` with one value per line | Content is an array of the line values.                           | supported |
+| `js-json`  | `.js` with `name = <json>`                              | JSON assigned to a variable, as in some platform exports.         | supported |
 | `csv`      | `.csv`, `.tsv`                                          | Delimiter and quote sniffed (`.tsv`: tab). See [§3.2](#32-types). | supported |
-| `html`     | `.html`                                                 | Needs a projection spec per platform; otherwise `unmatched`. | planned   |
-| `txt`      | `.txt`                                                  | Needs a projection spec; otherwise `unmatched`.              | planned   |
-| (media)    | images, video, audio                                    | `media` nodes, metadata only, detected by MIME.              | supported |
+| `html`     | `.html`                                                 | Needs a projection spec per platform; otherwise `unmatched`.      | planned   |
+| `txt`      | `.txt`                                                  | Needs a projection spec; otherwise `unmatched`.                   | planned   |
+| (media)    | images, video, audio                                    | `media` nodes, metadata only, detected by MIME.                   | supported |
 
 ---
 
@@ -738,3 +738,69 @@ timestamp,action,device
 - **Booleans** carry no `shape`.
 - **Children are sorted by name**, so the same input always gives the same
   document.
+
+## 9. Merging and comparing schemas
+
+Two operations on schema trees support tracking a platform's format over time. Both work on
+nodes and paths only; they never need the original exports.
+
+### 9.1 Merging
+
+`merge(documents)` combines the trees of several documents, e.g. several users' exports of the
+same platform, into one tree: the basis of an *accepted* schema version. Nodes at the same path
+are unified with the rules of [§3.4](#34-unification): `stats` and `shapes` are summed, types
+form a union, the dominant `shape` and `format` are recomputed, `length` and `range` widen,
+and a key missing from one document still counts that document's objects, so it shows as
+optional. `files` and `folders` add up; `size_bytes` is summed and `modified` is the newest.
+
+When the same path has different kinds in different documents, the more informative one is
+kept, in this order: `file`, `container`, `folder`, `media`, `unmatched` (a file one export
+could parse beats the same file another export failed on).
+
+Alongside the tree, merging reports each path's **presence**: in how many of the documents it
+occurs. A path present in every export is part of what the platform always delivers; one
+present in few depends on how the account was used.
+
+### 9.2 Comparing
+
+`compare(base, new)` reports how `new` (e.g. a fresh upload) differs from `base` (e.g. the
+accepted version):
+
+| Category  | Meaning                                                                                                                                                                                                   |
+|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `added`   | Paths only in `new`. Only the top of each added subtree is listed.                                                                                                                                        |
+| `removed` | Paths only in `base`, listed the same way.                                                                                                                                                                |
+| `moved`   | A removed and an added node with the same name and kind whose subtrees mostly match (at least half of their relative paths). Only unambiguous pairs count; a folder moved into a new folder is found too. |
+| `changed` | Same path, different `kind`, type, `shape` or `format`.                                                                                                                                                   |
+
+Only structure is compared, never counts, sizes or timestamps. Differences that depend on the
+account's data rather than on the platform are ignored: whether a value was ever `null`, and the
+shapes `mixed` and `empty`. Every path of either tree has a status (`added`, `removed`,
+`moved_from`, `moved_to`, `changed` or `unchanged`); descendants share their subtree's.
+
+A path missing from one upload is not necessarily gone from the platform: that user may just
+never have used the feature. Comparing against a merged version with presence counts helps to
+tell the two apart.
+
+
+### 9.3 Suggesting correspondences
+
+A data point keeps its meaning when its location changes: a file or key moves, is renamed, or is
+named differently because the export was requested in another language (`Date` in English,
+`Datum` in German). `suggest(known, new)` proposes, for every **data point** of `new` whose path
+is not in `known`, which known paths it may correspond to. A **data point** (`is_data_point`) is
+a value or a list in parsed content, an object that is the **item of a list** (the repeated
+entity, `…/[]`), or a **media** file. Other objects only group keys, and parsed and unmatched
+files, folders and containers only describe where data lies: they get no suggestions, though
+renamed objects and files are still followed so that their content can be matched. Lists and
+objects, even empty ones, are **structures** (`is_structure`).
+
+| Reason    | When                                                                                                                                                                                                                                | Score                                                                                                                                                                                                                                                  |
+|-----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `moved`   | The node lies in a subtree that `compare` found moved, or below a list/object with one clear `renamed` candidate, and its relative path exists there.                                                                               | 1.0 for moves; below a rename, the rename's score                                                                                                                                                                                                      |
+| `renamed` | Its parent is known (directly, through a move or through a rename), and a known sibling of the same kind, type, shape and format is absent from `new`. Lists and objects must also share at least half of their relative sub-paths. | 0.5, +0.3 at the same position among its siblings; values: +0.2 with the same `format` (else +0.1 with the same `shape`); lists/objects: +0.2 × the share of sub-paths in common. Multiplied by the parent's score when the parent was itself renamed. |
+
+Nodes are handled parents first. When a list or object gets exactly one best `renamed`
+candidate, its children are matched through it, so a translated object carries its translated
+keys along (`Kommentare/Datum` → `Comments/Date`). Candidates are sorted by score. They are
+suggestions only: deciding that two paths hold the same information is a curator's call.

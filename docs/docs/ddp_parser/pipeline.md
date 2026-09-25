@@ -74,12 +74,15 @@ packages/ddp-parser/
     options.py         # Options: samples, max_samples, shape_threshold, max_depth, limits, …
     pipeline.py        # orchestrates steps 1–7; the only module that knows the whole flow
     errors.py          # LimitExceeded, ParseError, UnsafePath, …
+    merge.py           # merge(documents): one tree + presence per path (spec 9.1)
+    compare.py         # compare(base, new): added / removed / moved / changed (spec 9.2)
     __main__.py        # dev CLI: python -m ddp_parser export.zip > schema.json
 
     model/             # output contract (pure data, no I/O)
       paths.py         #   JSON Pointer paths: escape / join / split
       nodes.py         #   Kind, Shape, …; Container/Folder/File/Media/Unmatched/DataNode
       document.py      #   Document, Source, ParseWarning
+      walk.py          #   walk(node): a node and all its descendants
       serialize.py     #   to_json / from_json / to_dict / from_dict (msgspec)
 
     source/            # steps 1–3
@@ -155,7 +158,7 @@ Each subpackage owns one or more steps of the pipeline and depends only on the l
 ```python
 from ddp_parser import Options, parse, to_json
 
-document = parse("export.zip")                       # path, bytes (pass name=) or binary stream
+document = parse("export.zip")  # path, bytes (pass name=) or binary stream
 document = parse(data, Options(samples=True), name="posts.json")
 print(to_json(document))
 ```
@@ -170,8 +173,8 @@ node or a document warning.
 
 ## Open questions
 
-- **Name clash.** The Django app `apps/ddp_parser` has the same name as the package. Rename the
-  app (e.g. `apps/ddps` or `apps/schemas`) once it gets real models.
+- **Name clash.** The Django app `../../../ddp_tracker` has the same name as the package. Rename the
+  app (e.g. `../../../ddp_tracker` or `../../../ddp_tracker`) once it gets real models.
 - **Tuning on real exports.** The folder-collapse threshold ("at least half"), the date-format
   grid and the size-limit defaults are first guesses; run real DDPs and adjust.
 - **Partly read group members.** A file of a group that fails halfway (a bad line in JSON Lines,

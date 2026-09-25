@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from pathlib import Path as FilePath
 from unittest import TestCase
 
+from ddp_parser import node_from_dict, node_to_dict
 from ddp_parser.errors import InvalidDocumentError
 from ddp_parser.model import (
     ContainerNode,
@@ -243,3 +244,11 @@ class InvalidDocumentTests(TestCase):
         self.data["root"]["children"][0]["path"] = "no-leading-slash"
         with self.assertRaises(InvalidDocumentError):
             from_dict(self.data)
+
+
+class NodeSerializationTests(TestCase):
+    def test_round_trip_and_validation(self):
+        document = from_json(WORKED_EXAMPLE.read_text(encoding="utf-8"))
+        self.assertEqual(node_from_dict(node_to_dict(document.root)), document.root)
+        with self.assertRaises(InvalidDocumentError):
+            node_from_dict({"kind": "folder"})

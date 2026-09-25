@@ -9,6 +9,8 @@ dependencies = [
     "django-csp>=4.0,<5",  # https://github.com/mozilla/django-csp
     "django-environ>=0.11,<1",  # https://github.com/joke2k/django-environ
     "django-guid>=3.6.1,<4",  # https://github.com/snok/django-guid
+    "django-tasks>=0.12,<0.13",  # https://github.com/RealOrangeOne/django-tasks (backport of django.tasks)
+    "django-tasks-db[compat]>=0.13,<0.14",  # https://github.com/RealOrangeOne/django-tasks-db
     "mkdocs-material>=9.7.7",
 ]
 
@@ -151,7 +153,7 @@ suppress-none-returning = true   # don't force `-> None` on every view/handler
 runtime-evaluated-base-classes = ["msgspec.Struct"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["config", "core", "ddp_parser"]
+known-first-party = ["config", "ddp_tracker", "ddp_parser"]
 section-order = ["future", "standard-library", "django", "third-party", "first-party", "local-folder"]
 
 [tool.ruff.lint.isort.sections]

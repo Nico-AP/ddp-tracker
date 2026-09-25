@@ -1,0 +1,32 @@
+{% load core_tags %}
+{% with location=row.location profile=row.profile %}
+  <button
+    type="button"
+    class="tree__name"
+    hx-get="{% url 'schemas:location' platform.slug %}?path={{ location.path|urlencode }}&{{ filter.query }}"
+    hx-target="#node-detail"
+  >
+    {{ location.display_name }}
+  </button>
+  <span class="badge badge--kind">{{ profile.main_kind }}</span>
+  {% if profile.main_type %}<span class="tree__type">{{ profile.main_type }}</span>{% endif %}
+  {% if profile.main_shape %}
+    <span class="tree__shape">{{ profile.main_shape }}
+      {% if profile.main_format %}· {{ profile.main_format }}{% endif %}
+    </span>
+  {% endif %}
+  {% if profile.variants %}
+    <span class="tree__variants"
+          title="other types, shapes or formats were observed too: see the details">+{{ profile.variants }}</span>
+  {% endif %}
+  <span class="tree__presence"
+        title="seen in {{ profile.uploads }} upload(s), requested {{ profile.first_seen }} – {{ profile.last_seen }}">{{ profile.uploads }}×</span>
+  {% if location.annotation %}
+    <a class="badge badge--annotated"
+       href="{{ location.annotation.get_absolute_url }}">{{ location.annotation }}</a>
+  {% elif location.ignored %}
+    <span class="badge">not a data point</span>
+  {% elif profile.is_data_point %}
+    <span class="badge badge--pending">untriaged</span>
+  {% endif %}
+{% endwith %}

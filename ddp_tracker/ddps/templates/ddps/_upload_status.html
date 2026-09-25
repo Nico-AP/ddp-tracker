@@ -1,0 +1,7 @@
+<div class="status-box"
+     hx-get="{% url 'ddps:upload-status' upload.pk %}"
+     hx-trigger="every 2s"
+     hx-swap="outerHTML">
+  <span class="badge badge--{{ upload.status }}">{{ upload.get_status_display }}</span>
+  This page updates by itself when the schema is ready.
+</div>

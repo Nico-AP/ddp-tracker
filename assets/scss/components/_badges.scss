@@ -1,0 +1,75 @@
+@use "sass:color";
+@use "../abstracts/variables" as *;
+
+.badge {
+  display: inline-block;
+  margin-left: $spacing-unit * 0.5;
+  border-radius: 999px;
+  padding: 0 $spacing-unit;
+  background: $color-border;
+  color: $color-text;
+  font-size: $font-size-small;
+  font-weight: 400;
+}
+
+@mixin badge-color($color) {
+  background: color.scale($color, $lightness: 85%);
+  color: $color;
+}
+
+.badge--done,
+.badge--accepted,
+.badge--added,
+.badge--annotated {
+  @include badge-color($color-success);
+}
+
+.badge--failed,
+.badge--removed {
+  @include badge-color($color-danger);
+}
+
+.badge--pending,
+.badge--parsing,
+.badge--draft,
+.badge--changed {
+  @include badge-color($color-warning);
+}
+
+.badge--root {
+  @include badge-color($color-primary);
+}
+
+.badge--moved_from,
+.badge--moved_to {
+  @include badge-color($color-info);
+}
+
+.summary {
+  display: flex;
+  gap: $spacing-unit;
+  list-style: none;
+  padding: 0;
+}
+
+.summary__item {
+  border-left: 4px solid $color-border;
+  padding: $spacing-unit ($spacing-unit * 2);
+  background: $color-surface;
+
+  &.status--added {
+    border-color: $color-success;
+  }
+
+  &.status--removed {
+    border-color: $color-danger;
+  }
+
+  &.status--moved_to {
+    border-color: $color-info;
+  }
+
+  &.status--changed {
+    border-color: $color-warning;
+  }
+}

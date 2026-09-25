@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ platform }} · DDP Tracker{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>{{ platform }}</h1>
+    <a class="btn"
+       href="{% url 'annotations:annotations' platform.slug %}">Annotations ({{ counts.annotations }})</a>
+  </div>
+  <form method="get" class="filter-bar">
+    {% for field in filter_form %}
+      <fieldset class="filter-bar__field">
+        <legend>{{ field.label }}</legend>
+        {{ field }}
+      </fieldset>
+    {% endfor %}
+    <button type="submit" class="btn btn--small">Filter</button>
+    {% if filter.is_active %}
+      <a href="{{ platform.get_absolute_url }}">Reset</a>
+    {% endif %}
+  </form>
+  <p class="muted">
+    {% if filter.is_active %}Filtered:{% endif %}
+    {{ counts.uploads }} upload{{ counts.uploads|pluralize }}, {{ counts.data_points }} data points,
+    {{ counts.untriaged }} not yet assigned to an annotation.
+  </p>
+  <h2>Collected schema</h2>
+  {% if root %}
+    <div class="explorer">
+      <ul class="tree tree--root">
+        <li class="tree__item">
+          <details open>
+            <summary>
+              <button type="button"
+                      class="tree__name"
+                      hx-get="{% url 'schemas:location' platform.slug %}?path=&{{ filter.query }}"
+                      hx-target="#node-detail">Root</button>
+              {% for format, count in root_formats %}
+                <span class="badge badge--root">{{ format }}{% if root_formats|length > 1 %} ×{{ count }}{% endif %}</span>
+              {% endfor %}
+            </summary>
+            <ul class="tree">
+              {% include "schemas/_tree.html" %}
+            </ul>
+          </details>
+        </li>
+      </ul>
+      <aside id="node-detail" class="detail-panel">
+        <p class="muted">Select a node to see its history and annotation.</p>
+      </aside>
+    </div>
+  {% else %}
+    <p class="muted">
+      {% if filter.is_active %}
+        No uploads match this filter.
+      {% else %}
+        Nothing collected yet.
+      {% endif %}
+    </p>
+  {% endif %}
+  {% if uploads is not None %}
+    <h2>Recent uploads</h2>
+    {% if uploads %}
+      <ul class="plain-list">
+        {% for upload in uploads %}
+          <li>
+            <a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a>
+            <span class="muted">requested {{ upload.requested_at }}{% if upload.language %}, {{ upload.get_language_display }}{% endif %}</span>
+            <span class="badge badge--{{ upload.status }}">{{ upload.get_status_display }}</span>
+            {% if upload.registered_at %}
+              <a href="{% url 'schemas:review' upload.pk %}">review</a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">
+        None yet. <a href="{% url 'ddps:upload-create' %}?platform={{ platform.pk }}">Upload a DDP</a>.
+      </p>
+    {% endif %}
+  {% endif %}
+{% endblock %}

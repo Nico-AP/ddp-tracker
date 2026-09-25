@@ -19,6 +19,9 @@ DATABASES = {
     "default": env.db("DATABASE_URL"),
 }
 
+# Parse uploads in a separate worker process: ``manage.py db_worker``.
+TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}
+
 SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True

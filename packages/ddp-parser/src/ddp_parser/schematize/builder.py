@@ -167,24 +167,32 @@ class NodeBuilder:
         )
 
     def _type(self) -> JsonType | tuple[JsonType, ...]:
-        types = self._types
-        if JsonType.NUMBER in types:
-            types = types - {JsonType.INTEGER}  # integer + number → number (spec 3.4)
-        ordered = tuple(sorted(types))
-        return ordered[0] if len(ordered) == 1 else ordered
+        return type_union(self._types)
 
     def _dominant_shape(self, threshold: float) -> Shape | None:
-        """The shape of ≥ ``threshold`` of the non-empty values, else ``mixed`` (spec 3.4)."""
-        total = self._shapes.total()
-        if not total:
-            return None
-        non_empty = total - self._shapes[Shape.EMPTY]
-        if not non_empty:
-            return Shape.EMPTY
-        top, top_count = next(
-            (shape, n) for shape, n in self._shapes.most_common() if shape is not Shape.EMPTY
-        )
-        return top if top_count / non_empty >= threshold else Shape.MIXED
+        return dominant_shape(self._shapes, threshold)
+
+
+def type_union(types: set[JsonType]) -> JsonType | tuple[JsonType, ...]:
+    """A single type, or the sorted union; ``integer`` + ``number`` → ``number`` (spec 3.4)."""
+    if JsonType.NUMBER in types:
+        types = types - {JsonType.INTEGER}
+    ordered = tuple(sorted(types))
+    return ordered[0] if len(ordered) == 1 else ordered
+
+
+def dominant_shape(shapes: Counter[Shape], threshold: float) -> Shape | None:
+    """The shape of ≥ ``threshold`` of the non-empty values, else ``mixed`` (spec 3.4)."""
+    total = shapes.total()
+    if not total:
+        return None
+    non_empty = total - shapes[Shape.EMPTY]
+    if not non_empty:
+        return Shape.EMPTY
+    top, top_count = next(
+        (shape, n) for shape, n in shapes.most_common() if shape is not Shape.EMPTY
+    )
+    return top if top_count / non_empty >= threshold else Shape.MIXED
 
 
 def data_fields(node: DataNode) -> dict[str, Any]:

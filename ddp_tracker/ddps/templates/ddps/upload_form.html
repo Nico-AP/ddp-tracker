@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Upload a DDP · DDP Tracker{% endblock %}
+{% block content %}
+  <h1>Upload a DDP</h1>
+  <p class="lead">
+    The file is only read to derive its schema and is deleted right after. No personal data from it is
+    stored: only the structure (files, keys, types, shapes and counts).
+  </p>
+  <form method="post" enctype="multipart/form-data" class="form form--narrow">
+    {% csrf_token %}
+    {% include "includes/form.html" %}
+    <button type="submit" class="btn">Upload</button>
+  </form>
+{% endblock %}

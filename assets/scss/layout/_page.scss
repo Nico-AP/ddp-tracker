@@ -1,0 +1,78 @@
+@use "../abstracts/variables" as *;
+
+.container {
+  max-width: $container-width;
+  margin: 0 auto;
+  padding: ($spacing-unit * 3) ($spacing-unit * 2);
+}
+
+.site-header__brand {
+  font-weight: 700;
+  color: $color-text;
+  text-decoration: none;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: $spacing-unit * 2;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-unit * 2;
+}
+
+.breadcrumbs {
+  font-size: $font-size-small;
+}
+
+.lead {
+  max-width: 70ch;
+}
+
+.muted {
+  color: $color-text-muted;
+}
+
+code,
+pre {
+  font-family: $font-family-mono;
+  font-size: $font-size-small;
+}
+
+.path {
+  word-break: break-all;
+}
+
+a {
+  color: $color-primary;
+}
+
+.explorer {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: $spacing-unit * 3;
+  align-items: start;
+
+  @media (width <= 800px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detail-panel {
+  position: sticky;
+  top: $spacing-unit * 2;
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  background: $color-surface;
+  padding: $spacing-unit * 2;
+}
+
+.compare-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-unit * 2;
+}

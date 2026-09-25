@@ -58,6 +58,7 @@ db.sqlite3-journal
 celerybeat-schedule
 celerybeat.pid
 *.pot
+*.log.*
 
 # Django migrations — uncomment ONLY if your team intentionally
 # excludes migrations from VCS (uncommon; most projects commit them)

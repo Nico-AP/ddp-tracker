@@ -1,0 +1,7 @@
+{# A value distribution: "value ×count", most common first. #}
+{% load core_tags %}
+{% for value, count in counter|ranked %}
+  <code>{{ value }}</code>
+  {% if counter|length > 1 %}<span class="muted">×{{ count }}</span>{% endif %}
+  {% if not forloop.last %}·{% endif %}
+{% endfor %}

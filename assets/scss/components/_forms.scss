@@ -1,0 +1,101 @@
+@use "../abstracts/variables" as *;
+@use "../abstracts/mixins" as *;
+
+.form--narrow {
+  max-width: 560px;
+}
+
+.form__field {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-unit * 0.5;
+  margin-bottom: $spacing-unit * 2;
+
+  input,
+  select,
+  textarea {
+    border: 1px solid $color-border;
+    border-radius: $radius-base;
+    padding: $spacing-unit;
+    font: inherit;
+
+    @include focus-ring;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+  }
+}
+
+.form__help {
+  color: $color-text-muted;
+}
+
+.form__error,
+.form__errors {
+  color: $color-danger;
+}
+
+.inline-form {
+  display: inline;
+}
+
+.link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: $color-primary;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.btn--small {
+  padding: ($spacing-unit * 0.5) $spacing-unit;
+  font-size: $font-size-small;
+}
+
+a.btn {
+  text-decoration: none;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: $spacing-unit * 2;
+  margin-bottom: $spacing-unit * 2;
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: $spacing-unit * 1.5;
+
+  input[type="date"] {
+    border: 1px solid $color-border;
+    border-radius: $radius-base;
+    padding: ($spacing-unit * 0.5) $spacing-unit;
+    font: inherit;
+  }
+
+  ul {
+    display: flex;
+    gap: $spacing-unit;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.filter-bar__field {
+  border: none;
+  margin: 0;
+  padding: 0;
+
+  legend {
+    color: $color-text-muted;
+    font-size: $font-size-small;
+  }
+}
