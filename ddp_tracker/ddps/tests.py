@@ -9,6 +9,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from ddp_tracker.core.tests.utils import make_zip, parsed_upload
+from ddp_tracker.ddps.forms import COMMON_LANGUAGES, UploadForm, language_choices
 from ddp_tracker.ddps.models import Platform, Upload
 from ddp_tracker.ddps.tasks import parse_upload
 from ddp_tracker.schemas.models import Location
@@ -153,3 +154,29 @@ class RegisterCommandTests(TestCase):
         upload.refresh_from_db()
         self.assertIsNotNone(upload.registered_at)
         self.assertIn("Registered 1 upload.", out.getvalue())
+
+
+class LanguagePickerTests(TestCase):
+    def test_common_languages_first_then_all_by_name(self):
+        choices = language_choices()
+        self.assertEqual(choices[0], ("", "Unknown"))
+        (common_label, common), (all_label, others) = choices[1], choices[2]
+        self.assertEqual((common_label, all_label), ("Common", "All languages"))
+        self.assertEqual([code for code, _ in common], list(COMMON_LANGUAGES))
+        names = [str(name) for _, name in others]
+        self.assertEqual(names, sorted(names))
+        self.assertNotIn("de", [code for code, _ in others])  # not listed twice
+        self.assertIn("ja", [code for code, _ in others])
+
+    def test_the_form_renders_groups_and_accepts_any_language(self):
+        form = UploadForm()
+        html = str(form["language"])
+        self.assertIn('<optgroup label="Common">', html)
+        self.assertLess(html.index(">German<"), html.index(">Afrikaans<"))
+        mode = str(form["request_mode"])
+        self.assertIn('<option value="" selected>Unknown</option>', mode)
+        self.assertEqual(form.fields["request_mode"].clean(""), "")  # optional, like language
+        field = form.fields["language"]
+        for code in ("", "de", "ja"):
+            with self.subTest(code=code):
+                self.assertEqual(field.clean(code), code)
