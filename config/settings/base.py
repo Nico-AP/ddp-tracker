@@ -111,6 +111,9 @@ TASKS = {
 # served) only until the parse task has read them, and are deleted right after.
 DDP_INCOMING_DIR = env.path("DDP_INCOMING_DIR", default=BASE_DIR / "var" / "incoming")
 DDP_MAX_UPLOAD_SIZE = env.int("DDP_MAX_UPLOAD_SIZE", default=2 * 1024**3)  # bytes
+# Below this share of known data points (0 to 1), an upload is unusual: the uploader confirms it and
+# staff approve it before it counts (ddp_tracker/ddps/checks.py).
+DDP_SIMILARITY_THRESHOLD = env.float("DDP_SIMILARITY_THRESHOLD", default=0.3)
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]

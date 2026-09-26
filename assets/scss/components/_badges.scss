@@ -26,12 +26,16 @@
 }
 
 .badge--failed,
+.badge--rejected,
 .badge--removed {
   @include badge-color($color-danger);
 }
 
 .badge--pending,
 .badge--unmapped,
+.badge--unconfirmed,
+.badge--awaiting,
+.badge--duplicate,
 .badge--parsing,
 .badge--draft,
 .badge--changed {

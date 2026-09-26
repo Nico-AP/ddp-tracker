@@ -28,10 +28,9 @@ Uploaded files wait in `DDP_INCOMING_DIR` (default `var/incoming/`, gitignored, 
 until they're parsed, and are deleted right after, whether parsing succeeded or not. The web process
 and the worker must both be able to reach that directory.
 
-Two maintenance commands work on already stored schema documents (no re-upload needed):
+A maintenance command works on already stored schema documents (no re-upload needed):
 
 ```bash
-uv run manage.py register_uploads       # add parsed uploads that aren't in the collected schema yet
 uv run manage.py refresh_observations   # re-apply the parser's current rules (e.g. which nodes are data points)
 ```
 
@@ -111,8 +110,9 @@ Settings are split under `config/settings/`:
   a missing `DJANGO_SECRET_KEY` or `DATABASE_URL` fails at startup rather than running insecurely)
 - `cicd.py` — GitHub Actions (in-memory sqlite, no external services)
 
-Upload-related settings: `DDP_INCOMING_DIR`, `DDP_MAX_UPLOAD_SIZE` and `TASKS_BACKEND` (see
-`.env.example`).
+Upload-related settings: `DDP_INCOMING_DIR`, `DDP_MAX_UPLOAD_SIZE`, `DDP_SIMILARITY_THRESHOLD`
+(below it, an upload is unusual and needs the uploader's confirmation and a staff approval before
+it counts) and `TASKS_BACKEND` (see `.env.example`).
 
 `manage.py` defaults to `local`; `config/wsgi.py`/`config/asgi.py` default to `production`. Override
 with the `DJANGO_SETTINGS_MODULE` environment variable when you need something else.

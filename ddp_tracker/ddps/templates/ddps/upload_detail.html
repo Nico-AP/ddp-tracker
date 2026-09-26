@@ -14,6 +14,10 @@
     <dd>
       {{ upload.requested_at }}
     </dd>
+    <dt>Format</dt>
+    <dd>
+      {{ upload.get_file_format_display|default:upload.root_format|default:"–" }}
+    </dd>
     <dt>Account language</dt>
     <dd>
       {{ upload.get_language_display|default:"unknown" }}
@@ -34,14 +38,7 @@
   {% elif upload.status == "failed" %}
     <p class="message message--error">The file could not be read: {{ upload.error }}</p>
   {% else %}
-    {% if duplicates %}
-      <p class="message message--warning">
-        The same file was uploaded before:
-        {% for other in duplicates %}
-          <a href="{{ other.get_absolute_url }}">#{{ other.pk }}</a>
-        {% endfor %}
-      </p>
-    {% endif %}
+    {% include "ddps/_plausibility.html" %}
     <h2>Review</h2>
     {% if upload.registered_at %}
       <p>
@@ -49,7 +46,7 @@
         <span class="muted">against everything collected for {{ upload.platform }}: new data points to assign, changes, missing data points.</span>
       </p>
     {% else %}
-      <p class="muted">Not yet added to the collected schema.</p>
+      <p class="muted">Not part of the collected schema{% if not upload.counts %} (see above){% endif %}.</p>
     {% endif %}
     <h2>Parser warnings</h2>
     {% if upload.warnings %}

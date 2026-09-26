@@ -14,7 +14,8 @@ def make_zip(members: dict[str, bytes]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         for name, data in members.items():
-            archive.writestr(name, data)
+            # a fixed timestamp: the same members always give the same bytes (and SHA-256)
+            archive.writestr(zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0)), data)
     return buffer.getvalue()
 
 
@@ -68,6 +69,8 @@ def _upload(
         source_sha256=document.source.sha256,
         size_bytes=document.source.size_bytes,
     )
-    if register:
+    if register:  # as if it passed the plausibility checks (ddps/checks.py)
+        upload.plausibility = Upload.Plausibility.PASSED
+        upload.save(update_fields=["plausibility"])
         register_upload(upload)
     return upload

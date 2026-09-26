@@ -1,4 +1,4 @@
-{% load static %}
+{% load static upload_tags %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -20,6 +20,10 @@
         <a href="{% url 'representations:representations' %}">Representations</a>
         {% if user.is_authenticated %}
           <a href="{% url 'ddps:uploads' %}">Uploads</a>
+          {% approvals_waiting as waiting %}
+          {% if waiting %}
+            <a href="{% url 'ddps:approvals' %}">Approvals ({{ waiting }})</a>
+          {% endif %}
           <a class="btn btn--small" href="{% url 'ddps:upload-create' %}">Upload a DDP</a>
           <form method="post" action="{% url 'logout' %}" class="inline-form">
             {% csrf_token %}

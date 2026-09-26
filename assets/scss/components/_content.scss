@@ -113,6 +113,13 @@
   }
 }
 
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-unit;
+}
+
 .triage-group {
   margin-top: $spacing-unit * 3;
 }

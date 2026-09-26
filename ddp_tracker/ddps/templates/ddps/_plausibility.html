@@ -1,0 +1,62 @@
+{# Whether the upload counts towards the public schema, and what the uploader or staff can do (ddps/checks.py). #}
+{% if upload.plausibility == "unconfirmed" %}
+  <div class="message message--warning">
+    <p>
+      This doesn't look like the other {{ upload.platform }} {{ upload.root_format|upper }} uploads:
+      {% if upload.similarity is not None %}
+        only {% widthratio upload.similarity 1 100 %} % of its data points are known (below {% widthratio threshold 1 100 %} %, an upload is checked by hand).
+      {% else %}
+        none of its content could be matched.
+      {% endif %}
+      Is it really a {{ upload.platform }} DDP?
+    </p>
+    {% if is_uploader %}
+      <div class="button-row">
+        <form method="post"
+              action="{% url 'ddps:upload-decide' upload.pk 'confirm' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--small">Yes, ask for approval</button>
+        </form>
+        <form method="post"
+              action="{% url 'ddps:upload-decide' upload.pk 'discard' %}">
+          {% csrf_token %}
+          <button type="submit" class="link-button">No, discard it</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+{% elif upload.plausibility == "awaiting" %}
+  <div class="message message--warning">
+    <p>
+      Waiting for an admin's approval: it doesn't count towards the {{ upload.platform }} schema yet
+      ({{ upload.get_plausibility_reason_display|lower }}{% if upload.similarity is not None %}; {% widthratio upload.similarity 1 100 %} % of its data points are known{% endif %}).
+    </p>
+    {% if can_approve %}
+      <div class="button-row">
+        <form method="post"
+              action="{% url 'ddps:upload-decide' upload.pk 'approve' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--small">Approve</button>
+        </form>
+        <form method="post"
+              action="{% url 'ddps:upload-decide' upload.pk 'reject' %}">
+          {% csrf_token %}
+          <button type="submit" class="link-button">Reject</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+{% elif upload.plausibility == "rejected" %}
+  <p class="message message--error">
+    Rejected{% if upload.approved_by %} by {{ upload.approved_by }}{% endif %}: it doesn't count towards the {{ upload.platform }} schema.
+  </p>
+{% elif upload.plausibility == "duplicate" %}
+  <p class="message message--warning">
+    The same file was uploaded before, so it isn't counted again:
+    {% for other in duplicates %}
+      <a href="{{ other.get_absolute_url }}">#{{ other.pk }}</a>
+    {% endfor %}
+  </p>
+{% elif upload.plausibility == "approved" %}
+  <p class="muted">Approved{% if upload.approved_by %} by {{ upload.approved_by }}{% endif %}.</p>
+{% endif %}

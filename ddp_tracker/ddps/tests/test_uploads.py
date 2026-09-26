@@ -1,14 +1,13 @@
 import tempfile
-from io import StringIO
 from pathlib import Path
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from ddp_tracker.core.tests.utils import make_zip, parsed_upload
+from ddp_tracker.ddps.checks import decide
 from ddp_tracker.ddps.forms import COMMON_LANGUAGES, UploadForm, language_choices
 from ddp_tracker.ddps.models import Platform, Upload
 from ddp_tracker.ddps.tasks import parse_upload
@@ -28,7 +27,7 @@ class UploadFlowTests(TestCase):
         settings.enable()
         self.addCleanup(settings.disable)
 
-    def post(self, data: bytes, name: str = "export.zip"):
+    def post(self, data: bytes, name: str = "export.zip", file_format: str = "zip"):
         self.client.force_login(self.user)
         with self.captureOnCommitCallbacks(execute=True):
             return self.client.post(
@@ -37,6 +36,7 @@ class UploadFlowTests(TestCase):
                     "platform": self.platform.pk,
                     "requested_at": "2026-09-01",
                     "language": "de",
+                    "file_format": file_format,
                     "file": SimpleUploadedFile(name, data),
                 },
             )
@@ -57,10 +57,13 @@ class UploadFlowTests(TestCase):
         self.assertEqual(upload.document["root"]["children"][0]["path"], "/profile.json")
         self.assertEqual(len(upload.source_sha256), 64)
         self.assertEqual(list(Path(self.incoming.name).iterdir()), [])  # nothing kept
-        self.assertIsNotNone(upload.registered_at)  # added to the collected schema
-        self.assertTrue(Location.objects.filter(path="/profile.json/joined").exists())
+        # the first upload of its platform and format waits for approval (ddps/checks.py)
+        self.assertEqual(upload.plausibility, Upload.Plausibility.AWAITING)
+        self.assertIsNone(upload.registered_at)
+        self.assertFalse(Location.objects.exists())
 
     def test_unreadable_zip_fails_and_is_deleted(self):
+        # passes the form's quick check (the archive's end record is intact), fails parsing
         broken = make_zip(PROFILE).replace(b"PK\x01\x02", b"XX\x01\x02")
         self.post(broken)
         upload = Upload.objects.get()
@@ -108,8 +111,10 @@ class UploadPagesTests(TestCase):
         second = parsed_upload(self.platform, PROFILE)
         response = self.client.get(first.get_absolute_url())
         self.assertContains(response, reverse("schemas:review", args=[first.pk]))
+        decide(second)
         response = self.client.get(second.get_absolute_url())
-        self.assertContains(response, "Not yet added")
+        self.assertContains(response, "Not part of the collected schema")
+        self.assertContains(response, "isn't counted again")
         self.assertContains(response, f"#{first.pk}")  # duplicate of the first upload
 
     def test_failed_and_pending_uploads(self):
@@ -143,17 +148,6 @@ class UploadPagesTests(TestCase):
         self.assertEqual(upload.warnings, [])
         empty = Upload(platform=self.platform, requested_at="2026-09-01")
         self.assertFalse(empty.duplicates().exists())
-
-
-class RegisterCommandTests(TestCase):
-    def test_registers_pending_uploads(self):
-        platform = Platform.objects.create(name="Instagram", slug="instagram")
-        upload = parsed_upload(platform, PROFILE)
-        out = StringIO()
-        call_command("register_uploads", stdout=out)
-        upload.refresh_from_db()
-        self.assertIsNotNone(upload.registered_at)
-        self.assertIn("Registered 1 upload.", out.getvalue())
 
 
 class LanguagePickerTests(TestCase):

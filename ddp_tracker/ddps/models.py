@@ -32,6 +32,28 @@ class Upload(models.Model):
         DONE = "done", "Parsed"
         FAILED = "failed", "Failed"
 
+    class FileFormat(models.TextChoices):
+        """What the uploader says the DDP is; the form and the parser hold them to it."""
+
+        ZIP = "zip", "ZIP archive"
+        JSON = "json", "JSON file"
+        CSV = "csv", "CSV file"
+
+    class Plausibility(models.TextChoices):
+        """Whether the upload counts towards the public schema (docs/tracker/concepts.md)."""
+
+        PENDING = "pending", "Not checked yet"
+        PASSED = "passed", "Counts"
+        UNCONFIRMED = "unconfirmed", "Unusual: to be confirmed by the uploader"
+        AWAITING = "awaiting", "Waiting for approval"
+        APPROVED = "approved", "Counts (approved)"
+        REJECTED = "rejected", "Rejected"
+        DUPLICATE = "duplicate", "Duplicate"
+
+    class Reason(models.TextChoices):
+        FIRST = "first", "The first upload of its platform and format"
+        DISSIMILAR = "dissimilar", "Unlike the other uploads of its platform and format"
+
     class RequestMode(models.TextChoices):
         DL_APP = "DL_APP", "Downloaded in the app"
         DL_BROWSER = "DL_BROWSER", "Downloaded in the browser"
@@ -51,6 +73,7 @@ class Upload(models.Model):
         choices=RequestMode.choices,
         help_text="How the DDP was requested, if known.",
     )
+    file_format = models.CharField(max_length=16, choices=FileFormat.choices, blank=True)
     file_name = models.CharField(max_length=255)
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="uploads"
@@ -67,6 +90,21 @@ class Upload(models.Model):
     registered_at = models.DateTimeField(null=True, blank=True)  # added to the collected schema
     # What the upload was as a whole: "zip", or a single file's format ("csv", "json" …)
     root_format = models.CharField(max_length=16, blank=True)
+
+    # plausibility (ddps/checks.py): only uploads that pass, or are approved, get registered
+    plausibility = models.CharField(
+        max_length=16, choices=Plausibility.choices, default=Plausibility.PENDING
+    )
+    plausibility_reason = models.CharField(max_length=16, choices=Reason.choices, blank=True)
+    similarity = models.FloatField(null=True, blank=True)  # share of known data points, 0 to 1
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="approved_uploads",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -90,8 +128,13 @@ class Upload(models.Model):
     def warnings(self) -> list[dict[str, Any]]:
         return list((self.document or {}).get("warnings", []))
 
+    @property
+    def counts(self) -> bool:
+        """Part of the public schema: passed the checks, or approved."""
+        return self.plausibility in {self.Plausibility.PASSED, self.Plausibility.APPROVED}
+
     def duplicates(self) -> "models.QuerySet[Upload]":
-        """Earlier uploads of the exact same file for this platform."""
+        """Other uploads of the exact same file for this platform."""
         if not self.source_sha256:
             return Upload.objects.none()
         return Upload.objects.filter(

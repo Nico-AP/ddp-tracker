@@ -28,6 +28,9 @@
             <td>{{ upload.get_language_display|default:"–" }}</td>
             <td>
               <span class="badge badge--{{ upload.status }}">{{ upload.get_status_display }}</span>
+              {% if upload.status == "done" and not upload.counts and upload.plausibility != "pending" %}
+                <span class="badge badge--{{ upload.plausibility }}">{{ upload.get_plausibility_display }}</span>
+              {% endif %}
             </td>
             <td>{{ upload.created_at|date:"Y-m-d H:i" }} · {{ upload.uploaded_by|default:"–" }}</td>
           </tr>

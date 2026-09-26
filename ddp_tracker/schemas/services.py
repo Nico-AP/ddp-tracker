@@ -63,7 +63,7 @@ def flatten(root: Node) -> Iterator[FlatNode]:
 # --- registering ------------------------------------------------------------------------------
 
 
-def _root_format(root: Node) -> str:
+def get_format_of(root: Node) -> str:
     """ "zip" for an archive, else the single file's extension ("csv", "json" …)."""
     ext = getattr(root, "ext", None) or ""
     return ext.lstrip(".").lower() or root.kind
@@ -114,7 +114,7 @@ def register_upload(upload: Upload) -> None:
         ),
         batch_size=_BATCH,
     )
-    upload.root_format = _root_format(root)
+    upload.root_format = get_format_of(root)
     upload.registered_at = timezone.now()
     upload.save(update_fields=["root_format", "registered_at"])
     suggest_for(upload)

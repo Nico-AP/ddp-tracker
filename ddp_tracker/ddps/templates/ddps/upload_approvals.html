@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Approvals · DDP Tracker{% endblock %}
+{% block content %}
+  <h1>Uploads waiting for approval</h1>
+  <p class="lead">
+    These uploads don't count towards the public schema until an admin approves them: the first
+    upload of a platform and format, or one that looks unlike the others and that its uploader confirmed.
+  </p>
+  {% if uploads %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Upload</th>
+          <th>Platform</th>
+          <th>Format</th>
+          <th>Why</th>
+          <th>Known data points</th>
+          <th>Uploaded by</th>
+          <th>Requested</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for upload in uploads %}
+          <tr>
+            <td>
+              <a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a>
+            </td>
+            <td>{{ upload.platform }}</td>
+            <td>{{ upload.get_file_format_display|default:upload.root_format }}</td>
+            <td>{{ upload.get_plausibility_reason_display }}</td>
+            <td>
+              {% if upload.similarity is not None %}
+                {% widthratio upload.similarity 1 100 %} %
+              {% else %}
+                –
+              {% endif %}
+            </td>
+            <td>{{ upload.uploaded_by|default:"–" }}</td>
+            <td>{{ upload.requested_at }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">Nothing is waiting.</p>
+  {% endif %}
+{% endblock %}

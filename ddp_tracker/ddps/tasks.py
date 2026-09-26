@@ -3,13 +3,15 @@
 import logging
 from pathlib import Path
 
+from django.db import transaction
 from django.utils import timezone
 
 from django_tasks import task
 
 from ddp_parser import ParseError, parse, to_dict
+from ddp_tracker.ddps.checks import decide
 from ddp_tracker.ddps.models import Upload
-from ddp_tracker.schemas.services import register_upload
+from ddp_tracker.schemas.services import get_format_of
 
 logger = logging.getLogger(__name__)
 
@@ -33,15 +35,26 @@ def parse_upload(upload_id: int, path: str) -> None:
             logger.exception("parsing upload %s failed", upload_id)
             raise
         else:
-            # mark done:
-            upload.document = to_dict(document)
-            upload.source_sha256 = document.source.sha256
-            upload.size_bytes = document.source.size_bytes
-            upload.parser_version = document.parser_version
-            upload.parsed_at = timezone.now()
-            upload.status = Upload.Status.DONE
-            upload.save()
-            register_upload(upload)
+            parsed_as = get_format_of(document.root)
+            if upload.file_format and parsed_as != upload.file_format:
+                declared = Upload.FileFormat(upload.file_format).label
+                _fail(upload, f"Declared as a {declared}, but the file is {parsed_as.upper()}.")
+                return
+            # mark done and check it together: never parsed-but-unchecked (ddps/checks.py)
+            try:
+                with transaction.atomic():
+                    upload.document = to_dict(document)
+                    upload.source_sha256 = document.source.sha256
+                    upload.size_bytes = document.source.size_bytes
+                    upload.parser_version = document.parser_version
+                    upload.parsed_at = timezone.now()
+                    upload.status = Upload.Status.DONE
+                    upload.save()
+                    decide(upload)  # registered if plausible, else held
+            except Exception:
+                _fail(upload, "unexpected error while checking; see the server log")
+                logger.exception("checking upload %s failed", upload_id)
+                raise
     finally:
         Path(path).unlink(missing_ok=True)
 
