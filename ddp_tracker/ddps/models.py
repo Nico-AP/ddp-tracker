@@ -32,6 +32,11 @@ class Upload(models.Model):
         DONE = "done", "Parsed"
         FAILED = "failed", "Failed"
 
+    class RequestMode(models.TextChoices):
+        DL_APP = "DL_APP", "Downloaded in the app"
+        DL_BROWSER = "DL_BROWSER", "Downloaded in the browser"
+        PAPI = "PAPI", "Downloaded through the Portability API"
+
     platform = models.ForeignKey(Platform, on_delete=models.PROTECT, related_name="uploads")
     requested_at = models.DateField(help_text="When the DDP was requested from the platform.")
     language = models.CharField(
@@ -39,6 +44,12 @@ class Upload(models.Model):
         blank=True,
         choices=LANGUAGES,
         help_text="Language the account was set to when the DDP was requested, if known.",
+    )
+    request_mode = models.CharField(
+        max_length=64,
+        blank=True,
+        choices=RequestMode.choices,
+        help_text="How the DDP was requested, if known.",
     )
     file_name = models.CharField(max_length=255)
     uploaded_by = models.ForeignKey(
