@@ -70,3 +70,45 @@ class AnnotationTests(TestCase):
     def test_str(self):
         self.assertEqual(str(self.annotation), "Email address")
         self.assertEqual(str(Annotation(name="x")), "x")
+
+
+class AnnotationInPanelTests(TestCase):
+    """The explorer's side panel shows the annotation briefly; the modal shows the full page."""
+
+    def setUp(self):
+        self.platform = Platform.objects.create(name="TikTok", slug="tiktok")
+        parsed_upload(self.platform, {"a.json": b'{"email": "a@b.ch"}'}, register=True)
+        self.location = Location.objects.get(path="/a.json/email")
+        self.annotation = create_annotation(self.location, "Email address", None)
+        self.annotation.description = "The account's address."
+        self.annotation.save()
+
+    def test_side_panel_shows_name_description_and_button(self):
+        panel = self.client.get(
+            reverse("schemas:location", args=["tiktok"]), {"path": "/a.json/email"}
+        )
+        self.assertContains(panel, "<dt>Name</dt>", html=True)
+        self.assertContains(panel, "<dd>Email address</dd>", html=True)
+        self.assertNotContains(panel, 'class="triage"')  # not a list row
+        self.assertContains(panel, "The account&#x27;s address.")
+        self.assertContains(panel, reverse("annotations:modal", args=[self.annotation.pk]))
+        self.assertContains(panel, "Show annotation")
+        # the row reloads itself in the same (panel) form after a change
+        self.assertContains(panel, "panel=1")
+        row = self.client.get(
+            reverse("schemas:triage-row", args=[self.location.pk]), {"panel": "1"}
+        )
+        self.assertContains(row, "Show annotation")
+        self.assertNotContains(
+            self.client.get(reverse("schemas:triage-row", args=[self.location.pk])),
+            "Show annotation",
+        )
+
+    def test_modal_shows_the_annotation_page(self):
+        modal = self.client.get(reverse("annotations:modal", args=[self.annotation.pk]))
+        self.assertContains(modal, "Email address")
+        self.assertContains(modal, "The account&#x27;s address.")
+        self.assertContains(modal, "/a.json/email")  # the locations table
+        self.assertContains(modal, "Representations")
+        self.assertNotContains(modal, "Open the annotation")
+        self.assertNotContains(modal, "<html")  # a fragment, not a page

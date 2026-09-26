@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../abstracts/variables" as *;
 
 .tree {
@@ -38,10 +39,20 @@
   }
 }
 
+// the node shown in the side panel (static/js/explorer.js)
+.tree__name--selected {
+  border-radius: $radius-base;
+  background: color.scale($color-primary, $lightness: 85%);
+  padding: 0 ($spacing-unit * 0.5);
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
 .tree__type,
 .tree__shape,
-.tree__variants,
-.tree__presence {
+.tree__variants {
   margin-left: $spacing-unit;
   color: $color-text-muted;
   font-family: $font-family-mono;

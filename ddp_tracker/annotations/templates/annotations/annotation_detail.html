@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load representation_tags %}
 {% block title %}{{ annotation }} · {{ annotation.platform }} · DDP Tracker{% endblock %}
 {% block content %}
   <p class="breadcrumbs">
@@ -7,60 +6,5 @@
     <a href="{% url 'annotations:annotations' annotation.platform.slug %}">annotations</a> / {{ annotation }}
   </p>
   <h1>{{ annotation }}</h1>
-  {% include "annotations/_details.html" %}
-  {% annotation_representations annotation %}
-  <h2>Locations</h2>
-  <p class="muted">Where this data point has been found, over time and across languages.</p>
-  {% if locations %}
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Path</th>
-          <th>Seen</th>
-          <th>Languages</th>
-          <th>Type / format</th>
-          <th>Examples</th>
-          {% if user.is_authenticated %}<th></th>{% endif %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in locations %}
-          <tr>
-            <td>
-              <code class="path">{{ row.location.path }}</code>
-            </td>
-            <td>
-              {{ row.profile.first_seen }} – {{ row.profile.last_seen }}
-              <span class="muted">({{ row.profile.uploads }}×)</span>
-            </td>
-            <td>{{ row.languages|join:", " }}</td>
-            <td>
-              {{ row.profile.label }}
-              {% if row.formats %}· <code>{{ row.formats|join:", " }}</code>{% endif %}
-            </td>
-            <td>
-              {% for value in row.location.example_values %}
-                <code>{{ value }}</code>
-              {% empty %}
-                –
-              {% endfor %}
-            </td>
-            {% if user.is_authenticated %}
-              <td>
-                <form
-                  hx-post="{% url 'annotations:unlink' row.location.pk %}"
-                  hx-target="this"
-                  hx-swap="outerHTML"
-                >
-                  <button type="submit" class="link-button">Unlink</button>
-                </form>
-              </td>
-            {% endif %}
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p class="muted">No locations linked.</p>
-  {% endif %}
+  {% include "annotations/_annotation_body.html" %}
 {% endblock %}

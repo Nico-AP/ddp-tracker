@@ -69,6 +69,17 @@ a {
   border-radius: $radius-base;
   background: $color-surface;
   padding: $spacing-unit * 2;
+
+  // the JSON dropdown (if any) follows the path closely
+  .detail-panel__path {
+    margin-bottom: $spacing-unit * 0.5;
+  }
+
+  hr {
+    margin: ($spacing-unit * 2) 0;
+    border: 0;
+    border-top: 1px solid $color-border;
+  }
 }
 
 .compare-sides {

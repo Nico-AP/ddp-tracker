@@ -30,8 +30,6 @@ from django.db.models import QuerySet
 from ddp_tracker.schemas.models import ITEM, Location, Observation
 from ddp_tracker.schemas.profiles import Profile, profiles
 
-# the parser's fallback shapes ("nothing special detected"): left out of the placeholders
-_FALLBACK_SHAPES = {"plain", "text"}
 _INDENT = "  "
 
 
@@ -120,5 +118,4 @@ class _Block:
             return "[…]" if profile.has_children else "[]"
         if _is(profile, "object"):
             return "{…}" if profile.has_children else "{}"
-        shape = profile.main_shape if profile.main_shape not in _FALLBACK_SHAPES else ""
-        return "<" + " · ".join(part for part in (profile.label, shape) if part) + ">"
+        return "<" + " · ".join(part for part in (profile.label, profile.shape_hint) if part) + ">"

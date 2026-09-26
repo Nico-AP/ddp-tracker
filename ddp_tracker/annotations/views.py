@@ -31,6 +31,17 @@ def annotation_list(request: HttpRequest, slug: str) -> HttpResponse:
 
 def annotation_detail(request: HttpRequest, pk: int) -> HttpResponse:
     annotation = get_object_or_404(Annotation.objects.select_related("platform"), pk=pk)
+    return render(request, "annotations/annotation_detail.html", _detail_context(annotation))
+
+
+def annotation_modal(request: HttpRequest, pk: int) -> HttpResponse:
+    """HTMX: the annotation page's content, in the shared modal."""
+    annotation = get_object_or_404(Annotation.objects.select_related("platform"), pk=pk)
+    return render(request, "annotations/_annotation_modal.html", _detail_context(annotation))
+
+
+def _detail_context(annotation: Annotation) -> dict[str, Any]:
+    """The annotation and its locations (recent first), each with where and how it was seen."""
     all_locations = list(annotation.locations.all())
     observations = Observation.objects.filter(upload__registered_at__isnull=False)
     found = profiles((location.pk for location in all_locations), observations)
@@ -50,8 +61,7 @@ def annotation_detail(request: HttpRequest, pk: int) -> HttpResponse:
     locations.sort(
         key=lambda row: row["profile"].last_seen or date.min, reverse=True
     )  # recent first
-    context = {"annotation": annotation, "locations": locations}
-    return render(request, "annotations/annotation_detail.html", context)
+    return {"annotation": annotation, "locations": locations}
 
 
 def annotation_details(request: HttpRequest, pk: int) -> HttpResponse:

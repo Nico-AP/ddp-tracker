@@ -110,7 +110,9 @@ class LabelledPagesTests(TestCase):
     def test_pages_show_labels(self):
         detail = reverse("schemas:location", args=["tiktok"])
         response = self.client.get(detail, {"path": "/data.json/Watch History/VideoList"})
-        self.assertContains(response, "<p>List of objects</p>", html=True)
+        self.assertContains(response, "<h3>Details</h3>", html=True)
+        self.assertContains(response, "<dt>Summary</dt>", html=True)
+        self.assertContains(response, "<dd>List of objects</dd>", html=True)
         children = self.client.get(
             reverse("schemas:children", args=["tiktok"]),
             {"path": "/data.json/Watch History/VideoList"},
@@ -128,3 +130,14 @@ class LabelledPagesTests(TestCase):
             {"upload": self.upload.pk},
         )
         self.assertContains(row, "list of integers")
+
+    def test_tree_labels_stay_short(self):
+        children = self.client.get(
+            reverse("schemas:children", args=["tiktok"]),
+            {"path": "/data.json/Watch History/VideoList/[]"},
+        )
+        self.assertContains(children, '<span class="tree__shape">date</span>', html=True)
+        self.assertNotContains(children, "%Y")  # formats: in the side panel
+        self.assertNotContains(children, "tree__presence")  # upload counts: in the side panel
+        ids = self.client.get(reverse("schemas:children", args=["tiktok"]), {"path": "/data.json"})
+        self.assertNotContains(ids, '<span class="tree__shape">plain</span>', html=True)

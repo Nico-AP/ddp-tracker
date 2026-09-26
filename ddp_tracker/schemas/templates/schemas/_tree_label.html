@@ -10,17 +10,11 @@
   </button>
   <span class="tree__type"
         title="{{ profile.main_kind }}{% if profile.main_type %} · {{ profile.main_type }}{% endif %}">{{ profile.label }}</span>
-  {% if profile.main_shape %}
-    <span class="tree__shape">{{ profile.main_shape }}
-      {% if profile.main_format %}· {{ profile.main_format }}{% endif %}
-    </span>
-  {% endif %}
+  {% if profile.shape_hint %}<span class="tree__shape">{{ profile.shape_hint }}</span>{% endif %}
   {% if profile.variants %}
     <span class="tree__variants"
           title="other types, shapes or formats were observed too: see the details">+{{ profile.variants }}</span>
   {% endif %}
-  <span class="tree__presence"
-        title="seen in {{ profile.uploads }} upload(s), requested {{ profile.first_seen }} – {{ profile.last_seen }}">{{ profile.uploads }}×</span>
   {% if location.annotation %}
     <a class="badge badge--annotated"
        href="{{ location.annotation.get_absolute_url }}">{{ location.annotation }}</a>

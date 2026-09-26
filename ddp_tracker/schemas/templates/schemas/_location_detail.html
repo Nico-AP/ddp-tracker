@@ -6,15 +6,20 @@
     Root
   {% endif %}
 </h2>
-<p>
+<p class="detail-panel__path">
   <code class="path">{{ location.path|default:"/" }}</code>
 </p>
 {% if json_path %}
   {% include "schemas/_json_path.html" %}
 {% endif %}
-<p>{{ profile.label|capfirst }}</p>
+<hr />
+<h3>Details</h3>
 {% if filter.is_active %}<p class="muted">Within the current filter.</p>{% endif %}
 <dl class="facts">
+  <dt>Summary</dt>
+  <dd>
+    {{ profile.label|capfirst }}
+  </dd>
   <dt>Kind</dt>
   <dd>
     {% include "schemas/_values.html" with counter=profile.kinds %}
@@ -43,11 +48,12 @@
   </dd>
 </dl>
 {% if profile.is_data_point %}
+  <hr />
   {% include "schemas/_examples.html" %}
+  <hr />
   <h3>Annotation</h3>
-  <ul class="plain-list">
-    {% include "schemas/_triage_row.html" %}
-  </ul>
+  {% include "schemas/_triage_panel.html" %}
+  <hr />
   <h3>Representations</h3>
   <div hx-get="{% url 'representations:location-section' location.pk %}"
        hx-trigger="load, triaged-{{ location.pk }} from:body">
@@ -55,6 +61,7 @@
   </div>
 {% endif %}
 {% if history %}
+  <hr />
   <h3>History</h3>
   <table class="table">
     <thead>

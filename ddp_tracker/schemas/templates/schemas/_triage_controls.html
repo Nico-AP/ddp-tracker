@@ -1,6 +1,22 @@
 {# What a data point is (read-only); curators change it in the modal (_triage_modal.html). #}
 <div class="triage__state">
-  {% if location.annotation %}
+  {% if location.annotation and panel %}
+    <dl class="facts">
+      <dt>Name</dt>
+      <dd>
+        {{ location.annotation }}
+      </dd>
+      <dt>Description</dt>
+      <dd>
+        {{ location.annotation.description|linebreaksbr|default:"–" }}
+      </dd>
+    </dl>
+    <button type="button"
+            class="btn btn--small"
+            hx-get="{% url 'annotations:modal' location.annotation.pk %}"
+            hx-target="#modal"
+            hx-swap="innerHTML">Show annotation</button>
+  {% elif location.annotation %}
     <p>
       → <a href="{{ location.annotation.get_absolute_url }}">{{ location.annotation }}</a>
     </p>

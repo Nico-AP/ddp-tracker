@@ -14,6 +14,8 @@ from django.db.models import Count, Max, Min, QuerySet
 from ddp_tracker.schemas.labels import plain_type
 from ddp_tracker.schemas.models import Location, Observation
 
+FALLBACK_SHAPES = frozenset({"plain", "text"})
+
 
 @dataclass
 class Profile:
@@ -61,6 +63,12 @@ class Profile:
     @property
     def main_format(self) -> str:
         return _main(self.formats)
+
+    @property
+    def shape_hint(self) -> str:
+        """The main shape if it says something: not the parser's fallbacks ("plain" numbers,
+        "text" strings), which only mean that nothing special was detected."""
+        return "" if self.main_shape in FALLBACK_SHAPES else self.main_shape
 
     @property
     def variants(self) -> int:

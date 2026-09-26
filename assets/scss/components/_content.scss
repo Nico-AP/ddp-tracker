@@ -129,11 +129,17 @@
   line-height: 1.5;
 }
 
+// "As JSON" under the path in the side panel: a quiet aside, not a section
 .json-path {
   margin-bottom: $spacing-unit * 2;
 
   summary {
-    color: $color-primary;
+    color: $color-text-muted;
+    font-size: $font-size-small;
     cursor: pointer;
+
+    &:hover {
+      color: $color-text;
+    }
   }
 }

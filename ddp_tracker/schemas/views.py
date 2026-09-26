@@ -182,6 +182,7 @@ def _row_context(request: HttpRequest, location: Location) -> dict[str, Any]:
             else ""
         ),
         "annotations": location.platform.annotations.all(),
+        "panel": bool(request.GET.get("panel")),  # the explorer's side panel
         **_list_context(location),
     }
 
@@ -208,7 +209,9 @@ def _list_context(location: Location) -> dict[str, Any]:
 def triage_row(request: HttpRequest, pk: int) -> HttpResponse:
     """HTMX: a data point's triage row (read-only, reloaded after a change)."""
     location = get_object_or_404(Location.objects.select_related("platform", "annotation"), pk=pk)
-    return render(request, "schemas/_triage_row.html", _row_context(request, location))
+    context = _row_context(request, location)
+    template = "schemas/_triage_panel.html" if context["panel"] else "schemas/_triage_row.html"
+    return render(request, template, context)
 
 
 @login_required

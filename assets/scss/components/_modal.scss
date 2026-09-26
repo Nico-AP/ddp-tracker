@@ -2,7 +2,7 @@
 
 // The shared <dialog id="modal"> (templates/base.html, static/js/modal.js).
 .modal {
-  width: min(640px, calc(100vw - #{$spacing-unit * 4}));
+  width: min(960px, calc(100vw - #{$spacing-unit * 4}));
   max-height: calc(100vh - #{$spacing-unit * 8});
   border: 1px solid $color-border;
   border-radius: $radius-base;
