@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Vocabulary · Representations · DDP Tracker{% endblock %}
+{% block content %}
+  <p class="breadcrumbs">
+    <a href="{% url 'representations:representations' %}">Representations</a> / vocabulary
+  </p>
+  <h1>Vocabulary</h1>
+  <p class="lead">
+    The terms representations are built from: <em>actor · activity · object (· target)</em>, and the
+    roles of the data points that describe them.
+  </p>
+  {% for vocabulary in vocabularies %}
+    <h2>{{ vocabulary.title }}</h2>
+    <p class="muted">
+      {{ vocabulary.lead }}
+      {% if vocabulary.to_review %}
+        <a href="{{ vocabulary.review_url }}">{{ vocabulary.to_review }} suggestion{{ vocabulary.to_review|pluralize }} to review</a>
+      {% endif %}
+    </p>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Term</th>
+          <th>Description</th>
+          <th>Used</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for term in vocabulary.terms %}
+          <tr>
+            <td>{{ term.name }}</td>
+            <td>{{ term.description|default:"–" }}</td>
+            <td>{{ term.usage }}</td>
+          </tr>
+        {% endfor %}
+        {% for term in vocabulary.pending %}
+          <tr>
+            <td>
+              {{ term.name }} <span class="badge badge--pending">pending</span>
+            </td>
+            <td>{{ term.description|default:"–" }}</td>
+            <td></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+  {% if user.is_authenticated %}
+    <h2 id="suggest">Suggest a term</h2>
+    <p class="muted">
+      Suggested terms can be used by you right away; they become available to everyone once an
+      admin approves them.
+    </p>
+    <form method="post"
+          action="{% url 'representations:suggest' %}#suggest"
+          class="form form--narrow">
+      {% csrf_token %}
+      {% include "includes/form.html" %}
+      <button type="submit" class="btn">Suggest</button>
+    </form>
+  {% endif %}
+{% endblock %}

@@ -38,14 +38,41 @@ config/
     cicd.py          # GitHub Actions (in-memory sqlite)
   urls.py, wsgi.py, asgi.py
 apps/
-  core/              # skeleton app — health check + index view; new apps go in apps/<name>/
-    following this same shape (models.py, views.py, urls.py, tests.py, templates/<app>/)
+  core/              # index, health check, shared helpers (auth.py, testing.py, template tags)
+  ddps/              # Platform, Upload; upload form + background parse task (tasks.py)
+  schemas/           # Location, Observation, filters/profiles/timeline, explorer, review/triage
+  annotations/       # Annotation: a data point and what is known about it (examples live on Location)
+  representations/   # Representation: cross-platform concept (ontology) linking annotations
+    every app has the same shape: models.py, views.py, urls.py, tests.py, templates/<app>/
+packages/
+  ddp-parser/        # Django-free DDP schematizer (uv workspace member, import name `ddp_parser`)
+    src/ddp_parser/  # see docs/docs/ddp_parser/pipeline.md for the pipeline and module layout
+    tests/
 assets/scss/         # Sass source (not Django-served) — see "Frontend assets" below
 templates/           # project-level templates (base.html)
-static/              # project-level static assets; static/css/ is compiled output, gitignored
+static/              # project-level static assets; static/css/ and static/vendor/ are build output (npm run build)
 ```
 
-Django apps live under `apps/<name>/`, not the repo root. Each app owns its own
+Framework-agnostic libraries live under `packages/<name>/` as uv workspace members (`src/` layout,
+own `pyproject.toml`) and must not import Django. `packages/ddp-parser` is the DDP schematizer; the
+Django apps use it through its public API (`ddp_parser/__init__.py`) only.
+
+The web app's data flow: an upload is parsed into a schema document (`Upload.document`, the raw file
+is deleted right after) and **registered** into its platform's collected schema
+(`ddp_tracker`): a `Location` per path (identity, tree position and
+curation only) and an `Observation` per node and upload (kind, type, shape, format, stats,
+suggestions from `ddp_parser.suggest` against the merged uploads requested earlier; no
+aggregate tree is stored). **Everything descriptive about a location is derived
+from observations at query time** (`ddp_tracker`), restricted by a `SchemaFilter`
+(`ddp_tracker`); "new" and "changed" compare with uploads requested earlier
+(`ddp_tracker`). The definitions are in `docs/docs/tracker/concepts.md`: change them
+there first. An **`Annotation`** describes a data point; it has many locations (moves,
+languages). Curators triage an upload's unassigned data points (values, lists and their items, media files; `ddp_parser.is_data_point`)
+on its review page. The UI is
+server-side templates plus htmx (served from `static/vendor/`; the production CSP allows no inline
+scripts or styles and no eval, so don't add any).
+
+Django apps live under `ddp_tracker`, not the repo root. Each app owns its own
 `templates/<app_name>/` directory (Django's `APP_DIRS` convention) so template names never collide
 across apps.
 
@@ -72,6 +99,9 @@ uv run manage.py test
 uv run pytest
 ```
 
+- Tests for workspace packages (`packages/*/tests/`) use plain `unittest.TestCase` — no Django, no
+  database. `pytest` finds them automatically; `manage.py test` only when given the path:
+  `uv run manage.py test . packages/ddp-parser/tests`.
 - Test files: `tests.py` for a small app, or a `tests/` package with `test_*.py` modules for a
   larger one — either is discovered by both runners.
 - Coverage must stay at or above 80% (`--cov-fail-under=80` in `pyproject.toml`). Don't lower this

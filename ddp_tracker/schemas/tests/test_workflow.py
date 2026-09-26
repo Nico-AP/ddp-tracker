@@ -12,10 +12,9 @@ from ddp_tracker.ddps.models import Platform
 from ddp_tracker.schemas.models import Location, Observation
 from ddp_tracker.schemas.profiles import profiles
 from ddp_tracker.schemas.services import (
-    accept_suggestions,
     create_annotation,
-    create_remaining,
     flatten,
+    link,
     register_upload,
     review,
     type_label,
@@ -49,7 +48,8 @@ class ScenarioTests(TestCase):
         self.assertEqual(
             paths,
             [
-                "/activity/watch_history.json/[]",  # one row: an object
+                "/activity/watch_history.json",  # the file is a list
+                "/activity/watch_history.json/[]",  # its item: one watched video
                 "/activity/watch_history.json/[]/Date",
                 "/activity/watch_history.json/[]/Link",
                 "/profile/profile.json/name",
@@ -61,7 +61,10 @@ class ScenarioTests(TestCase):
         self.assertEqual((result.changed, result.missing), ([], []))
 
     def test_annotations_survive_moves_and_languages(self):
-        self.assertEqual(create_remaining(self.english, self.user), 6)
+        # a curator annotates every data point of the first export, one by one
+        for item in review(self.english).triage:
+            create_annotation(item.location, item.location.default_name, self.user)
+        self.assertEqual(Annotation.objects.count(), 7)
         date_annotation = Annotation.objects.get(name="Date")
         german = parsed_upload(
             self.platform, GERMAN, language="de", requested_at=date(2026, 6, 1), register=True
@@ -74,14 +77,15 @@ class ScenarioTests(TestCase):
         self.assertEqual(
             choices,
             {
-                "/your_activity/activity/watch_history.json/[]": [
-                    ("watch_history.json item", "moved")
-                ],
+                "/your_activity/activity/watch_history.json": [("watch_history", "moved")],
+                "/your_activity/activity/watch_history.json/[]": [("watch_history item", "moved")],
                 "/your_activity/activity/watch_history.json/[]/Datum": [("Date", "renamed")],
                 "/your_activity/activity/watch_history.json/[]/Link": [("Link", "moved")],
             },
         )
-        self.assertEqual(accept_suggestions(german), 3)
+        # the curator follows each suggestion, one by one
+        for item in review(german).triage:
+            link(item.location, item.choices[0].annotation)
         self.assertEqual(
             sorted(date_annotation.locations.values_list("path", flat=True)),
             [
@@ -126,18 +130,15 @@ class ScenarioTests(TestCase):
         self.assertEqual(create_annotation(location, "name", None).name, "name")
         self.assertEqual(create_annotation(other, "name", None).name, "name (2)")
 
-    def test_create_remaining_for_one_parent(self):
-        created = create_remaining(self.english, self.user, "/profile/profile.json")
-        self.assertEqual(created, 3)
-        self.assertEqual(
-            Location.objects.get(path="/activity/watch_history.json/[]/Date").annotation, None
-        )
-
     def test_helpers(self):
         location = Location.objects.get(path="/activity/watch_history.json/[]/Date")
         self.assertEqual(location.default_name, "Date")
-        items = Location(path="/a.json/tags/[]", name=None)
-        self.assertEqual(items.default_name, "tags item")
+        # a file that is a list is named without its extension
+        history = Location.objects.get(path="/activity/watch_history.json")
+        self.assertEqual(history.default_name, "watch_history")
+        item = Location.objects.get(path="/activity/watch_history.json/[]")
+        self.assertEqual(item.default_name, "watch_history item")
+        self.assertEqual(item.display_name, "<item>")
         self.assertEqual(
             str(Observation.objects.filter(location=location).get()),
             f"TikTok: {location.path} in upload {self.english.pk}",
@@ -209,7 +210,7 @@ class ViewTests(TestCase):
 
     def test_platform_explorer_is_public(self):
         response = self.client.get(reverse("schemas:platform", args=["tiktok"]))
-        self.assertContains(response, "6 not yet assigned")
+        self.assertContains(response, "7 not yet assigned")
         self.assertContains(response, 'hx-trigger="toggle once"')
         self.assertNotContains(response, "Recent uploads")
         children = self.client.get(
@@ -220,7 +221,7 @@ class ViewTests(TestCase):
             reverse("schemas:location", args=["tiktok"]), {"path": self.name.path}
         )
         self.assertContains(detail, "Not assigned to an annotation yet")
-        self.assertNotContains(detail, "New annotation")
+        self.assertNotContains(detail, "Add annotation")
 
     def test_root_shows_what_the_uploads_were(self):
         response = self.client.get(reverse("schemas:platform", args=["tiktok"]))
@@ -274,22 +275,27 @@ class ViewTests(TestCase):
     def test_only_data_nodes_and_media_are_annotatable(self):
         self.client.force_login(self.user)
         detail = reverse("schemas:location", args=["tiktok"])
-        for path in ["/activity/watch_history.json/[]", "/profile/profile.json/name"]:  # row, value
+        # a list, its item, a value
+        for path in [
+            "/activity/watch_history.json",
+            "/activity/watch_history.json/[]",
+            "/profile/profile.json/name",
+        ]:
             with self.subTest(path=path):
-                self.assertContains(self.client.get(detail, {"path": path}), "New annotation")
+                self.assertContains(self.client.get(detail, {"path": path}), "Add annotation")
         parsed_upload(
             self.platform, {"photos/p.png": b"\x89PNG\r\n\x1a\n" + b"\0" * 32}, register=True
         )
-        self.assertContains(self.client.get(detail, {"path": "/photos/p.png"}), "New annotation")
-        for path in ["", "/profile", "/profile/profile.json"]:  # root, folder, file
+        self.assertContains(self.client.get(detail, {"path": "/photos/p.png"}), "Add annotation")
+        for path in ["", "/profile", "/profile/profile.json"]:  # root, folder, object file
             with self.subTest(path=path):
-                self.assertNotContains(self.client.get(detail, {"path": path}), "New annotation")
+                self.assertNotContains(self.client.get(detail, {"path": path}), "Add annotation")
 
     def test_review_requires_login(self):
         url = reverse("schemas:review", args=[self.upload.pk])
         self.assertEqual(self.client.get(url).status_code, 302)
         self.client.force_login(self.user)
-        self.assertContains(self.client.get(url), "6 to assign")
+        self.assertContains(self.client.get(url), "7 to assign")
 
     def test_unregistered_upload_review(self):
         self.client.force_login(self.user)
@@ -299,39 +305,46 @@ class ViewTests(TestCase):
         )
 
     def test_triage_actions(self):
-        self.client.force_login(self.user)
         url = reverse("schemas:triage", args=[self.name.pk])
+        self.assertEqual(self.client.get(url).status_code, 302)  # the modal needs a login
+        self.client.force_login(self.user)
+        modal = self.client.get(url, {"upload": self.upload.pk})
+        self.assertContains(modal, "New annotation")
+        self.assertContains(modal, 'value="name"')  # the default name
         response = self.client.post(
             url, {"action": "new", "name": "Display name", "upload": self.upload.pk}
         )
-        self.assertContains(response, "Display name")
+        # nothing to show: the modal closes, and the row reloads on the event
+        self.assertEqual(response.content, b"")
+        self.assertEqual(response["HX-Trigger"], f"triaged-{self.name.pk}")
+        row = self.client.get(
+            reverse("schemas:triage-row", args=[self.name.pk]), {"upload": self.upload.pk}
+        )
+        self.assertContains(row, "Display name")
+        self.assertContains(row, "Change")
         annotation = Annotation.objects.get(name="Display name")
         other = Location.objects.get(path="/profile/profile.json/email")
-        self.client.post(
-            reverse("schemas:triage", args=[other.pk]),
-            {"action": "link", "annotation": annotation.pk, "upload": ""},
-        )
+        other_url = reverse("schemas:triage", args=[other.pk])
+        self.client.post(other_url, {"action": "link", "annotation": annotation.pk, "upload": ""})
         self.assertEqual(Location.objects.get(pk=other.pk).annotation, annotation)
-        self.client.post(reverse("schemas:triage", args=[other.pk]), {"action": "ignore"})
+        self.assertContains(self.client.get(other_url), "Remove assignment")
+        self.client.post(other_url, {"action": "ignore"})
         self.assertTrue(Location.objects.get(pk=other.pk).ignored)
-        response = self.client.post(
-            reverse("schemas:triage", args=[other.pk]),
-            {"action": "reset", "upload": self.upload.pk},
-        )
-        self.assertContains(response, "New annotation")
+        self.client.post(other_url, {"action": "reset", "upload": self.upload.pk})
         self.assertFalse(Location.objects.get(pk=other.pk).ignored)
-
-    def test_review_bulk_actions(self):
-        self.client.force_login(self.user)
-        url = reverse("schemas:review-action", args=[self.upload.pk])
-        self.assertRedirects(
-            self.client.post(url, {"action": "accept"}),
-            reverse("schemas:review", args=[self.upload.pk]),
+        row = self.client.get(reverse("schemas:triage-row", args=[other.pk]))
+        self.assertContains(row, "Add annotation")
+        # the row swaps itself (outerHTML); the button must not inherit that and replace the modal
+        self.assertRegex(row.content.decode(), r'hx-target="#modal"\s+hx-swap="innerHTML"')
+        self.client.logout()
+        self.assertNotContains(
+            self.client.get(reverse("schemas:triage-row", args=[other.pk])), "Add annotation"
         )
-        self.client.post(url, {"action": "create", "parent": "/profile/profile.json"})
-        self.assertEqual(Annotation.objects.count(), 3)
+
+    def test_no_bulk_actions(self):
+        # every data point is decided on its own: nothing on the page acts on several at once
+        self.client.force_login(self.user)
         page = self.client.get(reverse("schemas:review", args=[self.upload.pk]))
-        self.assertContains(page, "/activity/watch_history.json/[]")
-        self.client.post(url, {"action": "create"})
-        page = self.client.get(reverse("schemas:review", args=[self.upload.pk]))
-        self.assertContains(page, "Every data point of this upload is assigned")
+        for text in ("Accept all", "everything left", "New annotations for all"):
+            self.assertNotContains(page, text)
+        self.assertContains(page, "Add annotation")

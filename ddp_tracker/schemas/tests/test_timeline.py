@@ -85,7 +85,7 @@ class ProfileTests(TestCase):
             "/a.json/e": True,  # a list, then a value
             "/a.json/d/x": True,  # a value
             "/a.json/rows": True,  # a list
-            "/a.json/rows/[]": True,  # the repeated entity: an object item of a list
+            "/a.json/rows/[]": True,  # the item of a list: the entity
             "/a.json/d": False,  # an object that only groups keys
             "/a.json": False,  # a parsed file
             "": False,  # the root

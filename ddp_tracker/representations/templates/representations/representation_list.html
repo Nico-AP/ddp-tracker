@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Representations · DDP Tracker{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Representations</h1>
+    {% if user.is_authenticated %}
+      <a class="btn" href="{% url 'representations:create' %}">New representation</a>
+    {% endif %}
+  </div>
+  <p class="lead">
+    Concepts across platforms, e.g. “user views video”: which platforms record them, and where.
+    Their terms are defined in the <a href="{% url 'representations:vocabulary' %}">vocabulary</a>.
+  </p>
+  {% if rows %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Representation</th>
+          <th>Pattern</th>
+          <th>Statement</th>
+          <th>Platforms</th>
+          <th>Linked annotations</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>
+              <a href="{{ row.representation.get_absolute_url }}">{{ row.representation.name }}</a>
+            </td>
+            <td>
+              <span class="badge badge--{{ row.representation.pattern }}">{{ row.representation.pattern }}</span>
+            </td>
+            <td>{{ row.representation.statement|default:"–" }}</td>
+            <td>{{ row.platforms|join:", "|default:"–" }}</td>
+            <td>{{ row.links }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No representations yet.</p>
+  {% endif %}
+{% endblock %}

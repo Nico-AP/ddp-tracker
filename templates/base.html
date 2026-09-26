@@ -10,12 +10,14 @@
     <title>{% block title %}DDP Tracker{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/main.css' %}">
     <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
+    <script src="{% static 'js/modal.js' %}" defer></script>
   </head>
   <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <header class="site-header">
       <a class="site-header__brand" href="{% url 'core:index' %}">DDP Tracker</a>
       <nav class="site-nav">
         <a href="{% url 'core:index' %}">Platforms</a>
+        <a href="{% url 'representations:representations' %}">Representations</a>
         {% if user.is_authenticated %}
           <a href="{% url 'ddps:uploads' %}">Uploads</a>
           <a class="btn btn--small" href="{% url 'ddps:upload-create' %}">Upload a DDP</a>
@@ -32,5 +34,7 @@
       {% for message in messages %}<p class="message message--{{ message.tags }}">{{ message }}</p>{% endfor %}
       {% block content %}{% endblock %}
     </main>
+    {# Filled by htmx with a form (see static/js/modal.js). #}
+    <dialog id="modal" class="modal" aria-label="Dialog"></dialog>
   </body>
 </html>

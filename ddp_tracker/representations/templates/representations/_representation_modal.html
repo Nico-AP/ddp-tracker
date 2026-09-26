@@ -1,0 +1,42 @@
+{# "Add representation" for an annotation; a successful POST closes the modal (see views._changed). #}
+{% include "includes/modal_header.html" with title="Add representation" %}
+<p class="muted">For {{ annotation }} ({{ annotation.platform }}).</p>
+{% if item_annotations %}
+  <p class="message">
+    This is a list. Representations usually point at its item:
+    {% for item in item_annotations %}
+      <a href="{{ item.get_absolute_url }}">{{ item }}</a>{% if not forloop.last %},{% endif %}
+    {% endfor %}
+    .
+  </p>
+{% endif %}
+<section>
+  <h3>This data point is …</h3>
+  <form class="form"
+        hx-post="{% url 'representations:represent' annotation.pk %}"
+        hx-target="#modal"
+        hx-swap="innerHTML">
+    {% include "includes/form.html" with form=represent_form %}
+    <button type="submit" class="btn btn--small">Link</button>
+  </form>
+</section>
+<section>
+  <h3>This data point describes …</h3>
+  <form class="form"
+        hx-post="{% url 'representations:describe' annotation.pk %}"
+        hx-target="#modal"
+        hx-swap="innerHTML">
+    {% include "includes/form.html" with form=describe_form %}
+    <button type="submit" class="btn btn--small">Link</button>
+  </form>
+</section>
+<section>
+  <h3>New representation</h3>
+  <form class="form representation-form"
+        hx-post="{% url 'representations:create-linked' annotation.pk %}"
+        hx-target="#modal"
+        hx-swap="innerHTML">
+    {% include "includes/form.html" with form=create_form %}
+    <button type="submit" class="btn btn--small">Create and link</button>
+  </form>
+</section>

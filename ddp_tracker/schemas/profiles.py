@@ -11,7 +11,8 @@ from datetime import date
 
 from django.db.models import Count, Max, Min, QuerySet
 
-from ddp_tracker.schemas.models import Observation
+from ddp_tracker.schemas.labels import plain_type
+from ddp_tracker.schemas.models import Location, Observation
 
 
 @dataclass
@@ -24,6 +25,26 @@ class Profile:
     first_seen: date | None = None
     last_seen: date | None = None
     is_data_point: bool = False  # open for annotation in at least one of the observations
+    path: str = ""
+    item_types: Counter[str] = field(default_factory=Counter)  # types of a list's items
+    has_children: bool = False  # in the same observations: False for an object always seen empty
+
+    @property
+    def is_list(self) -> bool:
+        """Mostly a list in parsed content (shown as ``name[]``); a file that is a list isn't."""
+        types = set(self.main_type.split("|")) - {"null"}
+        return self.main_kind == "data" and types == {"array"}
+
+    @property
+    def label(self) -> str:
+        """The main kind and type in plain language ("list of objects", "group of keys")."""
+        return plain_type(
+            self.main_kind,
+            self.main_type,
+            self.path,
+            _main(self.item_types),
+            empty=not self.has_children,
+        )
 
     @property
     def main_kind(self) -> str:
@@ -57,7 +78,11 @@ def profiles(
     """A ``Profile`` per location id, from ``observations`` (only those of these locations)."""
     ids = list(location_ids)
     scoped = observations.filter(location_id__in=ids)
+    located = Location.objects.filter(pk__in=ids).values_list("pk", "platform_id", "path")
     result = {location_id: Profile() for location_id in ids}
+    for pk, _, path in located:
+        result[pk].path = path
+    by_path = {(platform_id, path): pk for pk, platform_id, path in located}
     rows = scoped.values(
         "location_id", "kind", "type", "shape", "format", "is_data_point"
     ).annotate(n=Count("id"))
@@ -85,4 +110,22 @@ def profiles(
             seen["first"],
             seen["last"],
         )
+
+    # the children, in the same observations: whether there were any (an object always seen
+    # empty), and what a list's items are (the types of its "[]" child)
+    children = (
+        observations.filter(
+            location__parent_path__in=[path for _, path in by_path],
+            location__platform_id__in={platform_id for platform_id, _ in by_path},
+        )
+        .values("location__platform_id", "location__parent_path", "location__path", "type")
+        .annotate(n=Count("id"))
+    )
+    for child in children:
+        key = (child["location__platform_id"], child["location__parent_path"] or "")
+        if (parent_id := by_path.get(key)) is None:
+            continue
+        result[parent_id].has_children = True
+        if child["location__path"].endswith("/[]") and child["type"]:
+            result[parent_id].item_types[child["type"]] += child["n"]
     return result

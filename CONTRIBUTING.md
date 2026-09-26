@@ -11,8 +11,28 @@ uv run pre-commit install
 cp .env.example .env   # only needed if you want to override local defaults (e.g. Postgres)
 uv run manage.py migrate
 npm install
-npm run build          # compiles assets/scss/ -> static/css/main.css
+npm run build          # compiles assets/scss/ -> static/css/main.css, copies htmx to static/vendor/
+uv run manage.py createsuperuser
 uv run manage.py runserver
+```
+
+Uploaded DDPs are parsed by a background task. Locally (and in tests) it runs immediately inside the
+request; in production the database task backend is used, which needs a worker process next to the
+web server:
+
+```bash
+uv run manage.py db_worker
+```
+
+Uploaded files wait in `DDP_INCOMING_DIR` (default `var/incoming/`, gitignored, never served) only
+until they're parsed, and are deleted right after, whether parsing succeeded or not. The web process
+and the worker must both be able to reach that directory.
+
+Two maintenance commands work on already stored schema documents (no re-upload needed):
+
+```bash
+uv run manage.py register_uploads       # add parsed uploads that aren't in the collected schema yet
+uv run manage.py refresh_observations   # re-apply the parser's current rules (e.g. which nodes are data points)
 ```
 
 Run any project command through `uv run` (e.g. `uv run manage.py shell`, `uv run ruff check .`)
@@ -46,6 +66,14 @@ uv run pytest                # same tests, plus coverage report (--cov-fail-unde
 Use whichever fits the moment — `manage.py test` for a quick check while developing, `pytest` when
 you want the coverage report or to run a single test with `-k`. Test files must be named
 `tests.py`, `test_*.py`, or `*_test.py` so both runners discover them the same way.
+
+Workspace packages under `packages/` (e.g. `packages/ddp-parser`) are Django-free and test with plain
+`unittest.TestCase`. `pytest` collects them with everything else; Django's runner only discovers
+them when passed their path:
+
+```bash
+uv run manage.py test . packages/ddp-parser/tests
+```
 
 ## Code quality
 
@@ -82,6 +110,9 @@ Settings are split under `config/settings/`:
 - `production.py` — deployment (everything sensitive required from the environment, no defaults —
   a missing `DJANGO_SECRET_KEY` or `DATABASE_URL` fails at startup rather than running insecurely)
 - `cicd.py` — GitHub Actions (in-memory sqlite, no external services)
+
+Upload-related settings: `DDP_INCOMING_DIR`, `DDP_MAX_UPLOAD_SIZE` and `TASKS_BACKEND` (see
+`.env.example`).
 
 `manage.py` defaults to `local`; `config/wsgi.py`/`config/asgi.py` default to `production`. Override
 with the `DJANGO_SETTINGS_MODULE` environment variable when you need something else.

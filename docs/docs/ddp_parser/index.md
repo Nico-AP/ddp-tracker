@@ -789,10 +789,11 @@ A data point keeps its meaning when its location changes: a file or key moves, i
 named differently because the export was requested in another language (`Date` in English,
 `Datum` in German). `suggest(known, new)` proposes, for every **data point** of `new` whose path
 is not in `known`, which known paths it may correspond to. A **data point** (`is_data_point`) is
-a value or a list in parsed content, an object that is the **item of a list** (the repeated
-entity, `…/[]`), or a **media** file. Other objects only group keys, and parsed and unmatched
-files, folders and containers only describe where data lies: they get no suggestions, though
-renamed objects and files are still followed so that their content can be matched. Lists and
+a value or a **list** in parsed content, a list's **item** (`…/[]`: the value or entity it
+holds), a parsed file whose content is a list (a JSON array, a CSV's rows), or a **media** file.
+Objects only group keys unless they are a list's item, and other parsed and unmatched files,
+folders and containers only describe where data lies: they get no suggestions,
+though renamed objects and files are still followed so that their content can be matched. Lists and
 objects, even empty ones, are **structures** (`is_structure`).
 
 | Reason    | When                                                                                                                                                                                                                                | Score                                                                                                                                                                                                                                                  |

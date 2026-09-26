@@ -14,7 +14,7 @@ from ddp_parser import children, from_dict, is_data_point, merge_trees, suggest
 from ddp_parser.model import Node
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform, Upload
-from ddp_tracker.schemas.models import Location, Observation
+from ddp_tracker.schemas.models import ITEM, Location, Observation
 from ddp_tracker.schemas.profiles import Profile, profiles
 from ddp_tracker.schemas.timeline import changes_in, new_in
 from ddp_tracker.users.models import User
@@ -164,6 +164,7 @@ class TriageItem:
     observation: Observation
     choices: list[Choice]
     is_new: bool  # no earlier-requested upload has the path
+    item_type: str = ""  # for a list: what its items are in this upload
 
     @property
     def location(self) -> Location:
@@ -208,6 +209,14 @@ def choices(observation: Observation) -> list[Choice]:
     return list(found.values())
 
 
+def item_types(upload: Upload, paths: list[str]) -> dict[str, str]:
+    """List path → the type of its items in ``upload`` (for the lists among ``paths``)."""
+    found = upload.observations.filter(
+        location__path__endswith="/[]", location__parent_path__in=paths
+    ).values_list("location__parent_path", "type")
+    return {parent or "": type_ for parent, type_ in found}
+
+
 def review(upload: Upload) -> Review:
     """What a curator needs to look at for ``upload`` (definitions: docs/tracker/concepts.md)."""
     observations = upload.observations.select_related("location", "location__annotation")
@@ -216,18 +225,26 @@ def review(upload: Upload) -> Review:
         is_data_point=True, location__annotation__isnull=True, location__ignored=False
     ).order_by("location__parent_path", "location__position")
     changes = changes_in(upload)
-    missing = list(
-        upload.platform.locations.filter(annotation__isnull=False)
+    present = set(upload.observations.values_list("location__path", flat=True))
+    missing = [
+        location
+        for location in upload.platform.locations.filter(annotation__isnull=False)
         .exclude(annotation__locations__observations__upload=upload)
         .select_related("annotation")
         .order_by("path")
-    )
+        # a list's item is absent when the list is empty: not missing, just no items this time
+        if not (location.path.endswith(ITEM) and location.parent_path in present)
+    ]
     seen = profiles(
         (location.pk for location in missing),
         Observation.objects.filter(upload__registered_at__isnull=False),
     )
+    items = item_types(upload, [o.location.path for o in untriaged])
     return Review(
-        triage=[TriageItem(o, choices(o), o.location_id in new) for o in untriaged],
+        triage=[
+            TriageItem(o, choices(o), o.location_id in new, items.get(o.location.path, ""))
+            for o in untriaged
+        ],
         changed=[
             Change(o, changes[o.location_id])
             for o in observations.filter(location_id__in=changes).order_by("location__path")
@@ -272,25 +289,19 @@ def _unique_annotation(platform: Platform, name: str, user: User | None) -> Anno
     raise RuntimeError(msg)  # pragma: no cover
 
 
-def accept_suggestions(upload: Upload) -> int:
-    """Link every untriaged data point of ``upload`` to its best suggested annotation."""
-    linked = 0
-    for item in review(upload).triage:
-        if item.choices:
-            link(item.location, item.choices[0].annotation)
-            linked += 1
-    return linked
-
-
-def create_remaining(upload: Upload, user: User | None, parent_path: str | None = None) -> int:
-    """A new annotation (named after the key) for every untriaged data point left in ``upload``, or only
-    below ``parent_path``.
+def create_with_list(item: Location, name: str, user: User | None) -> Annotation:
+    """A new annotation for a list's item (e.g. "ID"), and the suggested one for its list ("List
+    of ID") if the list has none yet.
     """
-    created = 0
-    for item in review(upload).triage:
-        location = item.location
-        if parent_path is not None and location.parent_path != parent_path:
-            continue
-        create_annotation(location, location.default_name, user)
-        created += 1
-    return created
+    annotation = create_annotation(item, name, user)
+    parent = Location.objects.filter(
+        platform=item.platform_id, path=item.parent_path, annotation__isnull=True, ignored=False
+    ).first()
+    if parent is not None:
+        create_annotation(parent, list_name(annotation.name), user)
+    return annotation
+
+
+def list_name(item_name: str) -> str:
+    """The suggested name for a list whose item is annotated as ``item_name``."""
+    return f"List of {item_name}"

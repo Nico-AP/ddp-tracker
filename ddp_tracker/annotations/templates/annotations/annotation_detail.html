@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load representation_tags %}
 {% block title %}{{ annotation }} · {{ annotation.platform }} · DDP Tracker{% endblock %}
 {% block content %}
   <p class="breadcrumbs">
@@ -7,6 +8,7 @@
   </p>
   <h1>{{ annotation }}</h1>
   {% include "annotations/_details.html" %}
+  {% annotation_representations annotation %}
   <h2>Locations</h2>
   <p class="muted">Where this data point has been found, over time and across languages.</p>
   {% if locations %}
@@ -33,7 +35,7 @@
             </td>
             <td>{{ row.languages|join:", " }}</td>
             <td>
-              {{ row.profile.main_type }}
+              {{ row.profile.label }}
               {% if row.formats %}· <code>{{ row.formats|join:", " }}</code>{% endif %}
             </td>
             <td>

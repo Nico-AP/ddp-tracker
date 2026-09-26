@@ -6,10 +6,10 @@
     hx-get="{% url 'schemas:location' platform.slug %}?path={{ location.path|urlencode }}&{{ filter.query }}"
     hx-target="#node-detail"
   >
-    {{ location.display_name }}
+    {{ location.display_name }}{% if profile.is_list %}[]{% endif %}
   </button>
-  <span class="badge badge--kind">{{ profile.main_kind }}</span>
-  {% if profile.main_type %}<span class="tree__type">{{ profile.main_type }}</span>{% endif %}
+  <span class="tree__type"
+        title="{{ profile.main_kind }}{% if profile.main_type %} · {{ profile.main_type }}{% endif %}">{{ profile.label }}</span>
   {% if profile.main_shape %}
     <span class="tree__shape">{{ profile.main_shape }}
       {% if profile.main_format %}· {{ profile.main_format }}{% endif %}

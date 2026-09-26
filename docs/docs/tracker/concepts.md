@@ -11,7 +11,29 @@ and tests follow these definitions; change them here first.
 | **Location**    | A path (see the [parser spec](../ddp_parser/index.md#23-paths)) ever seen in a platform's registered uploads. It holds only identity (the path), its place in the tree, and curation: its annotation, "not a data point", example values.                                                                                                                                                                                                                                         |
 | **Observation** | A location as it appears in one upload: kind, type, shape, format, stats. **Everything descriptive about a location is derived from its observations**, so any view can be restricted to a subset of uploads.                                                                                                                                                                                                                                                                     |
 | **Annotation**  | A data point (e.g. "watched videos") and what is known about it: name, description, note. It has one or more locations: moved or renamed keys, keys named differently in exports of another language. A location belongs to at most one annotation. Example values are kept per location, since they can differ between them.                                                                                                                                                     |
-| **Data point**  | A location that carries meaning of its own, and so is open for annotation: a **value**, a **list**, an **object that is the item of a list** (the repeated entity, `…/[]`), or a **media** file. Objects elsewhere only group keys (e.g. `profile`, `user`), and parsed files, unmatched files, folders, zip containers and the root only describe where data lies: they are never annotated. A location is a data point in a view if any of its observations in the view is one. |
+| **Data point**  | A location that carries meaning of its own, and so is open for annotation: a **value**, a **list**, a **list's item** (`<item>`, path `…/[]`), or a **media** file. The item carries the meaning ("ID", "watched video"): its examples, format and representations; its fields (`VideoList[]/<item>/Date`) are data points of their own. List and item each get their own annotation; the list's name is suggested from the item's ("List of …", created together from the item's dialog). An item isn't *missing* from an upload whose list is present but empty. A parsed file whose content is a list (a JSON array, a CSV's rows) *is* that list. Objects only group keys (e.g. `profile`, `user`) unless they are a list's item, and other files, unmatched files, folders, zip containers and the root only describe where data lies: they are never annotated. A location is a data point in a view if any of its observations in the view is one. |
+
+## How nodes are labelled
+
+The explorer and review describe nodes in plain language; paths and the technical kinds and
+types (shown on hover and in the node's facts) don't change.
+
+| Node                               | Label                                                   |
+|------------------------------------|---------------------------------------------------------|
+| a list                             | **list of objects**, **list of integers**, **list of objects or texts** (what its items are) |
+| a list never seen with items       | **list (always empty so far)**                          |
+| a list's item (`…/[]`)             | named **`<item>`**, with its type (e.g. object, integer); a list's name ends in `[]` (`VideoList[]`) |
+| an object that only groups keys    | **group of keys**; **group of keys (always empty so far)** if it never had keys (e.g. `{"GroupChat": {}}`) |
+| a value                            | **text**, **integer**, **number**, **true/false**; **(or empty)** if it can be `null` |
+| a parsed file                      | **file: list of objects**, **file: group of keys**      |
+| folder, zip, media, unmatched file | **folder**, **archive**, **media file**, **unreadable file** |
+
+Below a node's path, the side panel can show where it sits **as JSON**: the keys leading to it,
+then, one key per line, the node itself if it is an object or a list (a list's item opened), else
+its parent with the node's siblings. Values are placeholders: the type and, when it says
+something, the shape (`<text>`, `<integer>`, `<text · datetime>`; the parser's fallback shapes
+`plain` and `text` are left out). Objects and lists further away are abbreviated (`{…}`, `[…]`).
+It reflects the uploads in view (the filter), not any single file.
 
 ## Statuses of an upload's locations
 
@@ -36,6 +58,26 @@ Example for **changed**, one location's `format`, uploads in order of request da
 | 2026-02   | `%d.%m.%Y`  | **yes**: no earlier upload had it |
 | 2026-05   | `%Y-%m-%d`  | no: seen before                   |
 | 2026-07   | `%d.%m.%Y`  | no: seen before                   |
+
+## Representations (cross-platform)
+
+A **representation** describes a concept independently of any platform, so annotations of different
+platforms can be compared. Its terms (actor types, activity types, object types, metadata roles)
+are curated in the database and can be extended. Relations point at a term's id; its slug is the
+stable name code and seeds use to look it up, and is fixed once created; its name can be edited. A slot that metadata links describe can't be emptied until those links are removed.
+
+| Term                | Definition                                                                                                                                                  |
+|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Pattern**         | **Activity**: something happened, *actor · activity · object*, optionally *· target* (user · view · video; user · add · video · collection; other user · follow · person). Actor types: the **user** (the data donor), **other user** (another account, e.g. a follower), the **platform**. **Object**: something exists (profile). **Unmapped**: no confident mapping yet. |
+| **Representing**    | Annotations that *are* the concept: the entity node itself: by default a list's `<item>` (one watched video), on any number of platforms. Can be empty: plain objects (`profile`) are no data points, so a "Profile" representation only has metadata links; a link's platform is its annotation's.          |
+| **Metadata link**   | An annotation that *describes* the concept, with a **role** (when, duration, identifier, name …) and a **subject**: one of the slots the representation fills (`actor`, `activity`, `object`, `target`). E.g. TikTok's `Date` is *when* of the activity, its `Link` the *identifier* of the object, a follower's username the *name* of the actor; for an object representation (profile) everything describes the object. Unmapped representations fill no slot, so they have no metadata links. |
+| **Suggested term**  | A term a signed-in user proposed (on the vocabulary page). Its suggester can use it right away; an admin approves it, and only then is it listed publicly and offered to others. |
+
+Curators assign annotations and link representations through **"Add annotation"** and **"Add
+representation"** (a dialog), from the explorer's side panel, the upload review and the annotation's
+page ("this data point is …", "… describes …", or a new representation linked right away). The
+representation's page shows the result across platforms: what represents it, and a table of who
+records what (subject and role × platform).
 
 ## Filtering
 

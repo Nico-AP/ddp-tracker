@@ -1,0 +1,21 @@
+<section class="representation">
+  <p>
+    <span class="badge badge--{{ representation.pattern }}">{{ representation.get_pattern_display }}</span>
+    {% if representation.statement %}<strong>{{ representation.statement }}</strong>{% endif %}
+  </p>
+  {% if representation.description %}
+    <p>{{ representation.description|linebreaksbr }}</p>
+  {% else %}
+    <p class="muted">No description yet.</p>
+  {% endif %}
+  {% if representation.note %}
+    <p class="muted">{{ representation.note|linebreaksbr }}</p>
+  {% endif %}
+  {% if user.is_authenticated %}
+    <button type="button"
+            class="btn btn--small"
+            hx-get="{% url 'representations:edit' representation.pk %}"
+            hx-target="closest .representation"
+            hx-swap="outerHTML">Edit</button>
+  {% endif %}
+</section>

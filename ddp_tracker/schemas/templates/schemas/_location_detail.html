@@ -1,7 +1,7 @@
 {% load core_tags %}
 <h2 class="detail-panel__title">
   {% if location.path %}
-    {{ location.display_name }}
+    {{ location.display_name }}{% if profile.is_list %}[]{% endif %}
   {% else %}
     Root
   {% endif %}
@@ -9,6 +9,10 @@
 <p>
   <code class="path">{{ location.path|default:"/" }}</code>
 </p>
+{% if json_path %}
+  {% include "schemas/_json_path.html" %}
+{% endif %}
+<p>{{ profile.label|capfirst }}</p>
 {% if filter.is_active %}<p class="muted">Within the current filter.</p>{% endif %}
 <dl class="facts">
   <dt>Kind</dt>
@@ -44,6 +48,11 @@
   <ul class="plain-list">
     {% include "schemas/_triage_row.html" %}
   </ul>
+  <h3>Representations</h3>
+  <div hx-get="{% url 'representations:location-section' location.pk %}"
+       hx-trigger="load, triaged-{{ location.pk }} from:body">
+    <p class="muted">Loading…</p>
+  </div>
 {% endif %}
 {% if history %}
   <h3>History</h3>

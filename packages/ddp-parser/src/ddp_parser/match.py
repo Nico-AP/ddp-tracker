@@ -27,17 +27,21 @@ class Candidate:
 
 
 def is_data_point(node: Node) -> bool:
-    """A node that carries meaning of its own (spec 9.3): a value or a list in parsed content, an
-    object that is the item of a list (the repeated entity, ``…/[]``), or a media file.
+    """A node that carries meaning of its own (spec 9.3): a value or a list in parsed content, a
+    list's item (``…/[]``: the value or entity it holds, e.g. "ID", "watched video"), a parsed
+    file whose content is a list (a JSON array, a CSV's rows), or a media file.
 
-    Objects elsewhere only group keys, and files, folders and containers only describe where data
-    lies.
+    Objects only group keys unless they are a list's item, and other files, folders and
+    containers only describe where data lies.
     """
     if node.kind == Kind.MEDIA:
         return True
-    if not isinstance(node, DataNode):
-        return False
-    return not _is_plain_object(node) or node.path.endswith("/" + ITEMS)
+    if node.path.endswith("/" + ITEMS):
+        return isinstance(node, DataNode)
+    if isinstance(node, FileNode):
+        types = node.type if isinstance(node.type, tuple) else (node.type,)
+        return JsonType.ARRAY in types
+    return isinstance(node, DataNode) and not _is_plain_object(node)
 
 
 def _is_plain_object(node: DataNode) -> bool:

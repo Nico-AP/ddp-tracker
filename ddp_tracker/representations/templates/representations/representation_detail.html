@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}{{ representation }} · Representations · DDP Tracker{% endblock %}
+{% block content %}
+  <p class="breadcrumbs">
+    <a href="{% url 'representations:representations' %}">Representations</a> / {{ representation }}
+  </p>
+  <h1>{{ representation }}</h1>
+  {% include "representations/_details.html" %}
+  <h2>Represented by</h2>
+  <p class="muted">The data points that are this concept, per platform.</p>
+  {% if represented %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Platform</th>
+          <th>Annotation</th>
+          {% if user.is_authenticated %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for annotation in represented %}
+          <tr>
+            <td>{{ annotation.platform }}</td>
+            <td>
+              <a href="{{ annotation.get_absolute_url }}">{{ annotation }}</a>
+            </td>
+            {% if user.is_authenticated %}
+              <td>
+                <form hx-post="{% url 'representations:remove-annotation' representation.pk annotation.pk %}"
+                      hx-target="this"
+                      hx-swap="outerHTML">
+                  <button type="submit" class="link-button">Remove</button>
+                </form>
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">None yet. Link annotations from their pages.</p>
+  {% endif %}
+  <h2>Described by</h2>
+  <p class="muted">The data points that describe it: what each platform records, and where.</p>
+  {% if matrix %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Subject</th>
+          <th>Role</th>
+          {% for platform in platforms %}<th>{{ platform }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in matrix %}
+          <tr>
+            <td>{{ row.subject }}</td>
+            <td>{{ row.role }}</td>
+            {% for links in row.cells %}
+              <td>
+                {% for link in links %}
+                  <div>
+                    <a href="{{ link.annotation.get_absolute_url }}">{{ link.annotation }}</a>
+                    {% if user.is_authenticated %}
+                      <form class="inline-form"
+                            hx-post="{% url 'representations:remove-link' link.pk %}"
+                            hx-target="closest div"
+                            hx-swap="outerHTML">
+                        <button type="submit"
+                                class="link-button"
+                                title="Remove this link">×</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                {% empty %}
+                  –
+                {% endfor %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">None yet. Link annotations from their pages.</p>
+  {% endif %}
+{% endblock %}

@@ -117,7 +117,23 @@
   margin-top: $spacing-unit * 3;
 }
 
-.button-row {
-  display: flex;
-  gap: $spacing-unit;
+// Where a node sits in its file, as JSON (schemas/json_view.py), in the explorer's side panel.
+.json-view {
+  overflow-x: auto;
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  background: $color-bg;
+  padding: $spacing-unit;
+  font-family: $font-family-mono;
+  font-size: $font-size-small;
+  line-height: 1.5;
+}
+
+.json-path {
+  margin-bottom: $spacing-unit * 2;
+
+  summary {
+    color: $color-primary;
+    cursor: pointer;
+  }
 }

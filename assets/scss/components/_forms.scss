@@ -99,3 +99,32 @@ a.btn {
     font-size: $font-size-small;
   }
 }
+
+// A representation's slots depend on its pattern: hide the ones it doesn't use (no JavaScript;
+// the server clears their values too).
+.representation-form {
+  &:has(input[name="pattern"][value="object"]:checked) {
+    .form__field--actor,
+    .form__field--activity,
+    .form__field--target {
+      display: none;
+    }
+  }
+
+  // a new representation linked from an annotation: role and subject only when it describes it
+  &:has(input[name="relation"][value="represents"]:checked) {
+    .form__field--role,
+    .form__field--subject {
+      display: none;
+    }
+  }
+
+  &:has(input[name="pattern"][value="unmapped"]:checked) {
+    .form__field--actor,
+    .form__field--activity,
+    .form__field--object,
+    .form__field--target {
+      display: none;
+    }
+  }
+}

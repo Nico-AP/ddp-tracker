@@ -20,35 +20,15 @@
         Link each data point (a value, a list, a list's item or a media file) to the annotation it holds (suggestions come from moved and renamed paths),
         create a new annotation, or mark it as not a data point.
       </p>
-      <div class="button-row">
-        <form method="post" action="{% url 'schemas:review-action' upload.pk %}">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="accept">
-          <button type="submit" class="btn">Accept all top suggestions</button>
-        </form>
-        <form method="post" action="{% url 'schemas:review-action' upload.pk %}">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="create">
-          <button type="submit" class="btn">Create annotations for everything left</button>
-        </form>
-      </div>
       {% regroup review.triage by location.parent_path as groups %}
       {% for group in groups %}
         <section class="triage-group">
-          <div class="page-header">
-            <h3>
-              <code class="path">{{ group.grouper|default:"/" }}</code>
-            </h3>
-            <form method="post" action="{% url 'schemas:review-action' upload.pk %}">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="create">
-              <input type="hidden" name="parent" value="{{ group.grouper }}">
-              <button type="submit" class="link-button">New annotations for all of these</button>
-            </form>
-          </div>
+          <h3>
+            <code class="path">{{ group.grouper|default:"/" }}</code>
+          </h3>
           <ul class="plain-list">
             {% for item in group.list %}
-              {% include "schemas/_triage_row.html" with location=item.location observation=item.observation choices=item.choices is_new=item.is_new %}
+              {% include "schemas/_triage_row.html" with location=item.location observation=item.observation choices=item.choices is_new=item.is_new item_type=item.item_type %}
             {% endfor %}
           </ul>
         </section>

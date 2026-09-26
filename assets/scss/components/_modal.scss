@@ -1,0 +1,32 @@
+@use "../abstracts/variables" as *;
+
+// The shared <dialog id="modal"> (templates/base.html, static/js/modal.js).
+.modal {
+  width: min(640px, calc(100vw - #{$spacing-unit * 4}));
+  max-height: calc(100vh - #{$spacing-unit * 8});
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: $spacing-unit * 3;
+
+  &::backdrop {
+    background: rgb(17 24 39 / 40%);
+  }
+
+  section + section {
+    margin-top: $spacing-unit * 3;
+    border-top: 1px solid $color-border;
+    padding-top: $spacing-unit * 2;
+  }
+}
+
+.modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: $spacing-unit * 2;
+  margin-bottom: $spacing-unit * 2;
+
+  h2 {
+    margin: 0;
+  }
+}

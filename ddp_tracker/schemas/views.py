@@ -6,26 +6,26 @@ The explorer loads one level of the tree at a time (HTMX), so large schemas stay
 from collections import Counter
 from typing import Any
 
-from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, QuerySet
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.shortcuts import get_object_or_404, render
 
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform, Upload
 from ddp_tracker.schemas.filters import FilterForm, SchemaFilter, format_label
 from ddp_tracker.schemas.forms import ExamplesForm
-from ddp_tracker.schemas.models import Location, Observation
+from ddp_tracker.schemas.json_view import json_path
+from ddp_tracker.schemas.models import ITEM, Location, Observation
 from ddp_tracker.schemas.profiles import profiles
 from ddp_tracker.schemas.services import (
-    accept_suggestions,
     choices,
     create_annotation,
-    create_remaining,
+    create_with_list,
     ignore,
+    item_types,
     link,
+    list_name,
     review,
 )
 from ddp_tracker.schemas.timeline import new_in
@@ -127,6 +127,7 @@ def location_detail(request: HttpRequest, slug: str) -> HttpResponse:
         "filter": schema_filter,
         "location": location,
         "profile": profiles([location.pk], observations)[location.pk],
+        "json_path": json_path(location, observations),
         "history": history,
         "annotations": platform.annotations.all(),
     }
@@ -158,24 +159,11 @@ def upload_review(request: HttpRequest, pk: int) -> HttpResponse:
     return render(request, "schemas/review.html", context)
 
 
-@login_required
-@require_POST
-def triage(request: HttpRequest, pk: int) -> HttpResponse:
-    """HTMX: decide what a data point is. Returns the updated triage row."""
-    location = get_object_or_404(Location.objects.select_related("platform"), pk=pk)
-    action = request.POST.get("action")
-    if action == "link":
-        annotation = get_object_or_404(
-            Annotation, pk=request.POST.get("annotation"), platform=location.platform
-        )
-        link(location, annotation)
-    elif action == "new":
-        create_annotation(location, request.POST.get("name", ""), signed_in_user(request))
-    elif action == "ignore":
-        ignore(location)
-    elif action == "reset":
-        link(location, None)
-    upload_id = request.POST.get("upload") or None  # empty when triaging from the explorer
+def _row_context(request: HttpRequest, location: Location) -> dict[str, Any]:
+    """Context of a triage row and its modal. ``upload`` (query or form) is the upload being
+    reviewed; it's absent when triaging from the explorer.
+    """
+    upload_id = request.POST.get("upload") or request.GET.get("upload") or None
     observation = (
         Observation.objects.filter(location=location, upload_id=upload_id)
         .select_related("location", "location__annotation", "upload")
@@ -183,25 +171,68 @@ def triage(request: HttpRequest, pk: int) -> HttpResponse:
         if upload_id
         else None
     )
-    context = {
+    return {
         "location": location,
         "observation": observation,
         "is_new": observation is not None and location.pk in new_in(observation.upload),
         "choices": choices(observation) if observation else [],
+        "item_type": (
+            item_types(observation.upload, [location.path]).get(location.path, "")
+            if observation
+            else ""
+        ),
         "annotations": location.platform.annotations.all(),
+        **_list_context(location),
     }
-    return render(request, "schemas/_triage_row.html", context)
+
+
+def _list_context(location: Location) -> dict[str, Any]:
+    """For a list's item: whether its list could get the suggested annotation too. For a list
+    whose item is annotated: the suggested name ("List of ID").
+    """
+    platform = location.platform_id
+    if location.path.endswith(ITEM):
+        parent = Location.objects.filter(platform=platform, path=location.parent_path).first()
+        free = parent is not None and parent.annotation_id is None and not parent.ignored
+        return {"list_open": free}
+    item = (
+        Location.objects.filter(
+            platform=platform, path=location.path + ITEM, annotation__isnull=False
+        )
+        .select_related("annotation")
+        .first()
+    )
+    return {"list_suggestion": list_name(item.annotation.name) if item and item.annotation else ""}
+
+
+def triage_row(request: HttpRequest, pk: int) -> HttpResponse:
+    """HTMX: a data point's triage row (read-only, reloaded after a change)."""
+    location = get_object_or_404(Location.objects.select_related("platform", "annotation"), pk=pk)
+    return render(request, "schemas/_triage_row.html", _row_context(request, location))
 
 
 @login_required
-@require_POST
-def review_action(request: HttpRequest, pk: int) -> HttpResponse:
-    upload = get_object_or_404(Upload, pk=pk)
-    if request.POST.get("action") == "accept":
-        linked = accept_suggestions(upload)
-        messages.success(request, f"Linked {linked} data points to their suggested annotations.")
-    else:
-        parent = request.POST.get("parent")
-        created = create_remaining(upload, signed_in_user(request), parent)
-        messages.success(request, f"Created {created} new annotations.")
-    return redirect("schemas:review", pk=upload.pk)
+def triage(request: HttpRequest, pk: int) -> HttpResponse:
+    """HTMX: decide what a data point is. GET: the modal with the choices. POST: apply one;
+    returns nothing (closing the modal) and triggers ``triaged-<pk>`` so the row reloads.
+    """
+    location = get_object_or_404(Location.objects.select_related("platform", "annotation"), pk=pk)
+    if request.method != "POST":
+        return render(request, "schemas/_triage_modal.html", _row_context(request, location))
+    action = request.POST.get("action")
+    if action == "link":
+        annotation = get_object_or_404(
+            Annotation, pk=request.POST.get("annotation"), platform=location.platform
+        )
+        link(location, annotation)
+    elif action == "new":
+        name, user = request.POST.get("name", ""), signed_in_user(request)
+        if request.POST.get("with_list"):
+            create_with_list(location, name, user)
+        else:
+            create_annotation(location, name, user)
+    elif action == "ignore":
+        ignore(location)
+    elif action == "reset":
+        link(location, None)
+    return HttpResponse(headers={"HX-Trigger": f"triaged-{location.pk}"})

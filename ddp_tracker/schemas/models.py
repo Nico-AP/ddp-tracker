@@ -1,7 +1,11 @@
+from pathlib import PurePosixPath
+
 from django.db import models
 
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform, Upload
+
+ITEM = "/[]"  # a list's item, in paths
 
 
 class Location(models.Model):
@@ -38,16 +42,21 @@ class Location(models.Model):
 
     @property
     def display_name(self) -> str:
-        """Array item nodes have no name; show them as ``[]`` like in their path."""
-        return "[]" if self.name is None else (self.name or '""')
+        """Array item nodes have no name: "<item>" (``[]`` in their path)."""
+        return "<item>" if self.name is None else (self.name or '""')
 
     @property
     def default_name(self) -> str:
-        """A name for a new annotation: the key, or for array items "<list key> item"."""
-        if self.name is not None:
-            return self.name
-        segments = self.path.split("/")
-        return f"{segments[-2]} item" if len(segments) > 1 else self.path
+        """A name for a new annotation: the key, or a file's name without its extension
+        (``watch_history.json`` is a list: "watch_history").
+        """
+        if self.name is None:  # a list's item: "<list> item"
+            parent = Location.objects.filter(platform=self.platform_id, path=self.parent_path)
+            found = parent.first()
+            return f"{found.default_name if found else self.path} item"
+        if self.observations.filter(kind="file").exists():
+            return PurePosixPath(self.name).stem or self.name
+        return self.name
 
 
 class Observation(models.Model):

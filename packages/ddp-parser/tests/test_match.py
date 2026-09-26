@@ -170,6 +170,8 @@ class NodeClassTests(TestCase):
                 "a.json": b'{"emails": [], "o": {}, "s": "x", "mixed": [1], '
                 b'"rows": [{"user": {"name": "A"}, "at": 1}], "maybe": {"k": 1}}',
                 "b.json": b'"just text"',
+                "list.json": b'[{"at": 1}]',
+                "rows.csv": b"a,b\n1,2\n",
                 "d/photo.png": png,
                 "d/p.bin": b"x",
             }
@@ -178,12 +180,16 @@ class NodeClassTests(TestCase):
         data_points = [
             "/a.json/emails",  # a list (even empty)
             "/a.json/s",  # a value
-            "/a.json/mixed/[]",  # an item that is a value
             "/a.json/rows",  # a list
-            "/a.json/rows/[]",  # an item that is an object: the repeated entity
-            "/a.json/rows/[]/at",
+            "/a.json/rows/[]",  # its item: the entity (an object)
+            "/a.json/mixed/[]",  # an item that is a value
+            "/a.json/rows/[]/at",  # a field of the items
             "/a.json/rows/[]/user/name",
             "/d/photo.png",  # media
+            "/list.json",  # a file that is a list
+            "/rows.csv",  # a CSV: a list of rows
+            "/list.json/[]",
+            "/list.json/[]/at",
         ]
         not_data_points = [
             "",  # the root
