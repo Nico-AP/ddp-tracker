@@ -15,8 +15,14 @@ from django.shortcuts import get_object_or_404, render
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform
 from ddp_tracker.ddps.values import own_values
+from ddp_tracker.schemas.explorer import (
+    MISSING_ANNOTATIONS,
+    MISSING_REPRESENTATIONS,
+    SHOW,
+    SHOW_ALL,
+    explorer_tree,
+)
 from ddp_tracker.schemas.explorer import build_row as explorer_row_of
-from ddp_tracker.schemas.explorer import explorer_tree
 from ddp_tracker.schemas.filters import FilterForm, SchemaFilter, format_label, root_formats
 from ddp_tracker.schemas.forms import ExamplesForm
 from ddp_tracker.schemas.json_view import json_path
@@ -36,13 +42,19 @@ from ddp_tracker.users.auth import signed_in_user
 def _explorer_context(request: HttpRequest, platform: Platform) -> dict[str, Any]:
     schema_filter = SchemaFilter.from_request(request, platform)
     q = request.GET.get("q", "").strip()
-    hide = request.GET.get("hide") == "1"  # the annotated ones
+    show = request.GET.get("show", SHOW_ALL)
+    show = show if show in SHOW else SHOW_ALL
     return {
         "platform": platform,
         "filter": schema_filter,
         "q": q,
-        "hide": hide,
-        "tree": explorer_tree(platform, schema_filter, q, annotated=not hide),
+        "show": show,
+        "show_choices": [
+            (SHOW_ALL, "Show all"),
+            (MISSING_ANNOTATIONS, "Show missing annotations"),
+            (MISSING_REPRESENTATIONS, "Show missing representations"),
+        ],
+        "tree": explorer_tree(platform, schema_filter, q, show=show),
         "row_template": "schemas/tree/_row.html",
     }
 

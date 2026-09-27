@@ -547,3 +547,43 @@
     color: inherit;
   }
 }
+
+// a choice of a few, shown as one control (the explorer's "Show …"): radios, their labels as
+// segments
+.segmented {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin: 0;
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: 0;
+  overflow: hidden;
+}
+
+.segmented__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented__label {
+  padding: ($spacing-unit * 0.5) ($spacing-unit * 1.25);
+  color: $color-text-muted;
+  font-size: $font-size-small;
+  white-space: nowrap;
+  cursor: pointer;
+
+  & + .segmented__input + & {
+    border-left: 1px solid $color-border;
+  }
+}
+
+.segmented__input:checked + .segmented__label {
+  background: $color-primary;
+  color: #fff;
+}
+
+.segmented__input:focus-visible + .segmented__label {
+  outline: 2px solid $color-primary;
+  outline-offset: -2px;
+}

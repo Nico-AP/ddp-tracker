@@ -42,8 +42,10 @@
     <p class="muted review-tree__empty">
       {% if q %}
         Nothing matches “{{ q }}”.
-      {% elif hide %}
+      {% elif hide or show == "annotations" %}
         Everything here is annotated.
+      {% elif show == "representations" %}
+        Every annotated data point here has a representation.
       {% else %}
         Nothing to show.
       {% endif %}

@@ -44,7 +44,7 @@
     <div class="review-toolbar">
       <form class="review-filters"
             hx-get="{{ platform.get_absolute_url }}"
-            hx-trigger="input changed delay:250ms from:find [name=q], search from:find [name=q], change from:find [name=hide]"
+            hx-trigger="input changed delay:250ms from:find [name=q], search from:find [name=q], change from:find .segmented"
             hx-target="#review-groups"
             hx-swap="outerHTML"
             hx-push-url="true">
@@ -57,16 +57,17 @@
                class="form-control"
                placeholder="Filter by field name or path"
                aria-label="Filter by field name or path">
-        <div class="form-check form-switch">
-          <input type="checkbox"
-                 class="form-check-input"
-                 role="switch"
-                 id="hide-annotated"
-                 name="hide"
-                 value="1"
-                 {% if hide %}checked{% endif %}>
-          <label class="form-check-label" for="hide-annotated">Hide annotated</label>
-        </div>
+        <fieldset class="segmented" aria-label="Show">
+          {% for value, label in show_choices %}
+            <input type="radio"
+                   class="segmented__input"
+                   name="show"
+                   id="show-{{ value }}"
+                   value="{{ value }}"
+                   {% if value == show %}checked{% endif %}>
+            <label class="segmented__label" for="show-{{ value }}">{{ label }}</label>
+          {% endfor %}
+        </fieldset>
       </form>
     </div>
     <div class="review-layout">

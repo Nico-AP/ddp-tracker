@@ -2,6 +2,10 @@
 ``SchemaFilter`` lets through (one root format), with nodes that are never data points but hold
 something themselves (an unparsed file, an object always seen empty) as muted rows."""
 
+from collections.abc import Callable
+
+from django.db.models import Q
+
 from ddp_tracker.ddps.models import Platform
 from ddp_tracker.schemas.examples import preview
 from ddp_tracker.schemas.filters import SchemaFilter, format_label
@@ -49,11 +53,17 @@ def _alphabetical(points: list[Observation]) -> list[Observation]:
     return sorted(points, key=lambda observation: _alphabetical_key(observation.location.path))
 
 
+# What the explorer shows (its selector): everything, or only what still lacks something
+SHOW_ALL, MISSING_ANNOTATIONS, MISSING_REPRESENTATIONS = "all", "annotations", "representations"
+SHOW = (SHOW_ALL, MISSING_ANNOTATIONS, MISSING_REPRESENTATIONS)
+
+
 def explorer_tree(
-    platform: Platform, schema_filter: SchemaFilter, q: str = "", *, annotated: bool = True
+    platform: Platform, schema_filter: SchemaFilter, q: str = "", *, show: str = SHOW_ALL
 ) -> Tree:
-    """The tree of the filtered uploads' data points; ``annotated=False`` leaves out the decided
-    ones; ``q`` keeps the rows whose name or path contain it."""
+    """The tree of the filtered uploads' data points. ``show``: all of them, only those without
+    an annotation, or only annotated ones whose annotation has no representation (``SHOW``).
+    ``q`` keeps the rows whose name or path contain it."""
     latest = _latest(_observations(platform, schema_filter))
     points = {path: o for path, o in latest.items() if o.is_data_point}
     builder = _Builder(points)
@@ -64,8 +74,11 @@ def explorer_tree(
             builder.row(row_key(observation.location.path))
         elif _is_muted(observation, parents):
             builder.muted(observation)
-    if not annotated:
-        _drop_decided(builder)
+    if show == MISSING_ANNOTATIONS:
+        _keep_only(builder, lambda row: row.is_open)
+    elif show == MISSING_REPRESENTATIONS:
+        represented = _represented(platform)
+        _keep_only(builder, lambda row: _lacks_representation(row, represented))
     # groups alphabetical too (by their first row, "A/B" would come before "A"'s own rows)
     builder.groups = dict(
         sorted(builder.groups.items(), key=lambda item: _alphabetical_key(item[0]))
@@ -88,12 +101,26 @@ def _is_muted(observation: Observation, parents: set[str | None]) -> bool:
     )
 
 
-def _drop_decided(builder: TreeBuilder) -> None:
-    """Without the decided rows: a decided list stays while rows below it are open."""
+def _represented(platform: Platform) -> set[int]:
+    """The platform's annotations linked to a representation: as its entity, or as metadata."""
+    linked = platform.annotations.filter(
+        Q(representations__isnull=False) | Q(metadata_links__isnull=False)
+    )
+    return set(linked.values_list("pk", flat=True))
+
+
+def _lacks_representation(row: Row, represented: set[int]) -> bool:
+    """Annotated (for a list: its item, which carries the meaning), but not represented."""
+    annotation = row.primary.annotation_id
+    return not row.muted and annotation is not None and annotation not in represented
+
+
+def _keep_only(builder: TreeBuilder, wanted: Callable[[Row], bool]) -> None:
+    """Only the ``wanted`` rows; a list stays while rows below it are wanted."""
 
     def keep(row: Row) -> Row | None:
         row.children = [kept for child in row.children if (kept := keep(child)) is not None]
-        return row if row.is_open or row.children else None
+        return row if wanted(row) or row.children else None
 
     for path, group in list(builder.groups.items()):
         group.rows = [kept for row in group.rows if (kept := keep(row)) is not None]

@@ -9,8 +9,19 @@ from django.urls import reverse
 
 from ddp_tracker.core.tests.utils import parsed_upload
 from ddp_tracker.ddps.models import Platform
+from ddp_tracker.representations.models import (
+    MetadataRole,
+    ObjectType,
+    Pattern,
+    Representation,
+    RepresentationMetadata,
+)
 from ddp_tracker.schemas.examples import USER_INPUT, add_examples
-from ddp_tracker.schemas.explorer import explorer_tree
+from ddp_tracker.schemas.explorer import (
+    MISSING_ANNOTATIONS,
+    MISSING_REPRESENTATIONS,
+    explorer_tree,
+)
 from ddp_tracker.schemas.filters import SchemaFilter
 from ddp_tracker.schemas.models import Location
 from ddp_tracker.schemas.services import create_annotation
@@ -61,10 +72,30 @@ class ExplorerTreeTests(TestCase):
         tree = explorer_tree(self.platform, self.filter)
         self.assertEqual(tree.open_count, 2)  # when, tags[] (list and item: one row); no muted
 
-    def test_hide_annotated_and_the_filter(self):
-        create_annotation(Location.objects.get(path="/a.json/when"), "When", self.user)
-        self.assertIn("/a.json/when", self.rows())
-        self.assertNotIn("/a.json/when", self.rows(annotated=False))
+    def test_show_missing_annotations_or_representations(self):
+        when = create_annotation(Location.objects.get(path="/a.json/when"), "When", self.user)
+        tag = create_annotation(Location.objects.get(path="/a.json/tags/[]"), "Tag", self.user)
+        create_annotation(Location.objects.get(path="/a.json/tags"), "List of Tag", self.user)
+        self.assertIn("/a.json/when", self.rows())  # all, muted rows too
+        self.assertIn("/a.json/meta", self.rows())
+        # nothing is left without an annotation (muted rows never count)
+        self.assertEqual(self.rows(show=MISSING_ANNOTATIONS), {})
+        # annotated, but no representation yet: both; once represented, gone
+        self.assertEqual(
+            set(self.rows(show=MISSING_REPRESENTATIONS)), {"/a.json/when", "/a.json/tags"}
+        )
+        video = Representation.objects.create(
+            pattern=Pattern.OBJECT, name="Tag", object=ObjectType.objects.get(slug="video")
+        )
+        video.annotations.add(tag)  # the item carries the meaning: the list's row is done
+        self.assertEqual(set(self.rows(show=MISSING_REPRESENTATIONS)), {"/a.json/when"})
+        date_role = MetadataRole.objects.get(slug="when")
+        RepresentationMetadata.objects.create(
+            representation=video, annotation=when, role=date_role, subject="object"
+        )  # a metadata link counts too
+        self.assertEqual(self.rows(show=MISSING_REPRESENTATIONS), {})
+
+    def test_the_filter(self):
         self.assertEqual(set(self.rows(q="TAG")), {"/a.json/tags"})
 
 
@@ -112,7 +143,23 @@ class ExplorerPageTests(TestCase):
         for absent in ("status-dot", "to assign", "data-annotating", "<kbd>Enter</kbd>"):
             with self.subTest(absent=absent):
                 self.assertNotContains(page, absent)
-        self.assertContains(page, "Hide annotated")  # the switch stays
+
+    def test_the_show_selector(self):
+        url = reverse("schemas:platform", args=["tiktok"])
+        page = self.client.get(url)
+        for label in ("Show all", "Show missing annotations", "Show missing representations"):
+            self.assertContains(page, label)
+        self.assertRegex(page.content.decode(), r'id="show-all"\s+value="all"\s+checked')
+        self.assertNotContains(page, "Hide annotated")
+        create_annotation(self.item, "Tag", self.user)
+        create_annotation(self.tags, "List of Tag", self.user)
+        groups = self.client.get(url, {"show": "representations"}, HTTP_HX_REQUEST="true")
+        self.assertContains(groups, "tags[]")
+        self.assertNotContains(groups, "when")  # not annotated: not a missing representation
+        done = self.client.get(url, {"show": "annotations", "q": "tags"}, HTTP_HX_REQUEST="true")
+        self.assertContains(done, "Nothing matches")
+        odd = self.client.get(url, {"show": "nonsense"})
+        self.assertEqual(odd.context["show"], "all")
 
 
 class OrderTests(TestCase):
