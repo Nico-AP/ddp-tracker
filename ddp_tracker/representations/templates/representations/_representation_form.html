@@ -4,7 +4,8 @@
       hx-swap="outerHTML">
   <h2>Edit {{ representation }}</h2>
   {% include "includes/form.html" %}
-  <button type="submit" class="btn btn--small">Save</button>
+  <button type="submit"
+          class="btn btn--small">{% if user.is_staff %}Save{% else %}Suggest{% endif %}</button>
   <button type="button"
           class="link-button"
           hx-get="{% url 'representations:details' representation.pk %}"

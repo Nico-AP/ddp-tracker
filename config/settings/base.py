@@ -95,6 +95,7 @@ LOCAL_APPS = [
     "ddp_tracker.ddps",
     "ddp_tracker.schemas",
     "ddp_tracker.reviews",
+    "ddp_tracker.proposals",
     "ddp_tracker.annotations",
     "ddp_tracker.representations",
     "ddp_tracker.users",

@@ -16,9 +16,11 @@ annotation, lists with their items' fields below them. The review of an upload
 """
 
 import hashlib
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
+
+from django.db.models import Count
 
 from ddp_tracker.schemas.models import Location, Observation
 
@@ -71,6 +73,7 @@ class Row:
     more: int = 0  # values not in the preview
     summary: str = ""  # "3 items", or a format, when there are no values to show
     muted: bool = False  # not a data point: shown for completeness, never counted
+    pending: int = 0  # open suggestions for its locations (proposals), awaiting staff
 
     @property
     def primary(self) -> Location:
@@ -201,6 +204,13 @@ class TreeBuilder:
         else:
             row.summary = row.observation.format
 
+    def mark_pending(self) -> None:
+        """Each row's open suggestions, in one query."""
+        ids = {loc.pk for row in self.rows.values() for loc in row.locations}
+        counts = pending_counts(ids)
+        for row in self.rows.values():
+            row.pending = sum(counts.get(loc.pk, 0) for loc in row.locations)
+
     def row(self, key: str) -> Row:
         """The row of ``key``, made (and placed under its list or group) on first use."""
         if key in self.rows:
@@ -246,11 +256,23 @@ class TreeBuilder:
         """The groups under their roots; with ``q``, only the rows ``matches`` (by default: name
         or path contain it), with the rows below them, all expanded. ``by_open``: start where
         something is still to annotate (the review), else at the very first (the explorer)."""
+        self.mark_pending()
         groups = list(self.groups.values())
         found = places(platform_id, [group.path for group in groups], root_name)
         if q:
             groups = filtered(groups, q.casefold(), matches or _name_or_path)
         return Tree(open_first(_rooted(groups, found), everything=bool(q), by_open=by_open))
+
+
+def pending_counts(location_ids: Iterable[int]) -> dict[int, int]:
+    """Open suggestions per location. Read through the reverse relation of ``proposals``, which
+    depends on this app (not the other way round); "open" is ``Proposal.Status.OPEN``."""
+    rows = (
+        Location.objects.filter(pk__in=list(location_ids), proposals__status="open")
+        .values("pk")
+        .annotate(count=Count("proposals"))
+    )
+    return {row["pk"]: row["count"] for row in rows}
 
 
 def _name_or_path(row: Row, q: str) -> bool:

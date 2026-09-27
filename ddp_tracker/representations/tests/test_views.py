@@ -22,7 +22,7 @@ Subject = RepresentationMetadata.Subject
 
 class ViewTestCase(TestCase):
     def setUp(self):
-        self.curator = User.objects.create_user("curator")
+        self.curator = User.objects.create_user("curator", is_staff=True)  # staff decide directly
         self.other = User.objects.create_user("other")
         self.user = ActorType.objects.get(slug="user")
         self.view = ActivityType.objects.get(slug="view")

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}My suggestions · DDP Tracker{% endblock %}
+{% block content %}
+  <h1>My suggestions</h1>
+  <p class="muted">What you suggested, and how staff decided it. Open ones can be withdrawn.</p>
+  <div class="proposals">
+    {% for entry in entries %}
+      {% include "proposals/_entry.html" %}
+    {% empty %}
+      <p class="muted">None yet.</p>
+    {% endfor %}
+  </div>
+{% endblock %}

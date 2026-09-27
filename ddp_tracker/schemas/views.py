@@ -15,6 +15,8 @@ from django.shortcuts import get_object_or_404, render
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform
 from ddp_tracker.ddps.values import own_values
+from ddp_tracker.proposals.models import Proposal
+from ddp_tracker.proposals.services import ProposalError, submit
 from ddp_tracker.schemas.explorer import (
     MISSING_ANNOTATIONS,
     MISSING_REPRESENTATIONS,
@@ -30,12 +32,10 @@ from ddp_tracker.schemas.models import ITEM, Location, Observation
 from ddp_tracker.schemas.profiles import profiles
 from ddp_tracker.schemas.services import (
     choices,
-    create_annotation,
-    ignore,
-    link,
     list_name,
 )
 from ddp_tracker.schemas.timeline import new_in
+from ddp_tracker.schemas.tree import pending_counts
 from ddp_tracker.users.auth import signed_in_user
 
 
@@ -119,6 +119,8 @@ def location_detail(request: HttpRequest, slug: str) -> HttpResponse:
     context["decided"] = all(loc.annotation_id or loc.ignored for loc in locations)
     context["ignored"] = all(loc.ignored for loc in locations)
     context["triggers"] = ", ".join(f"triaged-{loc.pk} from:body" for loc in locations)
+    context["suggestion_locations"] = locations
+    context["pending"] = sum(pending_counts(loc.pk for loc in locations).values())
     return render(request, "schemas/_location_sidepanel.html", context)
 
 
@@ -210,28 +212,37 @@ def _list_context(location: Location) -> dict[str, Any]:
 
 @login_required
 def triage(request: HttpRequest, pk: int) -> HttpResponse:
-    """HTMX: decide what a data point is. GET: the modal with the choices. POST: apply one;
-    returns nothing (closing the modal) and triggers ``triaged-<pk>`` so the row reloads.
+    """HTMX: decide what a data point is. GET: the modal with the choices. POST: apply one (staff)
+    or suggest it (everyone else: ``proposals``); returns nothing (closing the modal) and
+    triggers ``triaged-<pk>`` so the row reloads (and shows a suggestion as pending).
     """
     location = get_object_or_404(Location.objects.select_related("platform", "annotation"), pk=pk)
     if request.method != "POST":
         return render(request, "schemas/_triage_modal.html", _row_context(request, location))
-    action = request.POST.get("action")
+    action = request.POST.get("action", "")
+    targets: dict[str, Any] = {"location": location}
     if action == "link":
-        annotation = get_object_or_404(
+        targets["annotation"] = get_object_or_404(
             Annotation, pk=request.POST.get("annotation"), platform=location.platform
         )
-        link(location, annotation)
     elif action == "new":
-        create_annotation(
-            location,
-            request.POST.get("name", ""),
-            signed_in_user(request),
-            description=request.POST.get("description", "").strip(),
-            note=request.POST.get("note", "").strip(),
-        )
-    elif action == "ignore":
-        ignore(location)
-    elif action == "reset":
-        link(location, None)
+        targets["values"] = {
+            field: request.POST.get(field, "").strip() for field in ("name", "description", "note")
+        }
+    kind = TRIAGE_KINDS.get(action)
+    if kind is None:
+        return HttpResponse(status=400)
+    try:
+        submit(signed_in_user(request), kind, comment=request.POST.get("comment", ""), **targets)
+    except ProposalError as error:
+        context = _row_context(request, location) | {"error": str(error)}
+        return render(request, "schemas/_triage_modal.html", context)
     return HttpResponse(headers={"HX-Trigger": f"triaged-{location.pk}"})
+
+
+TRIAGE_KINDS = {
+    "link": Proposal.Kind.LINK,
+    "new": Proposal.Kind.NEW_ANNOTATION,
+    "ignore": Proposal.Kind.IGNORE,
+    "reset": Proposal.Kind.UNASSIGN,
+}

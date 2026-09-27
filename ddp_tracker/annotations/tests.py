@@ -11,7 +11,7 @@ from ddp_tracker.users.models import User
 
 class AnnotationTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user("curator")
+        self.user = User.objects.create_user("curator", is_staff=True)  # staff decide directly
         self.platform = Platform.objects.create(name="TikTok", slug="tiktok")
         parsed_upload(
             self.platform, {"a.json": b'{"email": "a@b.ch"}'}, language="de", register=True
@@ -35,7 +35,7 @@ class AnnotationTests(TestCase):
         url = reverse("annotations:edit", args=[self.annotation.pk])
         self.assertEqual(self.client.get(url).status_code, 302)
         self.client.force_login(self.user)
-        self.assertContains(self.client.get(url), "Edit Email address")
+        self.assertContains(self.client.get(url), "<h2>Edit Email address</h2>", html=True)
         response = self.client.post(
             url, {"name": "Email", "description": "The account's address", "note": "Primary"}
         )

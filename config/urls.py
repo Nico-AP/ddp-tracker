@@ -19,6 +19,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("uploads/", include("ddp_tracker.ddps.urls")),
     path("annotations/", include("ddp_tracker.annotations.urls")),
     path("representations/", include("ddp_tracker.representations.urls")),
+    path("proposals/", include("ddp_tracker.proposals.urls")),
     path("", include("ddp_tracker.schemas.urls")),
     path("", include("ddp_tracker.reviews.urls")),
     path("", include("ddp_tracker.core.urls")),

@@ -1,5 +1,6 @@
 <section class="annotation">
   <h2>Description</h2>
+  {% if suggested %}<p class="message message--info">Suggested; staff will review your change.</p>{% endif %}
   {% if annotation.description %}
     <p>{{ annotation.description|linebreaksbr }}</p>
   {% else %}
@@ -9,14 +10,16 @@
     <p class="muted">{{ annotation.note|linebreaksbr }}</p>
   {% endif %}
   {% if user.is_authenticated %}
-    <button
-      type="button"
-      class="btn btn--small"
-      hx-get="{% url 'annotations:edit' annotation.pk %}"
-      hx-target="closest .annotation"
-      hx-swap="outerHTML"
-    >
-      Edit
+    <button type="button"
+            class="btn btn--small"
+            hx-get="{% url 'annotations:edit' annotation.pk %}"
+            hx-target="closest .annotation"
+            hx-swap="outerHTML">
+      {% if user.is_staff %}
+        Edit
+      {% else %}
+        Suggest a change
+      {% endif %}
     </button>
   {% endif %}
 </section>

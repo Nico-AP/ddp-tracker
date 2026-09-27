@@ -19,6 +19,10 @@
   </button>
   <span class="review-row__type">{{ row.type_badge }}</span>
   <span class="review-row__summary">
+    {% if row.pending %}
+      <span class="review-pill review-pill--pending"
+            title="Suggested, waiting for staff">{{ row.pending }} suggestion{{ row.pending|pluralize }}</span>
+    {% endif %}
     {% if row.decided %}
       {% if row.ignored %}
         <span class="review-pill review-pill--muted">not a data point</span>
@@ -36,8 +40,8 @@
       <span class="review-row__values muted">{{ row.summary }}</span>
     {% endif %}
   </span>
-  <span class="status-dot status-dot--{% if row.ignored %}ignored{% elif row.decided %}decided{% else %}open{% endif %}"
-        title="{% if row.ignored %}Not a data point{% elif row.decided %}Annotated{% else %}To assign{% endif %}"></span>
+  <span class="status-dot status-dot--{% if row.ignored %}ignored{% elif row.decided %}decided{% elif row.pending %}pending{% else %}open{% endif %}"
+        title="{% if row.ignored %}Not a data point{% elif row.decided %}Annotated{% elif row.pending %}Suggested, waiting for staff{% else %}To assign{% endif %}"></span>
 </div>
 {% if oob %}
   {% include "schemas/tree/_group_count.html" %}

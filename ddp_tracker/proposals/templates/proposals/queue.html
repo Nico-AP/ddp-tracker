@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load static proposal_tags %}
+{% block title %}{{ title }} · DDP Tracker{% endblock %}
+{% block content %}
+  <script src="{% static 'js/proposals.js' %}" defer></script>
+  <h1>Suggestions</h1>
+  {% proposals_waiting as waiting %}
+  <ul class="nav nav-tabs">
+    <li class="nav-item">
+      <a href="{% url 'proposals:annotations' %}"
+         class="nav-link{% if queue == "annotations" %} active{% endif %}">
+        Annotations <span class="badge rounded-pill">{{ waiting.annotations }}</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'proposals:representations' %}"
+         class="nav-link{% if queue == "representations" %} active{% endif %}">
+        Representations <span class="badge rounded-pill">{{ waiting.representations }}</span>
+      </a>
+    </li>
+  </ul>
+  {% if platforms %}
+    <ul class="nav nav-pills format-choice" aria-label="Platform">
+      {% for slug, name, count in platforms %}
+        <li class="nav-item">
+          <a class="nav-link{% if platform.slug == slug %} active{% endif %}"
+             href="?platform={{ slug }}">{{ name }} <span class="badge rounded-pill">{{ count }}</span></a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <p class="muted">
+    One at a time: <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>a</kbd> accept · <kbd>r</kbd> reject (with a reason).
+  </p>
+  <div class="proposals" data-proposals>
+    {% for entry in entries %}
+      {% include "proposals/_entry.html" %}
+    {% empty %}
+      <p class="muted">Nothing to decide.</p>
+    {% endfor %}
+  </div>
+{% endblock %}

@@ -19,7 +19,7 @@ DATA = {"data.json": b'{"Ids": [1, 2, 3], "VideoList": [{"Date": "2024-01-01"}]}
 
 class ListTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user("curator")
+        self.user = User.objects.create_user("curator", is_staff=True)  # staff decide directly
         self.platform = Platform.objects.create(name="TikTok", slug="tiktok")
         self.upload = parsed_upload(
             self.platform, DATA, requested_at=date(2026, 1, 1), register=True

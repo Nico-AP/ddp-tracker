@@ -1,4 +1,5 @@
 <section class="representation">
+  {% if suggested %}<p class="message message--info">Suggested; staff will review your change.</p>{% endif %}
   <p>
     <span class="badge badge--{{ representation.pattern }}">{{ representation.get_pattern_display }}</span>
     {% if representation.statement %}<strong>{{ representation.statement }}</strong>{% endif %}

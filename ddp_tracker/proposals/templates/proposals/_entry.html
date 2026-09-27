@@ -1,0 +1,86 @@
+{# One suggestion (proposals/services.py): what it is about, what it changes ("now → proposed"), who suggested it and why; staff decide it here, the proposer can withdraw it. #}
+{% with proposal=entry.proposal %}
+  <article class="proposal{% if not proposal.is_open %} proposal--decided{% endif %}"
+           data-proposal
+           tabindex="0"
+           id="proposal-{{ proposal.pk }}">
+    <header class="proposal__head">
+      <span class="proposal__kind">{{ proposal.get_kind_display }}</span>
+      {% if proposal.location %}
+        <code class="proposal__target">{{ proposal.location.path }}</code>
+      {% elif proposal.annotation %}
+        <a class="proposal__target"
+           href="{{ proposal.annotation.get_absolute_url }}">{{ proposal.annotation }}</a>
+      {% elif proposal.representation %}
+        <a class="proposal__target"
+           href="{{ proposal.representation.get_absolute_url }}">{{ proposal.representation }}</a>
+      {% endif %}
+      <span class="muted proposal__by">
+        by {{ proposal.proposed_by|default:"a former user" }}, {{ proposal.created_at|date }}
+      </span>
+      {% if not proposal.is_open %}
+        <span class="badge badge--{{ proposal.status }}">{{ proposal.get_status_display }}</span>
+      {% endif %}
+    </header>
+    {% if proposal.comment %}<p class="proposal__comment">“{{ proposal.comment }}”</p>{% endif %}
+    {% if entry.changes %}
+      <table class="proposal__changes">
+        <tbody>
+          {% for field, now, proposed in entry.changes %}
+            <tr>
+              <th scope="row">{{ field }}</th>
+              <td class="muted">{{ now|default:"–" }}</td>
+              <td>→ {{ proposed|default:"–" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+    {% if error %}<p class="message message--error">{{ error }}</p>{% endif %}
+    {% if proposal.is_open %}
+      {% if entry.stale and not error %}
+        <p class="message message--warning">This changed since it was suggested.</p>
+      {% endif %}
+      {% if user.is_staff %}
+        <div class="proposal__actions">
+          <form hx-post="{% url 'proposals:decide' proposal.pk 'accept' %}"
+                hx-target="closest [data-proposal]"
+                hx-swap="outerHTML">
+            {% if entry.stale %}<input type="hidden" name="stale" value="1">{% endif %}
+            <button type="submit" class="btn btn--small" data-accept>
+              {% if entry.stale %}
+                Accept anyway
+              {% else %}
+                Accept
+              {% endif %}
+            </button>
+          </form>
+          <form class="proposal__reject"
+                hx-post="{% url 'proposals:decide' proposal.pk 'reject' %}"
+                hx-target="closest [data-proposal]"
+                hx-swap="outerHTML">
+            <input type="text"
+                   name="reason"
+                   class="form-control"
+                   placeholder="Why not? (shown to the proposer)"
+                   aria-label="Reason for rejecting"
+                   required
+                   data-reason>
+            <button type="submit" class="link-button">Reject</button>
+          </form>
+        </div>
+      {% elif proposal.proposed_by_id == user.pk %}
+        <form class="proposal__actions"
+              hx-post="{% url 'proposals:withdraw' proposal.pk %}"
+              hx-target="closest [data-proposal]"
+              hx-swap="outerHTML">
+          <button type="submit" class="link-button">Withdraw</button>
+        </form>
+      {% endif %}
+    {% else %}
+      <p class="muted proposal__decided">
+        {{ proposal.get_status_display }}{% if proposal.decided_by %} by {{ proposal.decided_by }}{% endif %}{% if proposal.decided_at %}, {{ proposal.decided_at|date }}{% endif %}{% if proposal.reason %}: {{ proposal.reason }}{% endif %}
+      </p>
+    {% endif %}
+  </article>
+{% endwith %}

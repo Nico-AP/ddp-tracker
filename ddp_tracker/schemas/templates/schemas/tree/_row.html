@@ -14,6 +14,10 @@
   </button>
   <span class="review-row__type">{% if row.muted %}{{ row.observation.kind }}{% else %}{{ row.type_badge }}{% endif %}</span>
   <span class="review-row__summary">
+    {% if row.pending %}
+      <span class="review-pill review-pill--pending"
+            title="Suggested, waiting for staff">{{ row.pending }} suggestion{{ row.pending|pluralize }}</span>
+    {% endif %}
     {% if row.muted %}
       <span class="review-row__values muted">{% if row.observation.kind == "data" %}always empty{% else %}not read{% endif %}</span>
     {% else %}

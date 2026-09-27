@@ -36,6 +36,18 @@
       </span>
     </div>
   </header>
+  {% if pending %}
+    <section class="review-panel__section">
+      <h3 class="review-panel__label">Open suggestions</h3>
+      {% for loc in suggestion_locations %}
+        <div hx-get="{% url 'proposals:for' 'location' loc.pk %}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <p class="muted">Loading…</p>
+        </div>
+      {% endfor %}
+    </section>
+  {% endif %}
   {% if profile.is_data_point %}
     <section class="review-panel__section">
       <h3 class="review-panel__label">Annotation</h3>

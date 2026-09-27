@@ -33,7 +33,7 @@
                   <form hx-post="{% url 'representations:remove-annotation' representation.pk annotation.pk %}"
                         hx-target="this"
                         hx-swap="outerHTML">
-                    <button type="submit" class="link-button">Remove</button>
+                    <button type="submit" class="link-button">{% if user.is_staff %}Remove{% else %}Suggest removing{% endif %}</button>
                   </form>
                 </td>
               {% endif %}
@@ -53,7 +53,7 @@
                   <form hx-post="{% url 'representations:remove-link' link.pk %}"
                         hx-target="this"
                         hx-swap="outerHTML">
-                    <button type="submit" class="link-button">Remove</button>
+                    <button type="submit" class="link-button">{% if user.is_staff %}Remove{% else %}Suggest removing{% endif %}</button>
                   </form>
                 </td>
               {% endif %}

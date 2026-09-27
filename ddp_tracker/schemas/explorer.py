@@ -136,5 +136,6 @@ def build_row(
     latest = _latest(_observations(platform, schema_filter))
     builder = _Builder({path: o for path, o in latest.items() if o.is_data_point})
     row = builder.row(row_key(location.path))
+    builder.mark_pending()
     group = next(iter(builder.groups))
     return row, group, places(platform.pk, [group], _root_name(schema_filter))[group].root

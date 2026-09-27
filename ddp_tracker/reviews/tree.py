@@ -105,5 +105,6 @@ def build_row(
     group and root."""
     builder = _Builder(upload, own, {})
     row = builder.row(row_key(location.path))
+    builder.mark_pending()
     group = next(iter(builder.groups))
     return row, group, places(upload.platform_id, [group], upload.file_name)[group].root

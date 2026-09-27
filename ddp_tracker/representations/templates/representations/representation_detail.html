@@ -6,6 +6,15 @@
   </p>
   <h1>{{ representation }}</h1>
   {% include "representations/_details.html" %}
+  {% if open_suggestions %}
+    <h2>Open suggestions</h2>
+    <div class="proposals"
+         hx-get="{% url 'proposals:for' 'representation' representation.pk %}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <p class="muted">Loading…</p>
+    </div>
+  {% endif %}
   <h2>Represented by</h2>
   <p class="muted">The data points that are this concept, per platform.</p>
   {% if represented %}
@@ -29,7 +38,7 @@
                 <form hx-post="{% url 'representations:remove-annotation' representation.pk annotation.pk %}"
                       hx-target="this"
                       hx-swap="outerHTML">
-                  <button type="submit" class="link-button">Remove</button>
+                  <button type="submit" class="link-button">{% if user.is_staff %}Remove{% else %}Suggest removing{% endif %}</button>
                 </form>
               </td>
             {% endif %}

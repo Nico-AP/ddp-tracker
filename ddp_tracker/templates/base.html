@@ -1,4 +1,4 @@
-{% load static upload_tags %}
+{% load static upload_tags proposal_tags %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -24,6 +24,12 @@
           {% approvals_waiting as waiting %}
           {% if waiting %}
             <a href="{% url 'ddps:approvals' %}">Approvals ({{ waiting }})</a>
+          {% endif %}
+          {% if user.is_staff %}
+            {% proposals_waiting as suggestions %}
+            <a href="{% url 'proposals:annotations' %}">Suggestions ({{ suggestions.total }})</a>
+          {% else %}
+            <a href="{% url 'proposals:mine' %}">My suggestions</a>
           {% endif %}
           <a class="btn btn--small" href="{% url 'ddps:upload-create' %}">Upload a DDP</a>
           <form method="post" action="{% url 'logout' %}" class="inline-form">

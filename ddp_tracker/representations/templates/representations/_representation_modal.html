@@ -17,7 +17,8 @@
         hx-target="#modal"
         hx-swap="innerHTML">
     {% include "includes/form.html" with form=represent_form %}
-    <button type="submit" class="btn btn--small">Link</button>
+    <button type="submit"
+            class="btn btn--small">{% if user.is_staff %}Link{% else %}Suggest{% endif %}</button>
   </form>
 </section>
 <section>
@@ -27,7 +28,8 @@
         hx-target="#modal"
         hx-swap="innerHTML">
     {% include "includes/form.html" with form=describe_form %}
-    <button type="submit" class="btn btn--small">Link</button>
+    <button type="submit"
+            class="btn btn--small">{% if user.is_staff %}Link{% else %}Suggest{% endif %}</button>
   </form>
 </section>
 <section>
@@ -37,6 +39,7 @@
         hx-target="#modal"
         hx-swap="innerHTML">
     {% include "includes/form.html" with form=create_form %}
-    <button type="submit" class="btn btn--small">Create and link</button>
+    <button type="submit"
+            class="btn btn--small">{% if user.is_staff %}Create and link{% else %}Suggest{% endif %}</button>
   </form>
 </section>

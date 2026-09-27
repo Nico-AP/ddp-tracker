@@ -25,7 +25,7 @@ class ReviewStatusTests(TestCase):
     """The same JSON file uploaded on its own, then inside a zip: every path moved."""
 
     def setUp(self):
-        self.user = User.objects.create_user("curator")
+        self.user = User.objects.create_user("curator", is_staff=True)  # staff decide directly
         self.platform = Platform.objects.create(name="TikTok", slug="tiktok")
         self.single = parsed_file(self.platform, "user_data_tiktok.json", DATA, register=True)
         self.name = Location.objects.get(path="/Profile/name")
@@ -123,7 +123,7 @@ class ReviewStatusTests(TestCase):
         self.assertContains(shown, "status-dot--decided")
         self.assertContains(shown, 'name="hide"')
         self.assertNotContains(shown, "checked")
-        hidden = self.client.get(url, {"hide": "1"}, HTTP_HX_REQUEST="true")
+        hidden = self.client.get(url, {"hide": "1"}, headers={"hx-request": "true"})
         self.assertNotContains(hidden, reverse("reviews:row", args=[self.zipped.pk, name.pk]))
         page = self.client.get(url, {"hide": "1"})
         self.assertContains(page, "checked")
@@ -133,12 +133,12 @@ class ReviewStatusTests(TestCase):
     def test_the_filter_returns_the_groups_only(self):
         self.client.force_login(self.user)
         url = reverse("reviews:review", args=[self.zipped.pk])
-        found = self.client.get(url, {"q": "comm"}, HTTP_HX_REQUEST="true")
+        found = self.client.get(url, {"q": "comm"}, headers={"hx-request": "true"})
         self.assertTemplateUsed(found, "schemas/tree/_groups.html")
         self.assertTemplateNotUsed(found, "reviews/base.html")
         self.assertContains(found, "App[]")  # its field "comment" matches: kept with its list
         self.assertNotContains(found, "Profile")
-        nothing = self.client.get(url, {"q": "zzz"}, HTTP_HX_REQUEST="true")
+        nothing = self.client.get(url, {"q": "zzz"}, headers={"hx-request": "true"})
         self.assertContains(nothing, "Nothing matches")
 
     def test_use_suggestion_updates_the_row_and_the_counts(self):
@@ -167,7 +167,7 @@ class ReviewStatusTests(TestCase):
         name = Location.objects.get(path="/user_data_tiktok.json/Profile/name")
         panel = self.client.get(reverse("reviews:location", args=[self.zipped.pk, name.pk]))
         self.assertContains(panel, "Likely moved from")
-        self.assertContains(panel, "Use suggestion: Display name")
+        self.assertRegex(panel.content.decode(), r"Use suggestion:\s+Display name")
         self.assertContains(panel, "data-primary-action")
         self.assertContains(panel, f"?upload={self.zipped.pk}")  # the dialog knows the upload
         self.assertContains(panel, "Available after annotating")

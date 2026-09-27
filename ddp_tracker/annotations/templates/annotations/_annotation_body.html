@@ -44,7 +44,8 @@
               <form hx-post="{% url 'annotations:unlink' row.location.pk %}"
                     hx-target="this"
                     hx-swap="outerHTML">
-                <button type="submit" class="link-button">Unlink</button>
+                <button type="submit"
+                        class="link-button">{% if user.is_staff %}Unlink{% else %}Suggest unlinking{% endif %}</button>
               </form>
             </td>
           {% endif %}

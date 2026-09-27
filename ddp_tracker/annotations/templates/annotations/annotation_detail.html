@@ -7,4 +7,13 @@
   </p>
   <h1>{{ annotation }}</h1>
   {% include "annotations/_annotation_body.html" %}
+  {% if open_suggestions %}
+    <h2>Open suggestions</h2>
+    <div class="proposals"
+         hx-get="{% url 'proposals:for' 'annotation' annotation.pk %}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <p class="muted">Loading…</p>
+    </div>
+  {% endif %}
 {% endblock %}

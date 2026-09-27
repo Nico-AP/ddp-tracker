@@ -1,24 +1,30 @@
-<form
-  class="annotation form form--narrow"
-  hx-post="{% url 'annotations:edit' annotation.pk %}"
-  hx-target="this"
-  hx-swap="outerHTML"
->
-  <h2>Edit {{ annotation }}</h2>
+<form class="annotation form form--narrow"
+      hx-post="{% url 'annotations:edit' annotation.pk %}"
+      hx-target="this"
+      hx-swap="outerHTML">
+  <h2>
+    {% if user.is_staff %}
+      Edit
+    {% else %}
+      Suggest a change to
+    {% endif %}
+    {{ annotation }}
+  </h2>
   {% include "includes/form.html" %}
-  <button
-    type="submit"
-    class="btn btn--small"
-  >
-    Save
+  {% if not user.is_staff %}
+    <label for="annotation-comment" class="form-label">Why? (for the reviewer, optional)</label>
+    <textarea id="annotation-comment" name="comment" class="form-control" rows="2"></textarea>
+  {% endif %}
+  <button type="submit" class="btn btn--small">
+    {% if user.is_staff %}
+      Save
+    {% else %}
+      Suggest
+    {% endif %}
   </button>
-  <button
-    type="button"
-    class="link-button"
-    hx-get="{% url 'annotations:details' annotation.pk %}"
-    hx-target="closest .annotation"
-    hx-swap="outerHTML"
-  >
-    Cancel
-  </button>
+  <button type="button"
+          class="link-button"
+          hx-get="{% url 'annotations:details' annotation.pk %}"
+          hx-target="closest .annotation"
+          hx-swap="outerHTML">Cancel</button>
 </form>

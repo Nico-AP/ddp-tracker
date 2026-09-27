@@ -1,3 +1,4 @@
+import re
 from datetime import date
 from io import StringIO
 
@@ -203,7 +204,7 @@ class RefreshObservationsTests(TestCase):
 
 class ViewTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user("curator")
+        self.user = User.objects.create_user("curator", is_staff=True)  # staff decide directly
         self.platform = Platform.objects.create(name="TikTok", slug="tiktok")
         self.upload = parsed_upload(self.platform, ENGLISH, register=True)
         self.name = Location.objects.get(path="/profile/profile.json/name")
@@ -370,7 +371,7 @@ class ViewTests(TestCase):
         self.assertContains(modal, 'data-filter-table="#existing-annotations"')
         self.assertContains(modal, 'data-filter-text="display name shown"')
         self.assertContains(modal, f'name="annotation" value="{first.pk}"')  # one Link form each
-        self.assertContains(modal, ">Link</button>", count=2)
+        self.assertEqual(len(re.findall(r">\s*Link\s*</button>", modal.content.decode())), 2)
         self.assertContains(modal, "No annotation matches.")
 
     def test_no_bulk_actions(self):

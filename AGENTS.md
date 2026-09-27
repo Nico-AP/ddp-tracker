@@ -42,6 +42,7 @@ apps/
   ddps/              # Platform, Upload; upload form + background parse task (tasks.py)
   schemas/           # Location, Observation, filters/profiles/timeline, tree (shared), explorer, triage
   reviews/           # the review of an upload: data points to assign, changed, missing (no models)
+  proposals/         # suggestions: non-staff changes to annotations/representations, staff decide
   annotations/       # Annotation: a data point and what is known about it (examples live on Location)
   representations/   # Representation: cross-platform concept (ontology) linking annotations
     every app has the same shape: models.py, views.py, urls.py, tests.py, templates/<app>/

@@ -1,9 +1,17 @@
-{# The choices for a data point, in the modal; a successful POST closes it (see schemas.views.triage). #}
+{# The choices for a data point, in the modal; a successful POST closes it (see schemas.views.triage). Staff decide; everyone else's choice becomes a suggestion for staff to review (proposals). #}
 {% load core_tags %}
-{% include "includes/modal_header.html" with title="Annotation" %}
+{% if user.is_staff %}
+  {% include "includes/modal_header.html" with title="Annotation" %}
+{% else %}
+  {% include "includes/modal_header.html" with title="Suggest an annotation" %}
+{% endif %}
 <p>
   <code class="path">{{ location.path }}</code>
 </p>
+{% if error %}<p class="message message--error">{{ error }}</p>{% endif %}
+{% if not user.is_staff %}
+  <p class="muted">Your choice goes to staff as a suggestion; it applies once they approve it.</p>
+{% endif %}
 {% with mine=own|values_at:location.path %}
   {% if mine %}
     <p class="own-values__inline">
@@ -27,13 +35,19 @@
       <input type="hidden"
              name="upload"
              value="{{ observation.upload_id|default:'' }}">
-      <button type="submit" class="btn btn--small">Remove assignment</button>
+      <button type="submit" class="btn btn--small">
+        {% if user.is_staff %}
+          Remove assignment
+        {% else %}
+          Suggest removing it
+        {% endif %}
+      </button>
     </form>
   </section>
 {% endif %}
 {% if choices %}
   <section>
-    <h3>Suggested</h3>
+    <h3>Likely matches</h3>
     {% for choice in choices %}
       <form hx-post="{% url 'schemas:triage' location.pk %}"
             hx-target="#modal"
@@ -78,8 +92,22 @@
               class="form-control"
               rows="2"
               placeholder="Anything curators should know (optional)"></textarea>
+    {% if not user.is_staff %}
+      <label for="new-annotation-comment"
+             class="form-label">Why? (for the reviewer, optional)</label>
+      <textarea id="new-annotation-comment"
+                name="comment"
+                class="form-control"
+                rows="2"></textarea>
+    {% endif %}
     <div>
-      <button type="submit" class="btn btn--small">Create</button>
+      <button type="submit" class="btn btn--small">
+        {% if user.is_staff %}
+          Create
+        {% else %}
+          Suggest
+        {% endif %}
+      </button>
     </div>
   </form>
 </section>
@@ -116,7 +144,13 @@
                   <input type="hidden"
                          name="upload"
                          value="{{ observation.upload_id|default:'' }}">
-                  <button type="submit" class="btn btn--small">Link</button>
+                  <button type="submit" class="btn btn--small">
+                    {% if user.is_staff %}
+                      Link
+                    {% else %}
+                      Suggest
+                    {% endif %}
+                  </button>
                 </form>
               </td>
             </tr>
@@ -138,7 +172,10 @@
       <input type="hidden"
              name="upload"
              value="{{ observation.upload_id|default:'' }}">
-      <button type="submit" class="link-button">Not a data point</button>
+      <button type="submit" class="link-button">
+        {% if not user.is_staff %}Suggest:{% endif %}
+        Not a data point
+      </button>
     </form>
   </section>
 {% endif %}

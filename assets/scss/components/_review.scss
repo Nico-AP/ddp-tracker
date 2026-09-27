@@ -587,3 +587,106 @@
   outline: 2px solid $color-primary;
   outline-offset: -2px;
 }
+
+// suggestions (proposals): in the queues, on "My suggestions" and in panels
+.proposals {
+  display: grid;
+  gap: $spacing-unit * 1.5;
+}
+
+.proposal {
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: ($spacing-unit * 1.5) ($spacing-unit * 2);
+  background: $color-bg;
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+
+  p {
+    margin: ($spacing-unit * 0.5) 0;
+  }
+}
+
+.proposal--decided {
+  background: $color-surface;
+}
+
+.proposal__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 $spacing-unit;
+}
+
+.proposal__kind {
+  font-weight: 600;
+}
+
+.proposal__target {
+  word-break: break-all;
+}
+
+.proposal__by {
+  font-size: $font-size-small;
+}
+
+.proposal__comment {
+  font-style: italic;
+}
+
+.proposal__changes {
+  margin: ($spacing-unit * 0.5) 0;
+  font-size: $font-size-small;
+
+  th {
+    padding-right: $spacing-unit * 1.5;
+    color: $color-text-muted;
+    font-weight: 400;
+    vertical-align: top;
+  }
+
+  td {
+    padding-right: $spacing-unit * 1.5;
+    vertical-align: top;
+  }
+}
+
+.proposal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-unit;
+  margin-top: $spacing-unit;
+
+  form {
+    margin: 0;
+  }
+}
+
+.proposal__reject {
+  display: flex;
+  flex: 1;
+  gap: $spacing-unit;
+
+  .form-control {
+    min-width: 12rem;
+  }
+}
+
+.proposal__decided {
+  font-size: $font-size-small;
+}
+
+// a data point with an open suggestion (in trees)
+.review-pill--pending {
+  border-color: color.scale($color-info, $lightness: 60%);
+  background: color.scale($color-info, $lightness: 90%);
+  color: $color-info;
+}
+
+.status-dot--pending {
+  background: $color-info;
+}

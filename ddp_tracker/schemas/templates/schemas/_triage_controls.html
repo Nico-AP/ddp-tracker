@@ -37,9 +37,17 @@
             hx-target="#modal"
             hx-swap="innerHTML">
       {% if location.annotation or location.ignored %}
-        Change
+        {% if user.is_staff %}
+          Change
+        {% else %}
+          Suggest a change
+        {% endif %}
       {% else %}
-        Add annotation
+        {% if user.is_staff %}
+          Add annotation
+        {% else %}
+          Suggest an annotation
+        {% endif %}
       {% endif %}
     </button>
   {% endif %}

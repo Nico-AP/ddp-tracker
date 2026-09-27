@@ -1,17 +1,19 @@
+import copy
 from collections import defaultdict
 from typing import Any
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
-from django.db import transaction
 from django.db.models import Count, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.html import escape
 from django.views.decorators.http import require_POST
 
 from ddp_tracker.annotations.models import Annotation
+from ddp_tracker.proposals.models import Proposal
+from ddp_tracker.proposals.services import REPRESENTATION_FIELDS, ProposalError, submit
 from ddp_tracker.representations.forms import (
     DescribeForm,
     NewRepresentationForm,
@@ -27,7 +29,7 @@ from ddp_tracker.representations.models import (
     Representation,
     RepresentationMetadata,
 )
-from ddp_tracker.representations.services import describe, represent, suggest_term
+from ddp_tracker.representations.services import suggest_term
 from ddp_tracker.schemas.models import ITEM, Location
 from ddp_tracker.users.auth import signed_in_user
 
@@ -97,18 +99,36 @@ def representation_detail(request: HttpRequest, pk: int) -> HttpResponse:
         "platforms": platforms,
         "matrix": matrix,
     }
+    context["open_suggestions"] = representation.proposals.filter(
+        status=Proposal.Status.OPEN
+    ).count()
     return render(request, "representations/representation_detail.html", context)
+
+
+def _values(request: HttpRequest) -> dict[str, str]:
+    """A representation form's data, as a proposal keeps it (``proposals.services``)."""
+    return {field: request.POST.get(field, "") for field in REPRESENTATION_FIELDS}
 
 
 @login_required
 def representation_create(request: HttpRequest) -> HttpResponse:
+    """Staff create it; everyone else suggests it (``proposals``)."""
     form = RepresentationForm(request.POST or None, user=request.user)
     if request.method == "POST" and form.is_valid():
-        representation = form.save(commit=False)
-        representation.updated_by = signed_in_user(request)
-        representation.save()
-        form.save_m2m()
-        return redirect(representation)
+        try:
+            proposal = submit(
+                signed_in_user(request),
+                Proposal.Kind.NEW_REPRESENTATION,
+                values=_values(request),
+                comment=request.POST.get("comment", ""),
+            )
+        except ProposalError as error:
+            form.add_error(None, str(error))
+        else:
+            if proposal is not None:
+                messages.success(request, "Suggested; staff will review it.")
+                return redirect("proposals:mine")
+            return redirect(Representation.objects.get(name=form.cleaned_data["name"]))
     return render(request, "representations/representation_create.html", {"form": form})
 
 
@@ -122,13 +142,24 @@ def representation_details(request: HttpRequest, pk: int) -> HttpResponse:
 def representation_edit(request: HttpRequest, pk: int) -> HttpResponse:
     """HTMX partial: the edit form; a valid POST returns the updated details block."""
     representation = get_object_or_404(_representations(), pk=pk)
-    form = RepresentationForm(request.POST or None, instance=representation, user=request.user)
+    form = RepresentationForm(
+        request.POST or None, instance=copy.copy(representation), user=request.user
+    )
     if request.method == "POST" and form.is_valid():
-        representation = form.save(commit=False)
-        representation.updated_by = signed_in_user(request)
-        representation.save()
-        form.save_m2m()
-        return render(request, "representations/_details.html", {"representation": representation})
+        try:
+            proposal = submit(
+                signed_in_user(request),
+                Proposal.Kind.EDIT_REPRESENTATION,
+                representation=representation,
+                values=_values(request),
+                comment=request.POST.get("comment", ""),
+            )
+        except ProposalError as error:
+            form.add_error(None, str(error))
+        else:
+            representation = get_object_or_404(_representations(), pk=pk)
+            context = {"representation": representation, "suggested": proposal is not None}
+            return render(request, "representations/_details.html", context)
     context = {"representation": representation, "form": form}
     return render(request, "representations/_representation_form.html", context)
 
@@ -137,14 +168,26 @@ def representation_edit(request: HttpRequest, pk: int) -> HttpResponse:
 @require_POST
 def remove_annotation(request: HttpRequest, pk: int, annotation_pk: int) -> HttpResponse:
     representation = get_object_or_404(Representation, pk=pk)
-    representation.annotations.remove(get_object_or_404(Annotation, pk=annotation_pk))
-    return HttpResponse('<p class="muted">Removed.</p>')
+    annotation = get_object_or_404(Annotation, pk=annotation_pk)
+    return _removed(
+        request, Proposal.Kind.UNREPRESENT, representation=representation, annotation=annotation
+    )
 
 
 @login_required
 @require_POST
 def remove_link(request: HttpRequest, pk: int) -> HttpResponse:
-    get_object_or_404(RepresentationMetadata, pk=pk).delete()
+    metadata = get_object_or_404(RepresentationMetadata, pk=pk)
+    return _removed(request, Proposal.Kind.UNDESCRIBE, metadata=metadata)
+
+
+def _removed(request: HttpRequest, kind: str, **targets: Any) -> HttpResponse:
+    try:
+        proposal = submit(signed_in_user(request), kind, **targets)
+    except ProposalError as error:
+        return HttpResponse(f'<p class="muted">{escape(error)}</p>')
+    if proposal is not None:
+        return HttpResponse('<p class="muted">Suggested; staff will review it.</p>')
     return HttpResponse('<p class="muted">Removed.</p>')
 
 
@@ -222,7 +265,16 @@ def annotation_represent(request: HttpRequest, pk: int) -> HttpResponse:
     form = RepresentForm(request.POST, annotation=annotation)
     if not form.is_valid():
         return _modal(request, annotation, represent_form=form)
-    represent(form.cleaned_data["representation"], annotation)
+    try:
+        submit(
+            signed_in_user(request),
+            Proposal.Kind.REPRESENT,
+            representation=form.cleaned_data["representation"],
+            annotation=annotation,
+        )
+    except ProposalError as error:
+        form.add_error(None, str(error))
+        return _modal(request, annotation, represent_form=form)
     return _changed(annotation)
 
 
@@ -234,7 +286,18 @@ def annotation_describe(request: HttpRequest, pk: int) -> HttpResponse:
     if not form.is_valid():
         return _modal(request, annotation, describe_form=form)
     data = form.cleaned_data
-    describe(data["representation"], annotation, data["role"], data["subject"])
+    try:
+        submit(
+            signed_in_user(request),
+            Proposal.Kind.DESCRIBE,
+            representation=data["representation"],
+            annotation=annotation,
+            role=data["role"],
+            subject=data["subject"],
+        )
+    except ProposalError as error:
+        form.add_error(None, str(error))
+        return _modal(request, annotation, describe_form=form)
     return _changed(annotation)
 
 
@@ -246,17 +309,18 @@ def annotation_create(request: HttpRequest, pk: int) -> HttpResponse:
     form = NewRepresentationForm(request.POST, user=request.user)
     if form.is_valid():
         data = form.cleaned_data
+        targets: dict[str, Any] = {"annotation": annotation}
+        if data["relation"] != "represents":
+            targets |= {"role": data["role"], "subject": data["subject"]}
         try:
-            with transaction.atomic():
-                representation = form.save(commit=False)
-                representation.updated_by = signed_in_user(request)
-                representation.save()
-                if data["relation"] == "represents":
-                    represent(representation, annotation)
-                else:
-                    describe(representation, annotation, data["role"], data["subject"])
-        except ValidationError as error:
-            form.add_error("subject", error.messages)
+            submit(
+                signed_in_user(request),
+                Proposal.Kind.NEW_REPRESENTATION,
+                values=_values(request) | {"relation": data["relation"]},
+                **targets,
+            )
+        except ProposalError as error:
+            form.add_error(None, str(error))
         else:
             return _changed(annotation)
     return _modal(request, annotation, create_form=form)

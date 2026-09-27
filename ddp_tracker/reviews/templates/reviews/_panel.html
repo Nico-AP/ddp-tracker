@@ -51,9 +51,14 @@
                 <input type="hidden" name="action" value="link">
                 <input type="hidden" name="annotation" value="{{ choice.annotation.pk }}">
                 <input type="hidden" name="upload" value="{{ upload.pk }}">
-                <button type="submit"
-                        class="btn"
-                        data-primary-action>Use suggestion: {{ choice.annotation }}</button>
+                <button type="submit" class="btn" data-primary-action>
+                  {% if user.is_staff %}
+                    Use suggestion:
+                  {% else %}
+                    Suggest:
+                  {% endif %}
+                  {{ choice.annotation }}
+                </button>
               </form>
               <p class="review-panel__note muted">
                 Likely {{ choice.reason }} from <code>{{ choice.via }}</code>.
@@ -63,7 +68,13 @@
                     class="link-button"
                     hx-get="{% url 'schemas:triage' open.pk %}?upload={{ upload.pk }}"
                     hx-target="#modal"
-                    hx-swap="innerHTML">Add a different annotation…</button>
+                    hx-swap="innerHTML">
+              {% if user.is_staff %}
+                Add a different annotation…
+              {% else %}
+                Suggest a different annotation…
+              {% endif %}
+            </button>
           {% else %}
             <button type="button"
                     class="btn"
@@ -72,9 +83,17 @@
                     hx-target="#modal"
                     hx-swap="innerHTML">
               {% if open == row.primary %}
-                Add annotation
+                {% if user.is_staff %}
+                  Add annotation
+                {% else %}
+                  Suggest an annotation
+                {% endif %}
               {% else %}
-                Add annotation for the list
+                {% if user.is_staff %}
+                  Add annotation for the list
+                {% else %}
+                  Suggest an annotation for the list
+                {% endif %}
               {% endif %}
             </button>
           {% endif %}
@@ -96,6 +115,18 @@
         </dl>
       {% endif %}
     </section>
+    {% if row.pending %}
+      <section class="review-panel__section">
+        <h3 class="review-panel__label">Open suggestions</h3>
+        {% for loc in row.locations %}
+          <div hx-get="{% url 'proposals:for' 'location' loc.pk %}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <p class="muted">Loading…</p>
+          </div>
+        {% endfor %}
+      </section>
+    {% endif %}
     {% if own %}
       <section class="review-panel__section">
         <h3 class="review-panel__label">Values in this file</h3>

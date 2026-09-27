@@ -1,0 +1,6 @@
+{# The open suggestions for one location, annotation or representation (in panels and on pages). #}
+{% for entry in entries %}
+  {% include "proposals/_entry.html" %}
+{% empty %}
+  <p class="muted">None open.</p>
+{% endfor %}
