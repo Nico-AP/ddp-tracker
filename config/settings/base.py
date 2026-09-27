@@ -4,30 +4,93 @@ Environment-specific files (local/production/cicd) import everything from
 here with ``from .base import *`` and then override what differs.
 """
 
+import os
 from pathlib import Path
 
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+APPS_DIR = BASE_DIR / "ddp_tracker"
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 MKDOCS_ROOT = BASE_DIR / "docs/site"
 
 env = environ.Env()
-env.read_env(BASE_DIR / ".env")  # no-op if the file doesn't exist
+READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
+if READ_DOT_ENV_FILE:
+    # OS environment variables take precedence over variables from .env
+    env.read_env(str(BASE_DIR / ".env"))
 
+# GENERAL
+# ------------------------------------------------------------------------------
+DEBUG = env.bool("DJANGO_DEBUG", False)
+TIME_ZONE = "Europe/Zurich"
+LANGUAGE_CODE = "en-us"
+SITE_ID = 1
+USE_I18N = True
+USE_TZ = True
+LOCALE_PATHS = [str(BASE_DIR / "locale")]
+
+
+# DATABASES
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/dev/ref/settings/#databases
+
+if os.getenv("DATABASE_URL", default=None):
+    DATABASES = {"default": env.db("DATABASE_URL")}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env.str("POSTGRES_DB"),
+            "USER": env.str("POSTGRES_USER"),
+            "PASSWORD": env.str("POSTGRES_PASSWORD"),
+            "HOST": env.str("POSTGRES_HOST", default="postgres"),
+            "PORT": env.str("POSTGRES_PORT", default="5432"),
+        },
+    }
+
+DATABASES["default"]["ATOMIC_REQUESTS"] = True
+# https://docs.djangoproject.com/en/stable/ref/settings/#std:setting-DEFAULT_AUTO_FIELD
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-INSTALLED_APPS = [
-    "django.contrib.admin",
+
+# URLS
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/dev/ref/settings/#root-urlconf
+ROOT_URLCONF = "config.urls"
+# https://docs.djangoproject.com/en/dev/ref/settings/#wsgi-application
+WSGI_APPLICATION = "config.wsgi.application"
+
+
+# APPS
+# ------------------------------------------------------------------------------
+DJANGO_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
+    "django.contrib.sites",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # "django.contrib.humanize", # Handy template tags
+    "django.contrib.admin",
+    "django.forms",
+]
+
+THIRD_PARTY_APPS = [
+    "crispy_forms",
+    "crispy_bootstrap5",
+    "allauth",
+    "allauth.account",
+    "allauth.mfa",
+    "allauth.socialaccount",
+    "corsheaders",
     "django_guid",
     "django_tasks",
     "django_tasks_db",
+]
+
+LOCAL_APPS = [
     "ddp_tracker.core",
     "ddp_tracker.ddps",
     "ddp_tracker.schemas",
@@ -37,64 +100,133 @@ INSTALLED_APPS = [
     "ddp_tracker.users",
 ]
 
-MIDDLEWARE = [
-    "django_guid.middleware.guid_middleware",
-    "django.middleware.security.SecurityMiddleware",
-    "csp.middleware.CSPMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
+
+# AUTHENTICATION
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/dev/ref/settings/#authentication-backends
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
 ]
+# https://docs.djangoproject.com/en/dev/ref/settings/#auth-user-model
+AUTH_USER_MODEL = "users.User"
+# https://docs.djangoproject.com/en/dev/ref/settings/#login-redirect-url
+LOGIN_REDIRECT_URL = "core:index"
+LOGOUT_REDIRECT_URL = "core:index"
+# https://docs.djangoproject.com/en/dev/ref/settings/#login-url
+LOGIN_URL = "login"
 
-ROOT_URLCONF = "config.urls"
 
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
-            ],
-        },
-    },
+# PASSWORDS
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/dev/ref/settings/#password-hashers
+PASSWORD_HASHERS = [
+    # https://docs.djangoproject.com/en/dev/topics/auth/passwords/#using-argon2-with-django
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
 ]
-
-WSGI_APPLICATION = "config.wsgi.application"
-ASGI_APPLICATION = "config.asgi.application"
-
-DATABASES = {
-    "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
-}
-
+# https://docs.djangoproject.com/en/dev/ref/settings/#auth-password-validators
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
-USE_I18N = True
-USE_TZ = True
 
-# Authentication
+# MIDDLEWARE
 # ------------------------------------------------------------------------------
-LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "core:index"
-LOGOUT_REDIRECT_URL = "core:index"
-AUTH_USER_MODEL = "users.User"
+# https://docs.djangoproject.com/en/dev/ref/settings/#middleware
+MIDDLEWARE = [
+    "django_guid.middleware.guid_middleware",
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "csp.middleware.CSPMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
+]
 
 
-# Background tasks (django-tasks) - https://github.com/RealOrangeOne/django-tasks
+# STATIC
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/dev/ref/settings/#static-root
+STATIC_ROOT = str(BASE_DIR / "staticfiles")
+# https://docs.djangoproject.com/en/dev/ref/settings/#static-url
+STATIC_URL = "/static/"
+# https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#std:setting-STATICFILES_DIRS
+STATICFILES_DIRS = [str(APPS_DIR / "static")]
+# https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#staticfiles-finders
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+]
+
+
+# MEDIA
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/dev/ref/settings/#media-root
+MEDIA_ROOT = str(APPS_DIR / "media")
+# https://docs.djangoproject.com/en/dev/ref/settings/#media-url
+MEDIA_URL = "/media/"
+
+
+# TEMPLATES
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/dev/ref/settings/#templates
+TEMPLATES = [
+    {
+        # https://docs.djangoproject.com/en/dev/ref/settings/#std:setting-TEMPLATES-BACKEND
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        # https://docs.djangoproject.com/en/dev/ref/settings/#dirs
+        "DIRS": [str(APPS_DIR / "templates")],
+        # https://docs.djangoproject.com/en/dev/ref/settings/#app-dirs
+        "APP_DIRS": True,
+        "OPTIONS": {
+            # https://docs.djangoproject.com/en/dev/ref/settings/#template-context-processors
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.template.context_processors.i18n",
+                "django.template.context_processors.media",
+                "django.template.context_processors.static",
+                "django.template.context_processors.tz",
+                "django.contrib.messages.context_processors.messages",
+                "ddp_tracker.users.context_processors.allauth_settings",
+            ],
+        },
+    },
+]
+
+# https://docs.djangoproject.com/en/dev/ref/settings/#form-renderer
+FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
+
+# http://django-crispy-forms.readthedocs.io/en/latest/install.html#template-packs
+CRISPY_TEMPLATE_PACK = "bootstrap5"
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+
+
+# FIXTURES
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/dev/ref/settings/#fixture-dirs
+FIXTURE_DIRS = (str(APPS_DIR / "fixtures"),)
+
+
+# BACKGROUND TASKS (django-tasks) - https://github.com/RealOrangeOne/django-tasks
 # ------------------------------------------------------------------------------
 # Parsing an upload runs as a task. The immediate backend runs it inside the request, which is
 # fine for development and tests; production uses the database backend and a ``db_worker``.
@@ -106,32 +238,44 @@ TASKS = {
     }
 }
 
-# DDP uploads
-# ------------------------------------------------------------------------------
-# Uploaded DDPs contain personal data and are never stored: they wait here (outside MEDIA, never
-# served) only until the parse task has read them, and are deleted right after.
-DDP_INCOMING_DIR = env.path("DDP_INCOMING_DIR", default=BASE_DIR / "var" / "incoming")
-DDP_MAX_UPLOAD_SIZE = env.int("DDP_MAX_UPLOAD_SIZE", default=2 * 1024**3)  # bytes
-# Below this share of known data points (0 to 1), an upload is unusual: the uploader confirms it and
-# staff approve it before it counts (ddp_tracker/ddps/checks.py).
-DDP_SIMILARITY_THRESHOLD = env.float("DDP_SIMILARITY_THRESHOLD", default=0.3)
-# The uploader's own values (ddp_tracker/ddps/values.py): up to this many per data point, sealed
-# with a key only the uploader's browser holds, and deleted after this many days.
-DDP_VALUES_PER_POINT = env.int("DDP_VALUES_PER_POINT", default=5)
-DDP_VALUES_RETENTION_DAYS = env.int("DDP_VALUES_RETENTION_DAYS", default=3)
 
-STATIC_URL = "static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"
-
-# Email
+# SECURITY
 # ------------------------------------------------------------------------------
-ADMINS = [tuple(x.split(":")) for x in env.list("DJANGO_ADMINS", default=["admin:admin@mail.com"])]
-MANAGERS = ADMINS
+# https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-httponly
+SESSION_COOKIE_HTTPONLY = True
+# https://docs.djangoproject.com/en/dev/ref/settings/#csrf-cookie-httponly
+CSRF_COOKIE_HTTPONLY = True
+# https://docs.djangoproject.com/en/dev/ref/settings/#x-frame-options
+X_FRAME_OPTIONS = "DENY"
+
+
+# EMAIL
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/dev/ref/settings/#email-backend
+EMAIL_BACKEND = env(
+    "DJANGO_EMAIL_BACKEND",
+    default="django.core.mail.backends.smtp.EmailBackend",
+)
+# https://docs.djangoproject.com/en/dev/ref/settings/#email-timeout
+EMAIL_TIMEOUT = 5
 SERVER_EMAIL = "webapp@ddp-tracker.com"
 EMAIL_SUBJECT_PREFIX = "[DDP Tracker] "
 
-# Logging
+
+# ADMIN
+# ------------------------------------------------------------------------------
+# Django Admin URL.
+ADMIN_URL = "admin/"
+# https://docs.djangoproject.com/en/dev/ref/settings/#admins
+ADMINS = [tuple(x.split(":")) for x in env.list("DJANGO_ADMINS", default=["admin:admin@mail.com"])]
+# https://docs.djangoproject.com/en/dev/ref/settings/#managers
+MANAGERS = ADMINS
+# https://cookiecutter-django.readthedocs.io/en/latest/settings.html#other-environment-settings
+# Force the `admin` sign in process to go through the `django-allauth` workflow
+DJANGO_ADMIN_FORCE_ALLAUTH = env.bool("DJANGO_ADMIN_FORCE_ALLAUTH", default=False)
+
+
+# LOGGING
 # ------------------------------------------------------------------------------
 LOGGING = {
     "version": 1,
@@ -262,3 +406,38 @@ LOGGING = {
         },
     },
 }
+
+REDIS_URL = env("REDIS_URL", default="redis://redis:6379/0")
+REDIS_SSL = REDIS_URL.startswith("rediss://")
+
+
+# django-allauth
+# ------------------------------------------------------------------------------
+ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
+# https://docs.allauth.org/en/latest/account/configuration.html
+ACCOUNT_LOGIN_METHODS = {"email"}
+# https://docs.allauth.org/en/latest/account/configuration.html
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+# https://docs.allauth.org/en/latest/account/configuration.html
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+# https://docs.allauth.org/en/latest/account/configuration.html
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+# https://docs.allauth.org/en/latest/account/forms.html
+ACCOUNT_FORMS = {"signup": "ddp_tracker.users.forms.UserSignupForm"}
+# https://docs.allauth.org/en/latest/socialaccount/configuration.html
+SOCIALACCOUNT_FORMS = {"signup": "ddp_tracker.users.forms.UserSocialSignupForm"}
+
+
+# DDP uploads
+# ------------------------------------------------------------------------------
+# Uploaded DDPs contain personal data and are never stored: they wait here (outside MEDIA, never
+# served) only until the parse task has read them, and are deleted right after.
+DDP_INCOMING_DIR = env.path("DDP_INCOMING_DIR", default=BASE_DIR / "var" / "incoming")
+DDP_MAX_UPLOAD_SIZE = env.int("DDP_MAX_UPLOAD_SIZE", default=2 * 1024**3)  # bytes
+# Below this share of known data points (0 to 1), an upload is unusual: the uploader confirms it and
+# staff approve it before it counts (ddp_tracker/ddps/checks.py).
+DDP_SIMILARITY_THRESHOLD = env.float("DDP_SIMILARITY_THRESHOLD", default=0.3)
+# The uploader's own values (ddp_tracker/ddps/values.py): up to this many per data point, sealed
+# with a key only the uploader's browser holds, and deleted after this many days.
+DDP_VALUES_PER_POINT = env.int("DDP_VALUES_PER_POINT", default=5)
+DDP_VALUES_RETENTION_DAYS = env.int("DDP_VALUES_RETENTION_DAYS", default=3)
