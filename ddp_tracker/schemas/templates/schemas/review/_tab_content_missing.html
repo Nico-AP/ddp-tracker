@@ -20,17 +20,20 @@
           {% endif %}<strong>{{ item.location.display_name }}</strong>
         </button>
       </div>
-      <dl class="review-item__facts">
-        <dt>Annotation</dt>
-        <dd>
-          {{ item.location.annotation }}
-        </dd>
-        <dt>Seen</dt>
-        <dd>
-          in {{ item.profile.uploads }} upload{{ item.profile.uploads|pluralize }}, last requested
-          {{ item.profile.last_seen }}
-        </dd>
-      </dl>
+
+      <div class="review-item__body">
+        <dl class="review-item__facts">
+          <dt>Annotation</dt>
+          <dd>
+            {{ item.location.annotation }}
+          </dd>
+          <dt>Seen</dt>
+          <dd>
+            in {{ item.profile.uploads }} upload{{ item.profile.uploads|pluralize }}, last requested
+            {{ item.profile.last_seen }}
+          </dd>
+        </dl>
+      </div>
     </li>
   {% endfor %}
 </ol>
