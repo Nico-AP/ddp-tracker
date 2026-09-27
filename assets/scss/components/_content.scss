@@ -4,12 +4,14 @@
 .table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 
   th,
   td {
     border-bottom: 1px solid $color-border;
     padding: $spacing-unit;
     text-align: left;
+    word-wrap: break-word;
   }
 }
 
