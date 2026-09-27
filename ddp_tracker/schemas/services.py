@@ -10,13 +10,13 @@ from django.utils import timezone
 
 import msgspec
 
-from ddp_parser import children, from_dict, is_data_point, merge_trees, suggest
-from ddp_parser.model import Node
+from ddp_parser import Candidate, children, from_dict, is_data_point, merge_trees, suggest, walk
+from ddp_parser.model import FilesystemNode, Node
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform, Upload
 from ddp_tracker.schemas.models import ITEM, Location, Observation
 from ddp_tracker.schemas.profiles import Profile, profiles
-from ddp_tracker.schemas.timeline import changes_in, new_in
+from ddp_tracker.schemas.timeline import FieldChange, change_details, new_in
 from ddp_tracker.users.models import User
 
 # Fields shown as the node's headline; everything else goes into ``details``.
@@ -126,25 +126,43 @@ def _registered(platform: Platform) -> QuerySet[Upload]:
     return platform.uploads.filter(registered_at__isnull=False, document__isnull=False)
 
 
-def _reference(upload: Upload) -> Node | None:
+def _references(upload: Upload) -> list[Node]:
     """What was known before ``upload``: the merged schemas of its platform's uploads requested
-    strictly earlier (the same cut-off as "new"), or None if there are none.
+    strictly earlier (the same cut-off as "new"), one tree per root format. A single-file export
+    and a zip don't share a root, so merging them would drop one of them.
     """
     earlier = _registered(upload.platform).filter(requested_at__lt=upload.requested_at)
-    roots = [from_dict(u.document).root for u in earlier.only("document") if u.document is not None]
-    return merge_trees(roots) if roots else None
+    by_format: dict[str, list[FilesystemNode]] = {}
+    for other in earlier.only("document", "root_format"):
+        if other.document is not None:
+            by_format.setdefault(other.root_format, []).append(from_dict(other.document).root)
+    return [merge_trees(roots) for roots in by_format.values()]
 
 
 def suggest_for(upload: Upload) -> None:
-    """(Re)compute the suggestions of ``upload``'s unknown data points against ``_reference``."""
+    """(Re)compute the suggestions of ``upload``'s unknown data points against its references:
+    candidates from every root format, best first; none for a path any of them knows.
+    """
     if upload.document is None:
         return
-    known = _reference(upload)
     root = from_dict(upload.document).root
-    found = suggest(known, root) if known is not None else {}
+    references = _references(upload)
+    known = {node.path for reference in references for node in walk(reference)}
+    found: dict[str, dict[str, Candidate]] = {}
+    for reference in references:
+        for path, candidates in suggest(reference, root).items():
+            if path in known:
+                continue
+            best = found.setdefault(path, {})
+            for candidate in candidates:  # the same known path from two formats: the best score
+                if candidate.path not in best or candidate.score > best[candidate.path].score:
+                    best[candidate.path] = candidate
     observations = list(upload.observations.select_related("location"))
     for observation in observations:
-        observation.suggestions = [asdict(c) for c in found.get(observation.location.path, [])]
+        candidates = sorted(
+            found.get(observation.location.path, {}).values(), key=lambda c: -c.score
+        )
+        observation.suggestions = [asdict(c) for c in candidates]
     Observation.objects.bulk_update(observations, ["suggestions"], batch_size=_BATCH)
 
 
@@ -164,21 +182,57 @@ class TriageItem:
     observation: Observation
     choices: list[Choice]
     is_new: bool  # no earlier-requested upload has the path
-    item_type: str = ""  # for a list: what its items are in this upload
 
     @property
     def location(self) -> Location:
         return self.observation.location
 
+    @property
+    def candidate(self) -> dict[str, Any] | None:
+        """The best suggestion ``{path, reason, score}``, annotated or not."""
+        suggestions = self.observation.suggestions
+        return suggestions[0] if suggestions else None
+
+    @property
+    def status(self) -> str:
+        """``moved`` / ``renamed`` (a suggestion), ``new`` (no earlier upload has the path) or
+        ``seen`` (earlier uploads had it, but it was never annotated)."""
+        if self.candidate is not None:
+            return str(self.candidate["reason"])
+        return "new" if self.is_new else "seen"
+
+    @property
+    def within_group(self) -> str:
+        """The path below its list (``<item>/date``), for rows grouped under the list."""
+        rest = self.location.path[len(self.group) :].lstrip("/")
+        return "/".join("<item>" if part == "[]" else part for part in rest.split("/"))
+
+    @property
+    def block(self) -> str:
+        """Rows that belong together (a list and its items' fields share one stripe): the list's
+        path for a list and everything inside its items, else the row's own path."""
+        return self.group or self.location.path
+
+    @property
+    def group(self) -> str:
+        """For data points inside a list's items: the list's path (their rows are grouped under
+        it); "" for everything else."""
+        path = self.location.path
+        return path.rsplit(ITEM, 1)[0] if ITEM + "/" in path or path.endswith(ITEM) else ""
+
 
 @dataclass(frozen=True)
-class Change:
+class ChangedItem:
     observation: Observation
-    fields: list[str]  # kind / type / shape / format with a value no earlier upload had
+    diffs: list[FieldChange]  # each field with a value no earlier upload had, and what they had
+
+    @property
+    def fields(self) -> list[str]:
+        return [diff.field for diff in self.diffs]
 
 
 @dataclass(frozen=True)
-class Missing:
+class MissingItem:
     location: Location
     profile: Profile  # over all uploads: how often and until when it was seen
 
@@ -186,8 +240,8 @@ class Missing:
 @dataclass(frozen=True)
 class Review:
     triage: list[TriageItem]  # untriaged data points of this upload, grouped by parent
-    changed: list[Change]
-    missing: list[Missing]  # locations of annotations this upload has nowhere
+    changed: list[ChangedItem]
+    missing: list[MissingItem]  # locations of annotations this upload has nowhere (unless moved)
 
 
 def choices(observation: Observation) -> list[Choice]:
@@ -209,23 +263,44 @@ def choices(observation: Observation) -> list[Choice]:
     return list(found.values())
 
 
-def item_types(upload: Upload, paths: list[str]) -> dict[str, str]:
-    """List path → the type of its items in ``upload`` (for the lists among ``paths``)."""
-    found = upload.observations.filter(
-        location__path__endswith="/[]", location__parent_path__in=paths
-    ).values_list("location__parent_path", "type")
-    return {parent or "": type_ for parent, type_ in found}
+def _in_file_order(found: list[Observation]) -> list[Observation]:
+    """Depth first, siblings in file order (as the explorer's tree shows them)."""
+    if not found:
+        return found
+    ancestors: set[str] = set()
+    for observation in found:
+        parts = observation.location.path.split("/")
+        ancestors.update("/".join(parts[:end]) for end in range(2, len(parts) + 1))
+    positions = dict(
+        Location.objects.filter(
+            platform=found[0].location.platform_id, path__in=ancestors
+        ).values_list("path", "position")
+    )
+
+    def key(observation: Observation) -> tuple[tuple[int, str], ...]:
+        parts = observation.location.path.split("/")
+        prefixes = ["/".join(parts[:end]) for end in range(2, len(parts) + 1)]
+        return tuple((positions.get(prefix, 0), prefix) for prefix in prefixes)
+
+    return sorted(found, key=key)
 
 
 def review(upload: Upload) -> Review:
     """What a curator needs to look at for ``upload`` (definitions: docs/tracker/concepts.md)."""
     observations = upload.observations.select_related("location", "location__annotation")
     new = new_in(upload)
-    untriaged = observations.filter(
-        is_data_point=True, location__annotation__isnull=True, location__ignored=False
-    ).order_by("location__parent_path", "location__position")
-    changes = changes_in(upload)
+    untriaged = _in_file_order(
+        list(
+            observations.filter(
+                is_data_point=True, location__annotation__isnull=True, location__ignored=False
+            )
+        )
+    )
+    changes = change_details(upload)
     present = set(upload.observations.values_list("location__path", flat=True))
+    # an annotated path that a data point here likely matches (at another path or under another
+    # key name) isn't missing: it appears once, as that data point's "likely matches …"
+    moved_from = {o.suggestions[0]["path"] for o in untriaged if o.suggestions}
     missing = [
         location
         for location in upload.platform.locations.filter(annotation__isnull=False)
@@ -234,22 +309,19 @@ def review(upload: Upload) -> Review:
         .order_by("path")
         # a list's item is absent when the list is empty: not missing, just no items this time
         if not (location.path.endswith(ITEM) and location.parent_path in present)
+        and location.path not in moved_from
     ]
     seen = profiles(
         (location.pk for location in missing),
         Observation.objects.filter(upload__registered_at__isnull=False),
     )
-    items = item_types(upload, [o.location.path for o in untriaged])
     return Review(
-        triage=[
-            TriageItem(o, choices(o), o.location_id in new, items.get(o.location.path, ""))
-            for o in untriaged
-        ],
+        triage=[TriageItem(o, choices(o), o.location_id in new) for o in untriaged],
         changed=[
-            Change(o, changes[o.location_id])
+            ChangedItem(o, changes[o.location_id])
             for o in observations.filter(location_id__in=changes).order_by("location__path")
         ],
-        missing=[Missing(location, seen[location.pk]) for location in missing],
+        missing=[MissingItem(location, seen[location.pk]) for location in missing],
     )
 
 

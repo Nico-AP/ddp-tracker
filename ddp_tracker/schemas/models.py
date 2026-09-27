@@ -42,8 +42,11 @@ class Location(models.Model):
 
     @property
     def display_name(self) -> str:
-        """Array item nodes have no name: "<item>" (``[]`` in their path)."""
-        return "<item>" if self.name is None else (self.name or '""')
+        """The key; "<item>" for a list's item (``[]`` in its path), "Root" for the root (its name
+        is the uploaded file's, possibly personal, so it isn't stored)."""
+        if self.name is None:
+            return "Root" if self.path == "" else "<item>"
+        return self.name or '""'
 
     @property
     def default_name(self) -> str:

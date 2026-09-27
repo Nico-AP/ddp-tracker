@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static core_tags %}
+{% block title %}Review {{ upload.file_name }} · DDP Tracker{% endblock %}
+
+{% block content %}
+  <script src="{% static 'js/explorer.js' %}" defer></script>
+
+  <p class="breadcrumbs">
+    <a href="{{ upload.platform.get_absolute_url }}">{{ upload.platform }}</a> /
+    <a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a> / review
+  </p>
+
+  <h1>Review {{ upload.file_name }}</h1>
+
+  {% if not review %}
+    <p class="muted">This upload isn't part of the collected schema (see the upload's page).</p>
+
+  {% else %}
+    <p class="muted">
+      Requested {{ upload.requested_at }}{% if upload.language %}, {{ upload.get_language_display }}{% endif %}
+      · compared with the {{ upload.platform }} uploads requested earlier
+      (<a href="{% url 'docs' 'tracker/concepts/' %}">definitions</a>).
+    </p>
+
+    <nav class="tabs" aria-label="Review sections">
+      <a href="?tab=assign"
+         class="tabs__tab{% if tab == 'assign' %} tabs__tab--active{% endif %}"
+         {% if tab == 'assign' %}aria-current="page"{% endif %}>To assign ({{ review.triage|length }})</a>
+      <a href="?tab=changed"
+         class="tabs__tab{% if tab == 'changed' %} tabs__tab--active{% endif %}"
+         {% if tab == 'changed' %}aria-current="page"{% endif %}>Changed ({{ review.changed|length }})</a>
+      <a href="?tab=missing"
+         class="tabs__tab{% if tab == 'missing' %} tabs__tab--active{% endif %}"
+         {% if tab == 'missing' %}aria-current="page"{% endif %}>Missing ({{ review.missing|length }})</a>
+    </nav>
+
+    <div class="explorer explorer--review">
+      <div>
+        {% if tab == "assign" %}
+          {% include "schemas/review/_tab_content_assign.html" %}
+
+        {% elif tab == "changed" %}
+          {% include "schemas/review/_tab_content_changed.html" %}
+
+        {% else %}
+          {% if review.missing %}
+            {% include "schemas/review/_tab_content_missing.html" %}
+
+          {% else %}
+            <p class="muted">Nothing missing: every annotated data point is in this upload.</p>
+          {% endif %}
+        {% endif %}
+      </div>
+      <aside id="node-detail" class="detail-panel">
+        <p class="muted">Select a data point to see its details and annotation.</p>
+      </aside>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -9,8 +9,6 @@ from ddp_tracker.schemas.filters import SchemaFilter
 from ddp_tracker.schemas.labels import plain_type
 from ddp_tracker.schemas.models import Location, Observation
 from ddp_tracker.schemas.profiles import profiles
-from ddp_tracker.schemas.services import review
-from ddp_tracker.users.models import User
 
 
 class PlainTypeTests(TestCase):
@@ -89,14 +87,12 @@ class LabelledPagesTests(TestCase):
         self.assertEqual(labels["/data.json/Watch History/VideoList/[]"], "object")
         self.assertEqual(labels["/data.json/Watch History/VideoList/[]/Date"], "text")
         self.assertEqual(labels["/data.json/Ids"], "list of integers")
-        self.assertEqual(labels["/data.json/Empty"], "list (always empty so far)")
+        self.assertEqual(labels["/data.json/Empty"], "empty list")  # one upload: no "so far"
         self.assertEqual(labels["/data.json/profile"], "group of keys")
         self.assertEqual(labels["/comments.json"], "file: list of objects")
         self.assertEqual(labels["/data.json"], "file: group of keys")
         self.assertEqual(labels["/chats.json/Group Chat"], "group of keys")
-        self.assertEqual(
-            labels["/chats.json/Group Chat/GroupChat"], "group of keys (always empty so far)"
-        )
+        self.assertEqual(labels["/chats.json/Group Chat/GroupChat"], "group of keys (empty)")
         # a later export with strings: counted per upload, within the filter's scope
         parsed_upload(
             self.platform,
@@ -106,6 +102,27 @@ class LabelledPagesTests(TestCase):
         )
         later = SchemaFilter(requested_from=date(2026, 3, 1)).observations(self.platform)
         self.assertEqual(self.labels(later)["/data.json/Ids"], "list of texts")
+
+    def test_so_far_only_across_several_uploads(self):
+        parsed_upload(
+            self.platform,
+            {"chats.json": b'{"Group Chat": {"GroupChat": {}}}', "data.json": b'{"Empty": []}'},
+            requested_at=date(2026, 6, 1),
+            register=True,
+        )
+        labels = self.labels()
+        self.assertEqual(labels["/data.json/Empty"], "list (always empty so far)")
+        self.assertEqual(
+            labels["/chats.json/Group Chat/GroupChat"], "group of keys (always empty so far)"
+        )
+        single = [
+            (("data", "array", "/a.json/x", ""), "empty list"),
+            (("data", "object", "/a.json/x", ""), "group of keys (empty)"),
+            (("data", "object", "/a.json/rows/[]", ""), "object (empty)"),
+        ]
+        for args, label in single:
+            with self.subTest(args=args):
+                self.assertEqual(plain_type(*args, empty=True, single=True), label)
 
     def test_pages_show_labels(self):
         detail = reverse("schemas:location", args=["tiktok"])
@@ -119,17 +136,6 @@ class LabelledPagesTests(TestCase):
         )
         self.assertContains(children, "&lt;item&gt;")
         self.assertContains(children, ">object<", html=False)
-        # a review row: from this upload's observations
-        items = {item.location.path: item.item_type for item in review(self.upload).triage}
-        self.assertEqual(items["/data.json/Ids"], "integer")
-        self.client.force_login(User.objects.create_user("curator"))
-        page = self.client.get(reverse("schemas:review", args=[self.upload.pk]))
-        self.assertContains(page, "list of integers")
-        row = self.client.get(
-            reverse("schemas:triage-row", args=[Location.objects.get(path="/data.json/Ids").pk]),
-            {"upload": self.upload.pk},
-        )
-        self.assertContains(row, "list of integers")
 
     def test_tree_labels_stay_short(self):
         children = self.client.get(

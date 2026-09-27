@@ -62,6 +62,15 @@ a {
   }
 }
 
+// the review's table needs more room than the explorer's tree
+.explorer--review {
+  grid-template-columns: minmax(0, 5fr) minmax(0, 3fr);
+
+  @media (width <= 800px) {
+    grid-template-columns: 1fr;
+  }
+}
+
 .detail-panel {
   position: sticky;
   top: $spacing-unit * 2;

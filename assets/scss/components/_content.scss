@@ -150,3 +150,160 @@
     }
   }
 }
+
+.tabs {
+  display: flex;
+  gap: $spacing-unit * 3;
+  margin-bottom: $spacing-unit * 2;
+  border-bottom: 1px solid $color-border;
+}
+
+.tabs__tab {
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  padding: $spacing-unit 0;
+  color: $color-text-muted;
+  text-decoration: none;
+
+  &:hover {
+    color: $color-text;
+  }
+}
+
+.tabs__tab--active {
+  border-bottom-color: $color-primary;
+  color: $color-text;
+  font-weight: 600;
+}
+
+.review-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-list--block {
+  border-top: none;
+}
+
+.review-list > .review-item:not(:last-child) {
+  border-bottom: 1px solid $color-border;
+}
+
+// stripes: every second entry (a data point, or a list's block) very light grey
+.review-list > .review-block:nth-child(even),
+.review-list:not(.review-list--block) > .review-item:nth-child(even) {
+  background: $color-surface;
+}
+
+.review-item {
+  font-size: $font-size-small;
+  cursor: pointer;
+
+  &:hover:not(.is-selected) {
+    background: color.adjust($color-surface, $lightness: -2.5%);
+  }
+
+  &.is-selected {
+    background: color.scale($color-primary, $lightness: 92%);
+  }
+
+  .badge {
+    margin-left: 0;
+    white-space: nowrap;
+  }
+
+  .link-button {
+    text-align: left;
+  }
+}
+
+.review-list .review-item--annotated:not(.is-selected) {
+  background: color.scale($color-success, $lightness: 92%);
+}
+
+.review-block {
+  border-radius: $radius-base;
+  border: 1px solid $color-border;
+  margin-bottom: $spacing-unit;
+  overflow: hidden;
+}
+
+.review-item--in-item {
+  padding-left: $spacing-unit * 4;
+}
+
+.review-item__head {
+  display: flex;
+  padding: $spacing-unit $spacing-unit $spacing-unit * 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 $spacing-unit;
+  background: $color-bg-darker;
+}
+
+.review-item__path {
+  border: none;
+  background: none;
+  padding: 0;
+  min-width: 0;
+  color: $color-text;
+  font: inherit;
+  font-family: $font-family-mono;
+  text-align: left;
+  cursor: pointer;
+
+  strong {
+    font-weight: 700;
+  }
+}
+
+.review-item__body {
+  padding: ($spacing-unit * 2) $spacing-unit;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.review-item__annotation-suggestion > code {
+  font-size: $font-size-small * 0.95;
+}
+
+// labelled lines under the path ("Assessment", "Annotation suggestion" …)
+.review-item__facts {
+  gap: ($spacing-unit * 0.25) ($spacing-unit * 1.5);
+  margin: 0;
+
+  dt {
+    color: $color-text-muted;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.review-item__actions {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-unit;
+  justify-content: end;
+  flex-shrink: 0;
+
+  .btn--small {
+    font-size: inherit;
+  }
+
+  form {
+    display: inline;
+  }
+}
+
+.review-group {
+  border-bottom: 1px dashed $color-border;
+  padding: ($spacing-unit * 0.5) ($spacing-unit * 2);
+  color: $color-text-muted;
+  font-size: $font-size-small;
+}

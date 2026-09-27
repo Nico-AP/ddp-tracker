@@ -40,7 +40,7 @@
 }
 
 // the node shown in the side panel (static/js/explorer.js)
-.tree__name--selected {
+.tree__name.is-selected {
   border-radius: $radius-base;
   background: color.scale($color-primary, $lightness: 85%);
   padding: 0 ($spacing-unit * 0.5);

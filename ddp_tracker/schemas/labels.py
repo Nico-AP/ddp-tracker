@@ -5,7 +5,7 @@ Display only: paths and the stored kinds and types stay technical (see docs/trac
 """
 
 _ITEMS = "/[]"
-_KINDS = {
+KIND_NAMES = {
     "container": "archive",
     "folder": "folder",
     "media": "media file",
@@ -32,44 +32,52 @@ def _join(names: list[str]) -> str:
     return " or ".join(names)
 
 
-def _value(type_: str, path: str, *, empty: bool = False) -> str:
-    """A value, an object or a mix of them, in words. ``empty``: an object never seen with keys."""
+def _value(type_: str, path: str, *, empty: bool = False, single: bool = False) -> str:
+    """A value, an object or a mix of them, in words. ``empty``: an object never seen with keys;
+    ``single``: the view covers one upload, so "so far" would be misleading."""
     types, nullable = _types(type_)
     if not types:
         return "empty" if nullable else ""
     if types == ["object"]:
         label = "object" if path.endswith(_ITEMS) else "group of keys"
         if empty:
-            return f"{label} (always empty so far)"
+            return f"{label} (empty)" if single else f"{label} (always empty so far)"
     else:
         label = _join([_TYPES.get(name, (name, name))[0] for name in types])
     return f"{label} (or empty)" if nullable else label
 
 
-def _list(item_type: str) -> str:
+def _list(item_type: str, *, single: bool = False) -> str:
     types, _ = _types(item_type)
     if not types:
-        return "list (always empty so far)"
+        return "empty list" if single else "list (always empty so far)"
     return "list of " + _join([_TYPES.get(name, (name, name))[1] for name in types])
 
 
 def plain_type(
-    kind: str, type_: str, path: str, item_type: str = "", *, empty: bool = False
+    kind: str,
+    type_: str,
+    path: str,
+    item_type: str = "",
+    *,
+    empty: bool = False,
+    single: bool = False,
 ) -> str:
     """How a node reads to a person: a list with what its items are, a group of keys (an object
     that only groups keys; a list's item object stays "object"), a value in words, or what a
-    file is. ``empty``: the node never had children (an object always seen as ``{}``).
+    file is. ``empty``: the node never had children (an object always seen as ``{}``);
+    ``single``: the view covers one upload ("empty list" rather than "always empty so far").
     """
-    if kind in _KINDS:
-        return _KINDS[kind]
+    if kind in KIND_NAMES:
+        return KIND_NAMES[kind]
     types, nullable = _types(type_)
     if types == ["array"]:
-        label = _list(item_type) + (" (or empty)" if nullable else "")
+        label = _list(item_type, single=single) + (" (or empty)" if nullable else "")
     elif "array" in types:  # sometimes a list, sometimes something else
         others = _value("|".join(name for name in types if name != "array"), path)
-        label = f"{_list(item_type)} or {others}"
+        label = f"{_list(item_type, single=single)} or {others}"
     else:
-        label = _value(type_, path, empty=empty)
+        label = _value(type_, path, empty=empty, single=single)
     if kind == "file":
         return f"file: {label}" if label else "file"
     return label  # a list's item is named "each item" (Location.display_name): its type is enough

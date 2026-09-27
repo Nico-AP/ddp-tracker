@@ -77,7 +77,9 @@ class AnnotationInPanelTests(TestCase):
 
     def setUp(self):
         self.platform = Platform.objects.create(name="TikTok", slug="tiktok")
-        parsed_upload(self.platform, {"a.json": b'{"email": "a@b.ch"}'}, register=True)
+        self.upload = parsed_upload(
+            self.platform, {"a.json": b'{"email": "a@b.ch"}'}, register=True
+        )
         self.location = Location.objects.get(path="/a.json/email")
         self.annotation = create_annotation(self.location, "Email address", None)
         self.annotation.description = "The account's address."
@@ -99,10 +101,12 @@ class AnnotationInPanelTests(TestCase):
             reverse("schemas:triage-row", args=[self.location.pk]), {"panel": "1"}
         )
         self.assertContains(row, "Show annotation")
-        self.assertNotContains(
-            self.client.get(reverse("schemas:triage-row", args=[self.location.pk])),
-            "Show annotation",
+        # in a review (with its upload) it is a list item, not the panel's block
+        review_row = self.client.get(
+            reverse("schemas:triage-row", args=[self.location.pk]), {"upload": self.upload.pk}
         )
+        self.assertNotContains(review_row, "Show annotation")
+        self.assertContains(review_row, "review-item")
 
     def test_modal_shows_the_annotation_page(self):
         modal = self.client.get(reverse("annotations:modal", args=[self.annotation.pk]))

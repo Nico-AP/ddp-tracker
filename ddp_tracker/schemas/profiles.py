@@ -46,6 +46,7 @@ class Profile:
             self.path,
             _main(self.item_types),
             empty=not self.has_children,
+            single=self.uploads <= 1,  # seen in one upload: no "so far"
         )
 
     @property

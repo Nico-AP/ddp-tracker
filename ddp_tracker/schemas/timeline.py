@@ -5,6 +5,7 @@ of request dates, never the order in which uploads happened to be registered.
 """
 
 from collections import defaultdict
+from dataclasses import dataclass
 
 from ddp_parser.model import JsonType
 from ddp_tracker.ddps.models import Upload
@@ -54,22 +55,38 @@ def new_in(upload: Upload) -> set[int]:
     }
 
 
-def changes_in(upload: Upload) -> dict[int, list[str]]:
-    """Location id → fields whose value in ``upload`` no earlier-requested upload had.
+@dataclass(frozen=True)
+class FieldChange:
+    field: str  # kind / type / shape / format
+    before: tuple[str, ...]  # the values earlier-requested uploads had (noise left out)
+    now: str  # the value in this upload
+
+
+def change_details(upload: Upload) -> dict[int, list[FieldChange]]:
+    """Location id → each field whose value in ``upload`` no earlier-requested upload had, with
+    the values they had instead.
 
     Locations that are new in ``upload`` have no changes; ignored values never count.
     """
     earlier = _earlier(upload)
-    changes: dict[int, list[str]] = {}
+    changes: dict[int, list[FieldChange]] = {}
     for observation in upload.observations.values("location_id", *FIELDS):
         before = earlier.get(observation["location_id"])
         if before is None:
             continue
-        fields = [
-            name
+        found = [
+            FieldChange(name, tuple(sorted(v for v in before[name] if v)), value)
             for name in FIELDS
             if (value := normalized(name, observation[name])) and value not in before[name]
         ]
-        if fields:
-            changes[observation["location_id"]] = fields
+        if found:
+            changes[observation["location_id"]] = found
     return changes
+
+
+def changes_in(upload: Upload) -> dict[int, list[str]]:
+    """Location id → fields whose value in ``upload`` no earlier-requested upload had."""
+    return {
+        location_id: [change.field for change in found]
+        for location_id, found in change_details(upload).items()
+    }

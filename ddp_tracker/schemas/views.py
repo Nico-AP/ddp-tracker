@@ -19,11 +19,11 @@ from ddp_tracker.schemas.json_view import json_path
 from ddp_tracker.schemas.models import ITEM, Location, Observation
 from ddp_tracker.schemas.profiles import profiles
 from ddp_tracker.schemas.services import (
+    TriageItem,
     choices,
     create_annotation,
     create_with_list,
     ignore,
-    item_types,
     link,
     list_name,
     review,
@@ -117,21 +117,34 @@ def location_detail(request: HttpRequest, slug: str) -> HttpResponse:
         path=request.GET.get("path", ""),
     )
     observations = schema_filter.observations(platform)
+    context = _panel_context(location, observations, observations, schema_filter)
+    return render(request, "schemas/_location_detail.html", context)
+
+
+def _panel_context(
+    location: Location,
+    observations: QuerySet[Observation],
+    history_from: QuerySet[Observation],
+    schema_filter: SchemaFilter,
+    observation: Observation | None = None,
+) -> dict[str, Any]:
+    """The side panel of a location: its profile and JSON within ``observations``, its history
+    within ``history_from``; ``observation`` is the upload being reviewed, if any."""
     history = (
-        observations.filter(location=location)
+        history_from.filter(location=location)
         .order_by("upload__requested_at")
         .values("upload__requested_at", "upload__language", "kind", "type", "shape", "format")
     )
-    context = {
-        "platform": platform,
+    return {
+        "platform": location.platform,
         "filter": schema_filter,
         "location": location,
         "profile": profiles([location.pk], observations)[location.pk],
         "json_path": json_path(location, observations),
         "history": history,
-        "annotations": platform.annotations.all(),
+        "annotations": location.platform.annotations.all(),
+        "observation": observation,
     }
-    return render(request, "schemas/_location_detail.html", context)
 
 
 @login_required
@@ -151,12 +164,30 @@ def location_examples(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def upload_review(request: HttpRequest, pk: int) -> HttpResponse:
     upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
+    tab = request.GET.get("tab", "assign")
     context = {
         "upload": upload,
         "review": review(upload) if upload.registered_at else None,
-        "annotations": upload.platform.annotations.all(),
+        "tab": tab if tab in {"assign", "changed", "missing"} else "assign",
     }
-    return render(request, "schemas/review.html", context)
+    return render(request, "schemas/review/base.html", context)
+
+
+@login_required
+def review_location(request: HttpRequest, pk: int, location_pk: int) -> HttpResponse:
+    """HTMX: the side panel of a data point, as it is in the reviewed upload (a missing one: as
+    in all uploads)."""
+    upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
+    location = get_object_or_404(
+        Location.objects.select_related("annotation", "platform"),
+        pk=location_pk,
+        platform=upload.platform,
+    )
+    counted = Observation.objects.filter(upload__registered_at__isnull=False)
+    observation = upload.observations.filter(location=location).first()
+    scope = upload.observations.all() if observation else counted
+    context = _panel_context(location, scope, counted, SchemaFilter(), observation)
+    return render(request, "schemas/_location_detail.html", context)
 
 
 def _row_context(request: HttpRequest, location: Location) -> dict[str, Any]:
@@ -171,16 +202,15 @@ def _row_context(request: HttpRequest, location: Location) -> dict[str, Any]:
         if upload_id
         else None
     )
+    found = choices(observation) if observation else []
+    is_new = observation is not None and location.pk in new_in(observation.upload)
     return {
         "location": location,
         "observation": observation,
-        "is_new": observation is not None and location.pk in new_in(observation.upload),
-        "choices": choices(observation) if observation else [],
-        "item_type": (
-            item_types(observation.upload, [location.path]).get(location.path, "")
-            if observation
-            else ""
-        ),
+        "item": TriageItem(observation, found, is_new) if observation else None,
+        "upload": observation.upload if observation else None,
+        "is_new": is_new,
+        "choices": found,
         "annotations": location.platform.annotations.all(),
         "panel": bool(request.GET.get("panel")),  # the explorer's side panel
         **_list_context(location),
@@ -210,7 +240,9 @@ def triage_row(request: HttpRequest, pk: int) -> HttpResponse:
     """HTMX: a data point's triage row (read-only, reloaded after a change)."""
     location = get_object_or_404(Location.objects.select_related("platform", "annotation"), pk=pk)
     context = _row_context(request, location)
-    template = "schemas/_triage_panel.html" if context["panel"] else "schemas/_triage_row.html"
+    # a review row needs the reviewed upload; everything else is the side panel's block
+    in_review = context["item"] is not None and not context["panel"]
+    template = "schemas/review/_review_row.html" if in_review else "schemas/_triage_panel.html"
     return render(request, template, context)
 
 

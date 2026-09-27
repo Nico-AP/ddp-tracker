@@ -295,13 +295,14 @@ class ViewTests(TestCase):
         url = reverse("schemas:review", args=[self.upload.pk])
         self.assertEqual(self.client.get(url).status_code, 302)
         self.client.force_login(self.user)
-        self.assertContains(self.client.get(url), "7 to assign")
+        self.assertContains(self.client.get(url), "To assign (7)")
 
     def test_unregistered_upload_review(self):
         self.client.force_login(self.user)
         other = parsed_upload(self.platform, ENGLISH)
         self.assertContains(
-            self.client.get(reverse("schemas:review", args=[other.pk])), "hasn't been added"
+            self.client.get(reverse("schemas:review", args=[other.pk])),
+            "isn't part of the collected schema",
         )
 
     def test_triage_actions(self):
@@ -347,4 +348,4 @@ class ViewTests(TestCase):
         page = self.client.get(reverse("schemas:review", args=[self.upload.pk]))
         for text in ("Accept all", "everything left", "New annotations for all"):
             self.assertNotContains(page, text)
-        self.assertContains(page, "Add annotation")
+        self.assertContains(page, "Add annotation")  # one data point at a time

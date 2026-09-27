@@ -1,0 +1,22 @@
+{% load core_tags %}
+
+<ol class="review-list">
+  {% regroup review.triage by block as blocks %}
+  {% for block in blocks %}
+    {# a list with its items' fields: one block, one stripe #}
+    <li class="review-block">
+      <ol class="review-list review-list--block">
+        {% for item in block.list %}
+          {% ifchanged item.group %}
+            {% if item.group %}
+              <li class="review-group">
+                Items of <code>{{ item.group|path_breaks }}[]</code>:
+              </li>
+            {% endif %}
+          {% endifchanged %}
+          {% include "schemas/review/_review_row.html" %}
+        {% endfor %}
+      </ol>
+    </li>
+  {% endfor %}
+</ol>
