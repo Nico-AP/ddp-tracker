@@ -1,0 +1,45 @@
+{# The "Missing" tab: annotated data points of earlier uploads that this one doesn't have (removed by the platform, or never used by this account). #}
+<div class="review-tree">
+  {% for root in missing %}
+    <details class="review-root"{% if root.is_open %} open{% endif %}>
+      <summary class="review-root__head">
+        {% include "reviews/_root_title.html" %}
+        <span class="review-root__count">{{ root.open_count }}</span>
+      </summary>
+      {% for section in root.groups %}
+        {% if section.crumbs %}
+          <details class="review-group"{% if section.is_open %} open{% endif %}>
+            {% include "reviews/_section_head.html" %}
+        {% else %}
+          <div class="review-group review-group--loose">
+        {% endif %}
+          <div class="review-group__rows" role="list">
+            {% for item in section.entries %}
+              <div class="review-row" role="listitem" data-panel-row>
+                <button type="button"
+                        class="review-row__name"
+                        title="{{ item.location.path }}"
+                        data-panel-open
+                        hx-get="{% url 'reviews:location' upload.pk item.location.pk %}"
+                        hx-target="#node-detail"
+                        hx-swap="innerHTML"><span class="review-row__icon" aria-hidden="true">◦</span>{{ item.location.display_name }}</button>
+                <span class="review-row__type">{{ item.profile.main_type|default:"–" }}</span>
+                <span class="review-row__summary">
+                  <span class="review-pill review-pill--done">{{ item.location.annotation }}</span>
+                  <span class="review-row__values muted">last seen {{ item.profile.last_seen }}</span>
+                </span>
+                <span class="status-dot status-dot--missing" title="Not in this upload"></span>
+              </div>
+            {% endfor %}
+          </div>
+          {% if section.crumbs %}
+            </details>
+          {% else %}
+            </div>
+          {% endif %}
+      {% endfor %}
+    </details>
+  {% empty %}
+    <p class="muted review-tree__empty">Nothing missing: every annotated data point is in this upload.</p>
+  {% endfor %}
+</div>

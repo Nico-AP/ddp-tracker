@@ -9,6 +9,7 @@ from ddp_parser import from_dict
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.core.tests.utils import parsed_file, parsed_upload
 from ddp_tracker.ddps.models import Platform
+from ddp_tracker.reviews.services import review
 from ddp_tracker.schemas.models import Location, Observation
 from ddp_tracker.schemas.profiles import profiles
 from ddp_tracker.schemas.services import (
@@ -16,7 +17,6 @@ from ddp_tracker.schemas.services import (
     flatten,
     link,
     register_upload,
-    review,
     type_label,
 )
 from ddp_tracker.users.models import User
@@ -264,8 +264,15 @@ class ViewTests(TestCase):
         self.assertContains(self.client.get(url), "Example values")
         response = self.client.post(url, {"example_values": "Jane Doe\n\n  Max Muster "})
         self.assertContains(response, "<code>Jane Doe</code>", html=True)
+        self.assertContains(response, "user input")
         self.name.refresh_from_db()
-        self.assertEqual(self.name.example_values, ["Jane Doe", "Max Muster"])
+        self.assertEqual(
+            self.name.example_values,
+            [
+                {"value": "Jane Doe", "source": "user_input"},
+                {"value": "Max Muster", "source": "user_input"},
+            ],
+        )
         self.assertContains(self.client.get(url), "Jane Doe\nMax Muster")
         detail = self.client.get(
             reverse("schemas:location", args=["tiktok"]), {"path": self.name.path}
@@ -292,16 +299,16 @@ class ViewTests(TestCase):
                 self.assertNotContains(self.client.get(detail, {"path": path}), "Add annotation")
 
     def test_review_requires_login(self):
-        url = reverse("schemas:review", args=[self.upload.pk])
+        url = reverse("reviews:review", args=[self.upload.pk])
         self.assertEqual(self.client.get(url).status_code, 302)
         self.client.force_login(self.user)
-        self.assertContains(self.client.get(url), "To assign (7)")
+        self.assertContains(self.client.get(url), "To assign")
 
     def test_unregistered_upload_review(self):
         self.client.force_login(self.user)
         other = parsed_upload(self.platform, ENGLISH)
         self.assertContains(
-            self.client.get(reverse("schemas:review", args=[other.pk])),
+            self.client.get(reverse("reviews:review", args=[other.pk])),
             "isn't part of the collected schema",
         )
 
@@ -312,17 +319,28 @@ class ViewTests(TestCase):
         modal = self.client.get(url, {"upload": self.upload.pk})
         self.assertContains(modal, "New annotation")
         self.assertContains(modal, 'value="name"')  # the default name
+        for field in ("name", "description", "note"):
+            self.assertContains(modal, f'name="{field}"')
         response = self.client.post(
-            url, {"action": "new", "name": "Display name", "upload": self.upload.pk}
+            url,
+            {
+                "action": "new",
+                "name": "Display name",
+                "description": " The account's shown name. ",
+                "note": "Set at sign-up",
+                "upload": self.upload.pk,
+            },
+        )
+        created = Annotation.objects.get(name="Display name")
+        self.assertEqual(
+            (created.description, created.note), ("The account's shown name.", "Set at sign-up")
         )
         # nothing to show: the modal closes, and the row reloads on the event
         self.assertEqual(response.content, b"")
         self.assertEqual(response["HX-Trigger"], f"triaged-{self.name.pk}")
-        row = self.client.get(
-            reverse("schemas:triage-row", args=[self.name.pk]), {"upload": self.upload.pk}
-        )
+        row = self.client.get(reverse("reviews:row", args=[self.upload.pk, self.name.pk]))
         self.assertContains(row, "Display name")
-        self.assertContains(row, "Change")
+        self.assertContains(row, "status-dot--decided")
         annotation = Annotation.objects.get(name="Display name")
         other = Location.objects.get(path="/profile/profile.json/email")
         other_url = reverse("schemas:triage", args=[other.pk])
@@ -342,10 +360,24 @@ class ViewTests(TestCase):
             self.client.get(reverse("schemas:triage-row", args=[other.pk])), "Add annotation"
         )
 
+    def test_existing_annotations_are_a_searchable_table(self):
+        self.client.force_login(self.user)
+        first = create_annotation(self.name, "Display name", self.user, description="Shown")
+        email = Location.objects.get(path="/profile/profile.json/email")
+        create_annotation(email, "Email", self.user)
+        modal = self.client.get(
+            reverse("schemas:triage", args=[email.pk]), {"upload": self.upload.pk}
+        )
+        self.assertContains(modal, 'data-filter-table="#existing-annotations"')
+        self.assertContains(modal, 'data-filter-text="display name shown"')
+        self.assertContains(modal, f'name="annotation" value="{first.pk}"')  # one Link form each
+        self.assertContains(modal, ">Link</button>", count=2)
+        self.assertContains(modal, "No annotation matches.")
+
     def test_no_bulk_actions(self):
         # every data point is decided on its own: nothing on the page acts on several at once
         self.client.force_login(self.user)
-        page = self.client.get(reverse("schemas:review", args=[self.upload.pk]))
+        page = self.client.get(reverse("reviews:review", args=[self.upload.pk]))
         for text in ("Accept all", "everything left", "New annotations for all"):
             self.assertNotContains(page, text)
-        self.assertContains(page, "Add annotation")  # one data point at a time
+        self.assertContains(page, "data-panel-open")  # one data point at a time, in the panel

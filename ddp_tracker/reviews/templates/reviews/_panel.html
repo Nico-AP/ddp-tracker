@@ -1,0 +1,164 @@
+{# The review's side panel (reviews.views.review_location): what to annotate first, the values found in the file, what comes after annotating; the technical details collapsed. For a list, "row" covers the list and its item. Reloads itself after a change. #}
+{% load core_tags %}
+{% with target=row.primary|default:location %}
+  <div class="review-panel"
+       hx-get="{% url 'reviews:location' upload.pk location.pk %}"
+       hx-trigger="{% if row %}{{ row.triggers }}{% else %}triaged-{{ location.pk }} from:body{% endif %}"
+       hx-swap="outerHTML">
+    <header class="review-panel__section review-panel__head">
+      <h2 class="review-panel__title">{{ row.name|default:location.display_name }}</h2>
+      <div class="review-panel__path">
+        <code>{{ location.path|default:"/" }}</code>
+        <button type="button"
+                class="copy-button"
+                data-copy="{{ location.path }}"
+                aria-label="Copy the path"
+                title="Copy the path">⧉</button>
+      </div>
+      <div class="review-panel__chips">
+        {% if not observation %}
+          <span class="chip chip--muted">Not in this upload</span>
+        {% elif row.decided %}
+          {% if row.ignored %}
+            <span class="chip chip--muted">Not a data point</span>
+          {% else %}
+            <span class="chip chip--done">Annotated</span>
+          {% endif %}
+        {% elif row.item.status == "moved" or row.item.status == "renamed" %}
+          <span class="chip chip--suggested" title="{{ row.item.candidate.path }}">
+            Likely {{ row.item.status }} from <code>{{ row.item.candidate.path|last_part }}</code>
+          </span>
+        {% elif row.item.status == "new" %}
+          <span class="chip chip--new">New in this upload</span>
+        {% else %}
+          <span class="chip">Seen before, never annotated</span>
+        {% endif %}
+        {% if changed %}<span class="chip chip--new">Changed</span>{% endif %}
+        <span class="chip">{{ profile.label }}</span>
+        {% if first_seen %}
+          <span class="chip">
+            First seen {{ first_seen.upload__requested_at }}{% if first_seen.upload__language %} · {{ first_seen.upload__language }}{% endif %}
+          </span>
+        {% endif %}
+      </div>
+    </header>
+    <section class="review-panel__section">
+      {% if row and row.open_location %}
+        {% with open=row.open_location %}
+          {% if open == row.primary and row.item.choices %}
+            {% with choice=row.item.choices.0 %}
+              <form hx-post="{% url 'schemas:triage' open.pk %}" hx-swap="none">
+                <input type="hidden" name="action" value="link">
+                <input type="hidden" name="annotation" value="{{ choice.annotation.pk }}">
+                <input type="hidden" name="upload" value="{{ upload.pk }}">
+                <button type="submit"
+                        class="btn"
+                        data-primary-action>Use suggestion: {{ choice.annotation }}</button>
+              </form>
+              <p class="review-panel__note muted">
+                Likely {{ choice.reason }} from <code>{{ choice.via }}</code>.
+              </p>
+            {% endwith %}
+            <button type="button"
+                    class="link-button"
+                    hx-get="{% url 'schemas:triage' open.pk %}?upload={{ upload.pk }}"
+                    hx-target="#modal"
+                    hx-swap="innerHTML">Add a different annotation…</button>
+          {% else %}
+            <button type="button"
+                    class="btn"
+                    data-primary-action
+                    hx-get="{% url 'schemas:triage' open.pk %}?upload={{ upload.pk }}"
+                    hx-target="#modal"
+                    hx-swap="innerHTML">
+              {% if open == row.primary %}
+                Add annotation
+              {% else %}
+                Add annotation for the list
+              {% endif %}
+            </button>
+          {% endif %}
+        {% endwith %}
+      {% endif %}
+      {% if row.is_list or not row or row.decided %}
+        <dl class="review-panel__annotations">
+          {% for loc in row.locations|default:"" %}
+            <dt>{% if loc == row.primary and row.is_list %}Each item{% elif row.is_list %}The list{% else %}Annotation{% endif %}</dt>
+            <dd>
+              {% include "reviews/_annotation_line.html" %}
+            </dd>
+          {% empty %}
+            <dt>Annotation</dt>
+            <dd>
+              {% include "reviews/_annotation_line.html" with loc=location %}
+            </dd>
+          {% endfor %}
+        </dl>
+      {% endif %}
+    </section>
+    {% if own %}
+      <section class="review-panel__section">
+        <h3 class="review-panel__label">Values in this file</h3>
+        {% if not own.readable %}
+          <p class="muted">
+            Only readable in the browser you uploaded this DDP from (logging out deletes the key).
+          </p>
+        {% elif own_list %}
+          <p class="review-panel__chips">
+            {% for value in own_list %}<code class="chip chip--value"
+      title="{{ value }}">{{ value }}</code>{% endfor %}
+          </p>
+          <p class="muted review-panel__note">Only you can see these. They are deleted on {{ own.expires_at|date }}.</p>
+        {% else %}
+          <p class="muted">None for this data point.</p>
+        {% endif %}
+      </section>
+    {% endif %}
+    {% if target.annotation %}
+      <section class="review-panel__section">
+        <h3 class="review-panel__label">Example values</h3>
+        {% if own.readable and own_list %}
+          {% include "reviews/_own_values.html" with location=target %}
+        {% endif %}
+        {% include "schemas/_examples.html" with location=target %}
+      </section>
+      <section class="review-panel__section">
+        <h3 class="review-panel__label">Representations</h3>
+        <div hx-get="{% url 'representations:location-section' target.pk %}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <p class="muted">Loading…</p>
+        </div>
+      </section>
+    {% else %}
+      <section class="review-panel__section">
+        <h3 class="review-panel__label">Available after annotating</h3>
+        <dl class="review-panel__later">
+          <dt>Example values</dt>
+          <dd>
+            {% if own_list %}Add from your values{% else %}Add later{% endif %}
+          </dd>
+          <dt>Representations</dt>
+          <dd>
+            Needs an annotation
+          </dd>
+        </dl>
+      </section>
+    {% endif %}
+    <footer class="review-panel__section review-panel__foot">
+      <p class="muted">
+        Seen in {{ history|length }} upload{{ history|length|pluralize }}{% if history|length == 1 %}: its history appears here once it shows up again{% endif %}.
+      </p>
+      <details class="review-panel__details">
+        <summary>More details</summary>
+        {% include "schemas/_facts.html" %}
+        {% if json_path %}
+          {% include "schemas/_json_path.html" %}
+        {% endif %}
+        {% if history %}
+          {% include "schemas/_history.html" %}
+        {% endif %}
+      </details>
+    </footer>
+  </div>
+{% endwith %}

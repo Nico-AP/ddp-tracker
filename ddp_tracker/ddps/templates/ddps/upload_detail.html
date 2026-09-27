@@ -42,7 +42,7 @@
     <h2>Review</h2>
     {% if upload.registered_at %}
       <p>
-        <a class="btn" href="{% url 'schemas:review' upload.pk %}">Review this upload</a>
+        <a class="btn" href="{% url 'reviews:review' upload.pk %}">Review this upload</a>
         <span class="muted">against everything collected for {{ upload.platform }}: new data points to assign, changes, missing data points.</span>
       </p>
     {% else %}

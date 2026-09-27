@@ -10,6 +10,7 @@
   color: $color-text;
   font-size: $font-size-small;
   font-weight: 400;
+  line-height: inherit; // Bootstrap's is 1
 }
 
 @mixin badge-color($color) {

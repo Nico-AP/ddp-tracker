@@ -26,6 +26,7 @@ class Location(models.Model):
         Annotation, null=True, blank=True, on_delete=models.SET_NULL, related_name="locations"
     )
     ignored = models.BooleanField(default=False, help_text="Not a data point.")
+    # [{"value": …, "source": "extracted" | "user_input"}]: see schemas/examples.py
     example_values = models.JSONField(
         default=list, blank=True, help_text="Curated, non-personal example values."
     )

@@ -1,0 +1,24 @@
+// Bootstrap 5.3 (npm devDependency, loaded from node_modules via the build's --load-path),
+// configured with our design tokens so its components match the rest of the app.
+// Compiled first (main.scss): our own partials come after it and refine it.
+@use "../abstracts/variables" as *;
+@use "bootstrap/scss/bootstrap" with (
+  $primary: $color-primary,
+  $success: $color-success,
+  $warning: $color-warning,
+  $danger: $color-danger,
+  $info: $color-info,
+  $body-color: $color-text,
+  $body-bg: $color-bg,
+  $border-color: $color-border,
+  $border-radius: $radius-base,
+  $font-family-sans-serif: $font-family-base,
+  $font-family-monospace: $font-family-mono,
+  $headings-line-height: 1.2,
+  // the app's type scale, as before Bootstrap (the browser's defaults)
+  $headings-font-weight: 700,
+  $h1-font-size: 2rem,
+  $h2-font-size: 1.5rem,
+  $h3-font-size: 1.17rem,
+  $code-color: $color-text
+);

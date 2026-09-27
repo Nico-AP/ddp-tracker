@@ -12,6 +12,7 @@ dependencies = [
     "django-tasks>=0.12,<0.13",  # https://github.com/RealOrangeOne/django-tasks (backport of django.tasks)
     "django-tasks-db[compat]>=0.13,<0.14",  # https://github.com/RealOrangeOne/django-tasks-db
     "mkdocs-material>=9.7.7",
+    "pynacl>=1.6,<2",  # https://github.com/pyca/pynacl (the uploader's values: ddps/values.py)
 ]
 
 [tool.uv]

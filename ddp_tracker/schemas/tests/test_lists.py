@@ -9,8 +9,9 @@ from django.urls import reverse
 
 from ddp_tracker.core.tests.utils import parsed_upload
 from ddp_tracker.ddps.models import Platform
+from ddp_tracker.reviews.services import review
 from ddp_tracker.schemas.models import Location
-from ddp_tracker.schemas.services import create_annotation, review
+from ddp_tracker.schemas.services import create_annotation
 from ddp_tracker.users.models import User
 
 DATA = {"data.json": b'{"Ids": [1, 2, 3], "VideoList": [{"Date": "2024-01-01"}]}'}
@@ -40,19 +41,20 @@ class ListTests(TestCase):
         create_annotation(self.ids, "List of ID", self.user)
         self.assertNotIn("/data.json/Ids", self.triage())
 
-    def test_create_both_from_the_item(self):
+    def test_the_item_first_then_the_list_in_its_own_step(self):
         self.client.force_login(self.user)
         url = reverse("schemas:triage", args=[self.item.pk])
-        self.assertContains(self.client.get(url), "also annotate the list")
+        self.assertNotContains(self.client.get(url), "with_list")  # no "annotate both" option
         self.client.post(url, {"action": "new", "name": "ID", "with_list": "1"})
         annotations = dict(
             Location.objects.filter(annotation__isnull=False).values_list(
                 "path", "annotation__name"
             )
         )
-        self.assertEqual(annotations, {"/data.json/Ids/[]": "ID", "/data.json/Ids": "List of ID"})
-        # the list is taken now: no checkbox for the item any more
-        self.assertNotContains(self.client.get(url), "also annotate the list")
+        self.assertEqual(annotations, {"/data.json/Ids/[]": "ID"})  # nothing implicit
+        # the list's own dialog then suggests its name
+        list_url = reverse("schemas:triage", args=[self.ids.pk])
+        self.assertContains(self.client.get(list_url), 'value="List of ID"')
 
     def test_the_list_modal_suggests_the_name(self):
         create_annotation(self.item, "ID", self.user)

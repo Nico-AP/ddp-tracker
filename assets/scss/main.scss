@@ -4,6 +4,9 @@
 // `@use "../abstracts/..." as *;`, so the order below doesn't matter — list
 // new partials that produce actual CSS output here.
 
+// Bootstrap first: everything below builds on it.
+@use "vendors/bootstrap";
+
 @use "base/reset";
 @use "base/typography";
 
@@ -11,7 +14,8 @@
 @use "components/badges";
 @use "components/content";
 @use "components/forms";
-@use "components/modal";
+@use "components/dialog";
+@use "components/review";
 @use "components/tree";
 
 @use "layout/header";

@@ -1,0 +1,7 @@
+{# A group's key chain below its root (reviews/tree.py: places). #}
+<span class="review-group__crumbs">
+  {% for name, is_key in crumbs %}
+    <span class="{% if is_key %}review-group__key{% else %}muted{% endif %}">{{ name }}</span>
+    {% if not forloop.last %}<span class="review-group__sep" aria-hidden="true">›</span>{% endif %}
+  {% endfor %}
+</span>

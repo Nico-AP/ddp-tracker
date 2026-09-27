@@ -3,8 +3,14 @@
 {% block content %}
   <h1>Upload a DDP</h1>
   <p class="lead">
-    The file is only read to derive its schema and is deleted right after. No personal data from it is
-    stored: only the structure (files, keys, types, shapes and counts).
+    The file is only read to derive its schema and is deleted right after. What is kept for everyone is
+    only the structure (files, keys, types, shapes and counts).
+  </p>
+  <p>
+    To help you annotate, a few values per data point are also kept <strong>for you alone</strong>
+    (email addresses masked): encrypted with a key only this browser holds, deleted after
+    {{ retention_days }} days, when you log out, or when you delete them. Nothing of it becomes public
+    unless you add it to the examples yourself.
   </p>
   <form method="post" enctype="multipart/form-data" class="form form--narrow">
     {% csrf_token %}

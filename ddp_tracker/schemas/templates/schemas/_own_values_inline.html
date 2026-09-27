@@ -1,0 +1,14 @@
+{# The uploader's own values of a data point, inline (ddps/values.py): only ever rendered for them. #}
+{% if values %}
+  {% if values|length > 1 %}<ul class="own-values__inline-list">{% endif %}
+  {% for value in values %}
+    {% if values|length > 1 %}<li>{% endif %}
+      {% if value == "" %}
+        <code class="own-value" title="empty">""</code>
+      {% else %}
+        <code class="own-value" title="{{ value }}">{{ value }}</code>
+      {% endif %}
+    {% if values|length > 1 %}</li>{% endif %}
+  {% endfor %}
+  {% if values|length > 1 %}</ul>{% endif %}
+{% endif %}

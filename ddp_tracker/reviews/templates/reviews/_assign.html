@@ -1,0 +1,32 @@
+{# The "To assign" tab: the filters, the progress and the tree (reviews/tree.py). The filters are one form: each change reloads the tree's groups with both. #}
+<div class="review-toolbar">
+  <form class="review-filters"
+        hx-get="{% url 'reviews:review' upload.pk %}"
+        hx-trigger="input changed delay:250ms from:find [name=q], search from:find [name=q], change from:find [name=hide]"
+        hx-target="#review-groups"
+        hx-swap="outerHTML"
+        hx-push-url="true">
+    <input type="hidden" name="tab" value="assign">
+    <input type="search"
+           name="q"
+           value="{{ q }}"
+           class="form-control"
+           placeholder="Filter by field name, path or value"
+           aria-label="Filter by field name, path or value">
+    <div class="form-check form-switch">
+      <input type="checkbox"
+             class="form-check-input"
+             role="switch"
+             id="hide-annotated"
+             name="hide"
+             value="1"
+             {% if hide %}checked{% endif %}>
+      <label class="form-check-label" for="hide-annotated">Hide annotated</label>
+    </div>
+  </form>
+  {% include "reviews/_progress.html" %}
+</div>
+{% include "reviews/_groups.html" %}
+<p class="review-hint muted">
+  <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>Enter</kbd> annotate
+</p>

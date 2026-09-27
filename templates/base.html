@@ -10,6 +10,7 @@
     <title>{% block title %}DDP Tracker{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/main.css' %}">
     <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
+    <script src="{% static 'vendor/bootstrap.bundle.min.js' %}" defer></script>
     <script src="{% static 'js/modal.js' %}" defer></script>
   </head>
   <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
@@ -39,6 +40,6 @@
       {% block content %}{% endblock %}
     </main>
     {# Filled by htmx with a form (see static/js/modal.js). #}
-    <dialog id="modal" class="modal" aria-label="Dialog"></dialog>
+    <dialog id="modal" class="dialog" aria-label="Dialog"></dialog>
   </body>
 </html>

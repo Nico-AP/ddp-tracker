@@ -15,6 +15,14 @@
   }
 }
 
+.table-fixed {
+  table-layout: fixed;
+}
+
+.table-auto {
+  table-layout: auto !important;
+}
+
 .facts {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -140,7 +148,6 @@
 
 // "As JSON" under the path in the side panel: a quiet aside, not a section
 .json-path {
-  margin-bottom: $spacing-unit * 2;
 
   summary {
     color: $color-text-muted;
@@ -153,159 +160,59 @@
   }
 }
 
-.tabs {
-  display: flex;
-  gap: $spacing-unit * 3;
-  margin-bottom: $spacing-unit * 2;
-  border-bottom: 1px solid $color-border;
+// the uploader's own values (ddps/values.py): only ever shown to them
+.own-value {
+  display: inline-block;
+  word-break: break-word;
+  vertical-align: bottom;
+  white-space: wrap;
+  background: $color-bg-accent;
+  border-radius: 3px;
+  padding: 0 5px;
 }
 
-.tabs__tab {
-  margin-bottom: -1px;
-  border-bottom: 2px solid transparent;
-  padding: $spacing-unit 0;
-  color: $color-text-muted;
-  text-decoration: none;
-
-  &:hover {
-    color: $color-text;
-  }
-}
-
-.tabs__tab--active {
-  border-bottom-color: $color-primary;
-  color: $color-text;
-  font-weight: 600;
-}
-
-.review-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.review-list--block {
-  border-top: none;
-}
-
-.review-list > .review-item:not(:last-child) {
-  border-bottom: 1px solid $color-border;
-}
-
-// stripes: every second entry (a data point, or a list's block) very light grey
-.review-list > .review-block:nth-child(even),
-.review-list:not(.review-list--block) > .review-item:nth-child(even) {
-  background: $color-surface;
-}
-
-.review-item {
-  font-size: $font-size-small;
-  cursor: pointer;
-
-  &:hover:not(.is-selected) {
-    background: color.adjust($color-surface, $lightness: -2.5%);
-  }
-
-  &.is-selected {
-    background: color.scale($color-primary, $lightness: 92%);
-  }
-
-  .badge {
-    margin-left: 0;
-    white-space: nowrap;
-  }
-
-  .link-button {
-    text-align: left;
-  }
-}
-
-.review-list .review-item--annotated:not(.is-selected) {
-  background: color.scale($color-success, $lightness: 92%);
-}
-
-.review-block {
-  border-radius: $radius-base;
-  border: 1px solid $color-border;
+.own-values__form {
+  display: grid;
+  gap: $spacing-unit * 0.5;
   margin-bottom: $spacing-unit;
-  overflow: hidden;
-}
 
-.review-item--in-item {
-  padding-left: $spacing-unit * 4;
-}
-
-.review-item__head {
-  display: flex;
-  padding: $spacing-unit $spacing-unit $spacing-unit * 1;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 $spacing-unit;
-  background: $color-bg-darker;
-}
-
-.review-item__path {
-  border: none;
-  background: none;
-  padding: 0;
-  min-width: 0;
-  color: $color-text;
-  font: inherit;
-  font-family: $font-family-mono;
-  text-align: left;
-  cursor: pointer;
-
-  strong {
-    font-weight: 700;
+  .btn {
+    justify-self: start;
   }
 }
 
-.review-item__body {
-  padding: ($spacing-unit * 2) $spacing-unit;
+.own-values__row {
+  align-items: center;
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+  gap: $spacing-unit;
 }
 
-.review-item__annotation-suggestion > code {
-  font-size: $font-size-small * 0.95;
+.own-values__inline {
+  padding-right: $spacing-unit;
 }
 
-// labelled lines under the path ("Assessment", "Annotation suggestion" …)
-.review-item__facts {
-  gap: ($spacing-unit * 0.25) ($spacing-unit * 1.5);
+.example-list {
+  margin: 0 0 $spacing-unit;
+  padding: 0;
+}
+
+.own-values__forget {
+  margin: 0;
+}
+
+.own-values__inline-list {
+  list-style: none;
+  padding: 0;
   margin: 0;
 
-  dt {
-    color: $color-text-muted;
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 2px;
   }
 
-  dd {
-    margin: 0;
+  li::before {
+    content: "- ";
   }
-}
-
-.review-item__actions {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: $spacing-unit;
-  justify-content: end;
-  flex-shrink: 0;
-
-  .btn--small {
-    font-size: inherit;
-  }
-
-  form {
-    display: inline;
-  }
-}
-
-.review-group {
-  border-bottom: 1px dashed $color-border;
-  padding: ($spacing-unit * 0.5) ($spacing-unit * 2);
-  color: $color-text-muted;
-  font-size: $font-size-small;
 }

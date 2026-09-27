@@ -140,3 +140,17 @@ class Upload(models.Model):
         return Upload.objects.filter(
             platform=self.platform, source_sha256=self.source_sha256
         ).exclude(pk=self.pk)
+
+
+class UploadValues(models.Model):
+    """The uploader's own values of an upload (``ddps/values.py``), sealed with a key that only
+    the uploader's browser holds: unreadable from the database alone. Deliberately not in the
+    admin.
+    """
+
+    upload = models.OneToOneField(Upload, on_delete=models.CASCADE, related_name="own_values")
+    sealed = models.BinaryField()
+    expires_at = models.DateTimeField(db_index=True)
+
+    def __str__(self) -> str:
+        return f"Values of upload {self.upload_id}"

@@ -1,0 +1,518 @@
+@use "sass:color";
+@use "../abstracts/variables" as *;
+
+// The review page (ddp_tracker/reviews): a dense tree on the left, the annotating panel on the
+// right. Bootstrap does the tabs, badges, inputs and buttons.
+
+.review-title code {
+  font-size: 0.9em;
+}
+
+.review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 ($spacing-unit * 2);
+}
+
+.review-tabs {
+  margin-bottom: $spacing-unit * 2;
+
+  .badge {
+    background: $color-bg-accent;
+    color: $color-text;
+    font-weight: 600;
+  }
+
+  .nav-link.active .badge {
+    background: color.scale($color-primary, $lightness: 85%);
+    color: $color-primary;
+  }
+}
+
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 3fr);
+  gap: $spacing-unit * 3;
+  align-items: start;
+
+  @media (width <= 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.review-toolbar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-unit * 2;
+  margin-bottom: $spacing-unit * 1.5;
+}
+
+.review-filters {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: $spacing-unit * 2;
+
+  .form-control {
+    flex: 1;
+  }
+
+  .form-check {
+    margin: 0;
+    white-space: nowrap;
+  }
+}
+
+.review-progress {
+  display: flex;
+  align-items: center;
+  gap: $spacing-unit;
+  white-space: nowrap;
+  font-size: $font-size-small;
+
+  progress {
+    width: 120px;
+    height: 6px;
+    border: 0;
+    border-radius: 3px;
+    background: $color-border;
+    accent-color: $color-success;
+
+    &::-webkit-progress-bar {
+      border-radius: 3px;
+      background: $color-border;
+    }
+
+    &::-webkit-progress-value {
+      border-radius: 3px;
+      background: $color-success;
+    }
+
+    &::-moz-progress-bar {
+      border-radius: 3px;
+      background: $color-success;
+    }
+  }
+}
+
+.review-tree__empty {
+  margin: 0;
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: $spacing-unit * 2;
+}
+
+// A chevron drawn with two borders of a small square, so it turns around its own center:
+// pointing right when closed, down when open.
+@mixin chevron {
+  content: "";
+  flex-shrink: 0;
+  width: 0.45em;
+  height: 0.45em;
+  margin: 0 0.4em 0 0.15em;
+  border-right: 2px solid $color-text-muted;
+  border-bottom: 2px solid $color-text-muted;
+  transform: rotate(-45deg);
+  transform-origin: center;
+  transition: transform 0.15s;
+}
+
+@mixin chevron-open {
+  transform: rotate(45deg);
+}
+
+// one block per file (root), its groups inside
+.review-root {
+  overflow: hidden;
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+
+  & + & {
+    margin-top: $spacing-unit * 1.5;
+  }
+}
+
+.review-root__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-unit;
+  padding: $spacing-unit ($spacing-unit * 1.5);
+  background: color.scale($color-primary, $lightness: 94%);
+  font-family: $font-family-mono;
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::before {
+    @include chevron;
+  }
+}
+
+.review-root[open] > .review-root__head::before {
+  @include chevron-open;
+}
+
+.review-root__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-root__count {
+  color: $color-text-muted;
+  font-family: $font-family-base;
+  font-size: $font-size-small;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.review-group {
+  border-top: 1px solid $color-border;
+}
+
+.review-group__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-unit;
+  padding: ($spacing-unit * 0.75) ($spacing-unit * 1.5); // aligned with the file's title
+  cursor: pointer;
+  list-style: none; // our own chevron
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::before {
+    @include chevron;
+  }
+}
+
+.review-group[open] > .review-group__head::before {
+  @include chevron-open;
+}
+
+.review-group__crumbs {
+  flex: 1;
+  min-width: 0;
+}
+
+.review-group__key:first-of-type {
+  font-weight: 700;
+}
+
+.review-group__sep {
+  margin: 0 ($spacing-unit * 0.5);
+  color: $color-text-muted;
+}
+
+.review-group__count {
+  color: $color-text-muted;
+  font-size: $font-size-small;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+// one line: name | type | suggestion and values | status
+.review-row {
+  display: grid;
+  grid-template-columns: minmax(14rem, 5fr) 6.5rem minmax(0, 4fr) 1rem;
+  align-items: center;
+  gap: $spacing-unit * 1.5;
+  padding: ($spacing-unit * 0.5) ($spacing-unit * 1.5);
+  border-top: 1px solid $color-border;
+  cursor: pointer;
+
+  &:hover:not(.is-selected) {
+    background: color.adjust($color-surface, $lightness: -1.5%);
+  }
+
+  &.is-selected {
+    background: color.scale($color-primary, $lightness: 92%);
+    box-shadow: inset 3px 0 0 $color-primary;
+  }
+}
+
+@for $depth from 1 through 4 {
+  .review-row--depth-#{$depth} .review-row__name {
+    padding-left: $spacing-unit * 2 * $depth;
+  }
+}
+
+.review-row__name {
+  overflow: hidden;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: $color-text;
+  font-family: $font-family-mono;
+  font-size: $font-size-small;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// one slot for every row's icon ([ ] list, └ field of a list's items, ◦ value): names line up
+.review-row__icon {
+  display: inline-block;
+  width: 1.75em;
+  color: $color-text-muted;
+  font-family: $font-family-mono;
+  text-align: center;
+}
+
+.review-row__type {
+  justify-self: start;
+  border: 1px solid $color-border;
+  border-radius: 4px;
+  padding: 0 ($spacing-unit * 0.75);
+  color: $color-text-muted;
+  font-family: $font-family-mono;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.review-row__summary {
+  display: flex;
+  align-items: center;
+  gap: $spacing-unit;
+  min-width: 0;
+  font-size: $font-size-small;
+}
+
+.review-row__values {
+  overflow: hidden;
+  color: $color-text-muted;
+  font-family: $font-family-mono;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-row__change {
+  white-space: nowrap;
+}
+
+.review-pill {
+  flex-shrink: 0;
+  border: 1px solid color.scale($color-primary-light, $lightness: 60%);
+  border-radius: 999px;
+  padding: 0 $spacing-unit;
+  background: color.scale($color-primary-light, $lightness: 90%);
+  color: $color-primary-light;
+  white-space: nowrap;
+}
+
+.review-pill--done {
+  border-color: color.scale($color-success, $lightness: 60%);
+  background: color.scale($color-success, $lightness: 90%);
+  color: $color-success;
+}
+
+.review-pill--muted {
+  border-color: $color-border;
+  background: $color-surface;
+  color: $color-text-muted;
+}
+
+.status-dot {
+  justify-self: end;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.status-dot--open {
+  background: #f59e0b;
+}
+
+.status-dot--decided {
+  background: $color-success;
+}
+
+.status-dot--ignored,
+.status-dot--missing {
+  background: $color-border;
+}
+
+.review-hint {
+  margin-top: $spacing-unit;
+  font-size: $font-size-small;
+
+  kbd {
+    border: 1px solid $color-border;
+    background: $color-surface;
+    color: $color-text;
+  }
+}
+
+// the side panel
+.review-panel-slot {
+  position: sticky;
+  top: $spacing-unit * 2;
+  max-height: calc(100vh - #{$spacing-unit * 4});
+  overflow-y: auto;
+}
+
+.review-panel {
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  background: $color-bg;
+}
+
+.review-panel--empty {
+  padding: $spacing-unit * 2;
+
+  p {
+    margin: 0;
+  }
+}
+
+.review-panel__section {
+  padding: ($spacing-unit * 2) ($spacing-unit * 2.5);
+
+  & + & {
+    border-top: 1px solid $color-border;
+  }
+
+  form {
+    margin-bottom: $spacing-unit;
+  }
+}
+
+.review-panel__title {
+  margin: 0 0 ($spacing-unit * 0.5);
+  font-family: $font-family-mono;
+  word-break: break-word;
+}
+
+.review-panel__path {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-unit;
+  margin-bottom: $spacing-unit;
+  color: $color-text-muted;
+
+  code {
+    word-break: break-all;
+  }
+}
+
+.copy-button {
+  flex-shrink: 0;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: $color-text-muted;
+
+  &:hover {
+    color: $color-text;
+  }
+
+  &.is-copied::after {
+    content: " Copied";
+    font-size: $font-size-small;
+  }
+}
+
+.review-panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-unit * 0.5;
+  margin: 0;
+}
+
+.chip {
+  border: 1px solid $color-border;
+  border-radius: 999px;
+  padding: 1px ($spacing-unit * 1.25);
+  background: $color-surface;
+  color: $color-text;
+  font-size: $font-size-small;
+}
+
+.chip--new {
+  border-color: color.scale($color-warning, $lightness: 60%);
+  background: color.scale($color-warning, $lightness: 90%);
+  color: $color-warning;
+}
+
+.chip--suggested {
+  border-color: color.scale($color-primary-light, $lightness: 60%);
+  background: color.scale($color-primary-light, $lightness: 90%);
+  color: $color-primary-light;
+}
+
+.chip--done {
+  border-color: color.scale($color-success, $lightness: 60%);
+  background: color.scale($color-success, $lightness: 90%);
+  color: $color-success;
+}
+
+.chip--muted {
+  color: $color-text-muted;
+}
+
+.chip--value {
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 4px;
+  font-family: $font-family-mono;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// the section's label already says it (schemas/_examples.html is shared with the explorer)
+.review-panel .examples > h3 {
+  display: none;
+}
+
+.review-panel__label {
+  margin: 0 0 $spacing-unit;
+  color: $color-text-muted;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.review-panel__note {
+  margin: ($spacing-unit * 0.5) 0 0;
+  font-size: $font-size-small;
+}
+
+.review-panel__annotations,
+.review-panel__later {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: ($spacing-unit * 0.5) ($spacing-unit * 2);
+  margin: 0;
+
+  dt {
+    color: $color-text-muted;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.review-panel__later dd {
+  color: $color-text-muted;
+  text-align: right;
+}
+
+.review-panel__foot p {
+  margin-bottom: $spacing-unit;
+  font-size: $font-size-small;
+}
+
+.review-panel__details > summary {
+  color: $color-text-muted;
+  font-size: $font-size-small;
+  cursor: pointer;
+}

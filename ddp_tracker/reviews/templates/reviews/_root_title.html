@@ -1,0 +1,10 @@
+{# A root's title: its folders muted, the file (or the last folder) bold. #}
+<span class="review-root__title">
+  {% for name, last in root.title %}
+    {% if last %}
+      <strong>{{ name }}</strong>
+    {% else %}
+      <span class="muted">{{ name }} /</span>
+    {% endif %}
+  {% endfor %}
+</span>

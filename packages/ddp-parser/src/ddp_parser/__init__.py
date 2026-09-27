@@ -29,6 +29,7 @@ from ddp_parser.model import (
 )
 from ddp_parser.options import Options
 from ddp_parser.pipeline import parse
+from ddp_parser.schematize.samples import mask
 
 __version__ = version("ddp-parser")
 
@@ -50,6 +51,7 @@ __all__ = [
     "from_json",
     "is_data_point",
     "is_structure",
+    "mask",
     "merge",
     "merge_trees",
     "node_from_dict",

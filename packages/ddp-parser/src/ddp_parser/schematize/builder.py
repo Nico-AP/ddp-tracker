@@ -163,7 +163,11 @@ class NodeBuilder:
                 else None
             ),
             items=self._items.build(options, warnings) if self._items else None,
-            samples=build_samples(list(self._samples.values())) if options.samples else None,
+            samples=(
+                build_samples(list(self._samples.values()), options.masked_shapes)
+                if options.samples
+                else None
+            ),
         )
 
     def _type(self) -> JsonType | tuple[JsonType, ...]:

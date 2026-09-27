@@ -1,0 +1,87 @@
+@use "../abstracts/variables" as *;
+
+// The shared <dialog id="modal"> (templates/base.html, static/js/modal.js). Not Bootstrap's
+// `.modal` (its JS-driven overlay, hidden by default): a native <dialog>.
+.dialog {
+  width: min(960px, calc(100vw - #{$spacing-unit * 4}));
+  max-height: calc(100vh - #{$spacing-unit * 8});
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: $spacing-unit * 3;
+
+  &::backdrop {
+    background: rgb(17 24 39 / 40%);
+  }
+
+  section + section {
+    margin-top: $spacing-unit * 3;
+    border-top: 1px solid $color-border;
+    padding-top: $spacing-unit * 2;
+  }
+}
+
+.dialog__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: $spacing-unit * 2;
+  margin-bottom: $spacing-unit * 2;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+// Over the page's left column ([data-dialog-over], static/js/modal.js), non-modal: the side
+// panel next to it stays usable. Left and width come from modal.js.
+.dialog--over {
+  position: fixed;
+  inset: ($spacing-unit * 2) auto ($spacing-unit * 2) auto;
+  z-index: 1050;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgb(17 24 39 / 25%);
+}
+
+.dialog__form {
+  display: grid;
+  gap: $spacing-unit * 0.5;
+
+  .form-label {
+    margin: ($spacing-unit * 0.5) 0 0;
+  }
+}
+
+.dialog__search {
+  margin-bottom: $spacing-unit;
+}
+
+// the existing annotations: scrolls on its own, the column names stay
+.dialog__table {
+  max-height: 16rem;
+  overflow-y: auto;
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+
+  .table {
+    margin: 0;
+    table-layout: auto;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    background: $color-surface;
+  }
+
+  td:last-child {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  form {
+    margin: 0;
+  }
+}

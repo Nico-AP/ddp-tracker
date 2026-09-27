@@ -1,95 +1,38 @@
 {% load core_tags %}
-
-<p class="detail-panel__path">
-  <code class="path">{{ location.path|default:"/" }}</code>
-</p>
-
-<h2 class="detail-panel__title">
-  {% if location.path %}
-    {{ location.display_name }}{% if profile.is_list %}[]{% endif %}
-  {% else %}
-    Root
+<div class="detail-panel__top detail-panel__section">
+  <p class="detail-panel__path">
+    <code class="path">{{ location.path|default:"/" }}</code>
+  </p>
+  <h2 class="detail-panel__title">
+    {% if location.path %}
+      {{ location.display_name }}{% if profile.is_list %}[]{% endif %}
+    {% else %}
+      Root
+    {% endif %}
+  </h2>
+  {% if json_path %}
+    {% include "schemas/_json_path.html" %}
   {% endif %}
-</h2>
-
-{% if json_path %}
-  {% include "schemas/_json_path.html" %}
-{% endif %}
-
-<hr />
-
-<h3>Data Structure Details</h3>
-
-<dl class="facts">
-  <dt>Kind</dt>
-  <dd>
-    {% include "schemas/_values.html" with counter=profile.kinds %}
-  </dd>
-  {% if profile.types %}
-    <dt>Type</dt>
-    <dd>
-      {% include "schemas/_values.html" with counter=profile.types %}
-    </dd>
+</div>
+<div class="detail-panel__body detail-panel__section">
+  <h3>Data Structure Details</h3>
+  {% include "schemas/_facts.html" %}
+  {% if profile.is_data_point %}
+    <hr />
+    {% include "schemas/_examples.html" %}
+    <hr />
+    <h3>Annotation</h3>
+    {% include "schemas/_triage_panel.html" %}
+    <hr />
+    <h3>Representations</h3>
+    <div hx-get="{% url 'representations:location-section' location.pk %}"
+         hx-trigger="load, triaged-{{ location.pk }} from:body">
+      <p class="muted">Loading…</p>
+    </div>
   {% endif %}
-  {% if profile.shapes %}
-    <dt>Shape</dt>
-    <dd>
-      {% include "schemas/_values.html" with counter=profile.shapes %}
-    </dd>
+  {% if history %}
+    <hr />
+    <h3>History</h3>
+    {% include "schemas/_history.html" %}
   {% endif %}
-  {% if profile.formats %}
-    <dt>Format</dt>
-    <dd>
-      {% include "schemas/_values.html" with counter=profile.formats %}
-    </dd>
-  {% endif %}
-  <dt>Seen</dt>
-  <dd>
-    in {{ profile.uploads }} upload{{ profile.uploads|pluralize }}, requested {{ profile.first_seen }} – {{ profile.last_seen }}
-  </dd>
-</dl>
-
-{% if profile.is_data_point %}
-  <hr />
-  {% include "schemas/_examples.html" %}
-  <hr />
-  <h3>Annotation</h3>
-  {% include "schemas/_triage_panel.html" %}
-  <hr />
-  <h3>Representations</h3>
-  <div hx-get="{% url 'representations:location-section' location.pk %}"
-       hx-trigger="load, triaged-{{ location.pk }} from:body">
-    <p class="muted">Loading…</p>
-  </div>
-{% endif %}
-
-{% if history %}
-  <hr />
-  <h3>History</h3>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Requested</th>
-        <th>Language</th>
-        <th>Kind / type</th>
-        <th>Shape / format</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in history %}
-        <tr>
-          <td>{{ row.upload__requested_at }}</td>
-          <td>{{ row.upload__language|default:"–" }}</td>
-          <td>
-            {{ row.kind }}
-            {% if row.type %}· {{ row.type }}{% endif %}
-          </td>
-          <td>
-            {{ row.shape }}
-            {% if row.format %}· <code>{{ row.format }}</code>{% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-{% endif %}
+</div>

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Review {{ upload.file_name }} · DDP Tracker{% endblock %}
+{% block content %}
+  <script src="{% static 'js/explorer.js' %}" defer></script>
+  <p class="breadcrumbs">
+    <a href="{{ upload.platform.get_absolute_url }}">{{ upload.platform }}</a> /
+    <a href="{{ upload.get_absolute_url }}">Review upload</a>
+  </p>
+  <h1 class="review-title">
+    Review <code>{{ upload.file_name }}</code>
+  </h1>
+  {% if not review %}
+    <p class="muted">This upload isn't part of the collected schema (see the upload's page).</p>
+  {% else %}
+    <p class="review-meta">
+      <span>Requested {{ upload.requested_at }}</span>
+      {% if upload.language %}<span>{{ upload.get_language_display }}</span>{% endif %}
+      <span>Compared with earlier {{ upload.platform }} uploads ·
+        <a href="{% url 'docs' 'tracker/concepts/' %}">What these tabs mean</a></span>
+    </p>
+    <ul class="nav nav-tabs review-tabs">
+      <li class="nav-item">
+        <a href="?tab=assign"
+           class="nav-link{% if tab == 'assign' %} active{% endif %}"
+           {% if tab == 'assign' %}aria-current="page"{% endif %}>
+          To assign
+          <span id="open-count" class="badge rounded-pill">{{ open_count }}</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="?tab=changed"
+           class="nav-link{% if tab == 'changed' %} active{% endif %}"
+           {% if tab == 'changed' %}aria-current="page"{% endif %}>
+          Changed <span class="badge rounded-pill">{{ review.changed|length }}</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="?tab=missing"
+           class="nav-link{% if tab == 'missing' %} active{% endif %}"
+           {% if tab == 'missing' %}aria-current="page"{% endif %}>
+          Missing <span class="badge rounded-pill">{{ review.missing|length }}</span>
+          <small class="muted">not in this upload</small>
+        </a>
+      </li>
+    </ul>
+    <div class="review-layout">
+      <div class="review-main" data-dialog-over>
+        {% if tab == "assign" %}
+          {% include "reviews/_assign.html" %}
+        {% elif tab == "changed" %}
+          {% include "reviews/_changed.html" %}
+        {% else %}
+          {% include "reviews/_missing.html" %}
+        {% endif %}
+      </div>
+      <aside id="node-detail" class="review-panel-slot" aria-live="polite">
+        <div class="review-panel review-panel--empty">
+          <p class="muted">Select a data point to see its values and annotate it.</p>
+        </div>
+      </aside>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -196,6 +196,15 @@ class SamplesTests(TestCase):
         assert node.items.samples is not None
         self.assertEqual(node.items.samples.values, (1, True, "1"))
 
+    def test_masked_shapes_are_an_option(self):
+        options = Options(samples=True, masked_shapes=("email",))
+        node, _ = schematize({"email": "anna@example.com", "note": "Hi there"}, options=options)
+        assert node.properties is not None
+        self.assertEqual(
+            node.properties["email"].samples, Samples(("axxx@xxxxxxx.xxx",), redacted=True)
+        )
+        self.assertEqual(node.properties["note"].samples, Samples(("Hi there",), redacted=False))
+
     def test_mask(self):
         self.assertEqual(mask("https://ex.com/a1"), "hxxxx://xx.xxx/x0")
         self.assertEqual(mask(""), "")
@@ -219,6 +228,7 @@ class OptionsTests(TestCase):
             {
                 "samples",
                 "max_samples",
+                "masked_shapes",
                 "shape_threshold",
                 "max_depth",
                 "max_entries",

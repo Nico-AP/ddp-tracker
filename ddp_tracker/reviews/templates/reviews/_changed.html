@@ -1,0 +1,53 @@
+{# The "Changed" tab: data points with a value no earlier upload had, and what they had. #}
+{% load core_tags %}
+<div class="review-tree">
+  {% for root in changed %}
+    <details class="review-root"{% if root.is_open %} open{% endif %}>
+      <summary class="review-root__head">
+        {% include "reviews/_root_title.html" %}
+        <span class="review-root__count">{{ root.open_count }}</span>
+      </summary>
+      {% for section in root.groups %}
+        {% if section.crumbs %}
+          <details class="review-group"{% if section.is_open %} open{% endif %}>
+            {% include "reviews/_section_head.html" %}
+        {% else %}
+          <div class="review-group review-group--loose">
+        {% endif %}
+          <div class="review-group__rows" role="list">
+            {% for change in section.entries %}
+              {% with location=change.observation.location %}
+                <div class="review-row" role="listitem" data-panel-row>
+                  <button type="button"
+                          class="review-row__name"
+                          title="{{ location.path }}"
+                          data-panel-open
+                          hx-get="{% url 'reviews:location' upload.pk location.pk %}"
+                          hx-target="#node-detail"
+                          hx-swap="innerHTML"><span class="review-row__icon" aria-hidden="true">◦</span>{{ location.display_name }}</button>
+                  <span class="review-row__type">{{ change.observation.type }}</span>
+                  <span class="review-row__summary">
+                    {% for diff in change.diffs %}
+                      <span class="review-row__change">
+                        {{ diff.field }}:
+                        <code>{% for value in diff.before %}{{ value|value_label:diff.field }}{% if not forloop.last %}, {% endif %}{% empty %}–{% endfor %}</code>
+                        → <code>{{ diff.now|value_label:diff.field }}</code>
+                      </span>
+                    {% endfor %}
+                  </span>
+                  <span class="status-dot status-dot--{% if location.annotation %}decided{% else %}open{% endif %}"></span>
+                </div>
+              {% endwith %}
+            {% endfor %}
+          </div>
+          {% if section.crumbs %}
+            </details>
+          {% else %}
+            </div>
+          {% endif %}
+      {% endfor %}
+    </details>
+  {% empty %}
+    <p class="muted review-tree__empty">Nothing changed compared with the uploads requested earlier.</p>
+  {% endfor %}
+</div>

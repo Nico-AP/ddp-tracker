@@ -32,8 +32,9 @@
             {% if row.formats %}· <code>{{ row.formats|join:", " }}</code>{% endif %}
           </td>
           <td>
-            {% for value in row.location.example_values %}
-              <code>{{ value }}</code>
+            {% for example in row.location.example_values %}
+              {% include "schemas/_example.html" %}
+              {% if not forloop.last %}<br>{% endif %}
             {% empty %}
               –
             {% endfor %}

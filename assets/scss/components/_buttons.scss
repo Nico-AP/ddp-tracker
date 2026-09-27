@@ -1,18 +1,25 @@
 @use "../abstracts/variables" as *;
 @use "../abstracts/mixins" as *;
 
+// Bootstrap's `.btn`, colored through its own variables so that every state (hover, focus,
+// active, disabled) gets our colors, not only the ones we'd override one by one.
 .btn {
-  display: inline-block;
-  border: none;
-  border-radius: $radius-base;
-  background: $color-primary;
-  color: #fff;
-  padding: $spacing-unit ($spacing-unit * 2);
-  cursor: pointer;
+  --bs-btn-bg: #{$bg-button-primary};
+  --bs-btn-color: #fff;
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-bg: #{$bg-button-primary-hover};
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-bg: #{$bg-button-primary-hover};
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-bg: #{$bg-button-primary};
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-disabled-border-color: transparent;
+  --bs-btn-padding-x: #{$spacing-unit * 2};
+  --bs-btn-padding-y: #{$spacing-unit};
+  --bs-btn-font-size: 1rem;
+  --bs-btn-border-radius: #{$radius-base};
 
   @include focus-ring;
-
-  &:hover {
-    background: $color-primary-dark;
-  }
 }

@@ -14,6 +14,8 @@ _MIB = 1024 * 1024
 class Options(msgspec.Struct, frozen=True, kw_only=True):
     samples: bool = False
     max_samples: int = 3
+    # shapes whose sample strings are masked (samples.py); the default covers identifying ones
+    masked_shapes: tuple[str, ...] = ("email", "url", "text", "alphanumeric", "uuid")
     shape_threshold: float = 0.95
 
     # Zip handling (spec 5). Size limits apply to what the parser reads (files it parses and

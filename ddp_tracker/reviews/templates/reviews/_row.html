@@ -1,0 +1,47 @@
+{# One line of the tree (reviews/tree.py): name, type, suggestion or annotation, a preview, the status. No buttons: the actions are in the side panel. Reloads itself after a change to any of its locations; then (oob) the counts too. #}
+<div class="review-row review-row--depth-{{ row.depth|default:0 }}{% if row.decided %} review-row--decided{% endif %}"
+     role="listitem"
+     data-panel-row
+     hx-get="{% url 'reviews:row' upload.pk row.location.pk %}"
+     hx-trigger="{{ row.triggers }}"
+     hx-swap="outerHTML">
+  <button type="button"
+          class="review-row__name"
+          title="{{ row.location.path }}"
+          data-panel-open
+          hx-get="{% url 'reviews:location' upload.pk row.location.pk %}"
+          hx-target="#node-detail"
+          hx-swap="innerHTML">
+    {# one slot for every row, so names line up: a list, a field of a list's items, a value #}
+    <span class="review-row__icon"
+          aria-hidden="true">{% if row.is_list %}[ ]{% elif row.depth %}└{% else %}◦{% endif %}</span>
+    {{ row.name }}
+  </button>
+  <span class="review-row__type">{{ row.type_badge }}</span>
+  <span class="review-row__summary">
+    {% if row.decided %}
+      {% if row.ignored %}
+        <span class="review-pill review-pill--muted">not a data point</span>
+      {% else %}
+        <span class="review-pill review-pill--done">{{ row.primary.annotation|default:row.location.annotation }}</span>
+      {% endif %}
+    {% elif row.item.choices %}
+      {% with choice=row.item.choices.0 %}
+        <span class="review-pill">{% if choice.reason == "renamed" %}Renamed?{% else %}Moved?{% endif %} {{ choice.annotation }}</span>
+      {% endwith %}
+    {% endif %}
+    {% if row.preview %}
+      <span class="review-row__values">{{ row.preview|join:", " }}{% if row.more %} +{{ row.more }}{% endif %}</span>
+    {% elif row.summary %}
+      <span class="review-row__values muted">{{ row.summary }}</span>
+    {% endif %}
+  </span>
+  <span class="status-dot status-dot--{% if row.ignored %}ignored{% elif row.decided %}decided{% else %}open{% endif %}"
+        title="{% if row.ignored %}Not a data point{% elif row.decided %}Annotated{% else %}To assign{% endif %}"></span>
+</div>
+{% if oob %}
+  {% include "reviews/_group_count.html" %}
+  {% include "reviews/_root_count.html" %}
+  {% include "reviews/_progress.html" %}
+  <span id="open-count" class="badge rounded-pill" hx-swap-oob="true">{{ open_count }}</span>
+{% endif %}

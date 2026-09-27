@@ -14,6 +14,19 @@ h3 {
   line-height: 1.2;
 }
 
+// Bootstrap's reboot drops headings' top margins; sections need them
+h2 {
+  margin-top: $spacing-unit * 3;
+}
+
+h3 {
+  margin-top: $spacing-unit * 2;
+}
+
+dt {
+  font-weight: 400; // reboot makes them bold; ours are muted labels (.facts)
+}
+
 p {
   color: $color-text-muted;
 }

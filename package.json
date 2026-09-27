@@ -1,14 +1,15 @@
 {
   "name": "ddp-tracker-assets",
   "private": true,
-  "description": "Static assets for ddp-tracker. Sass source lives in assets/scss/ and compiles to static/css/; htmx is copied from node_modules to static/vendor/ (served same-origin for the CSP). Rebuilt by `npm run build`.",
+  "description": "Static assets for ddp-tracker. Sass source lives in assets/scss/ (Bootstrap 5.3 compiled in, from node_modules) and compiles to static/css/; htmx and Bootstrap's JS bundle are copied from node_modules to static/vendor/ (served same-origin for the CSP). Rebuilt by `npm run build`.",
   "scripts": {
     "build": "npm run build:css && npm run build:vendor",
-    "build:css": "sass assets/scss/main.scss static/css/main.css --no-source-map --style=compressed",
-    "build:vendor": "mkdir -p static/vendor && cp node_modules/htmx.org/dist/htmx.min.js static/vendor/htmx.min.js",
-    "watch": "sass --watch assets/scss/main.scss:static/css/main.css"
+    "build:css": "sass assets/scss/main.scss static/css/main.css --load-path=node_modules --quiet-deps --no-source-map --style=compressed",
+    "build:vendor": "mkdir -p static/vendor && cp node_modules/htmx.org/dist/htmx.min.js static/vendor/htmx.min.js && cp node_modules/bootstrap/dist/js/bootstrap.bundle.min.js static/vendor/bootstrap.bundle.min.js",
+    "watch": "sass --watch assets/scss/main.scss:static/css/main.css --load-path=node_modules --quiet-deps"
   },
   "devDependencies": {
+    "bootstrap": "~5.3",
     "htmx.org": "^2.0.11",
     "sass": "^1.83.0"
   }

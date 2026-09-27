@@ -44,7 +44,7 @@ class AnnotationTests(TestCase):
         self.assertEqual((self.annotation.name, self.annotation.updated_by), ("Email", self.user))
 
     def test_examples_are_shown_per_location(self):
-        self.location.example_values = ["user@example.com"]
+        self.location.example_values = [{"value": "user@example.com", "source": "user_input"}]
         self.location.save()
         self.assertContains(
             self.client.get(self.annotation.get_absolute_url()),
@@ -103,10 +103,10 @@ class AnnotationInPanelTests(TestCase):
         self.assertContains(row, "Show annotation")
         # in a review (with its upload) it is a list item, not the panel's block
         review_row = self.client.get(
-            reverse("schemas:triage-row", args=[self.location.pk]), {"upload": self.upload.pk}
+            reverse("reviews:row", args=[self.upload.pk, self.location.pk])
         )
         self.assertNotContains(review_row, "Show annotation")
-        self.assertContains(review_row, "review-item")
+        self.assertContains(review_row, "review-row")
 
     def test_modal_shows_the_annotation_page(self):
         modal = self.client.get(reverse("annotations:modal", args=[self.annotation.pk]))

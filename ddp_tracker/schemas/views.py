@@ -1,4 +1,5 @@
-"""The collected schema of a platform (public explorer) and the review of an upload (triage).
+"""The collected schema of a platform (public explorer) and triaging its data points (the
+explorer's panel and the review, ``reviews``, share it).
 
 The explorer loads one level of the tree at a time (HTMX), so large schemas stay fast.
 """
@@ -13,20 +14,18 @@ from django.shortcuts import get_object_or_404, render
 
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform, Upload
+from ddp_tracker.ddps.values import own_values
 from ddp_tracker.schemas.filters import FilterForm, SchemaFilter, format_label
 from ddp_tracker.schemas.forms import ExamplesForm
 from ddp_tracker.schemas.json_view import json_path
 from ddp_tracker.schemas.models import ITEM, Location, Observation
 from ddp_tracker.schemas.profiles import profiles
 from ddp_tracker.schemas.services import (
-    TriageItem,
     choices,
     create_annotation,
-    create_with_list,
     ignore,
     link,
     list_name,
-    review,
 )
 from ddp_tracker.schemas.timeline import new_in
 from ddp_tracker.users.auth import signed_in_user
@@ -117,11 +116,11 @@ def location_detail(request: HttpRequest, slug: str) -> HttpResponse:
         path=request.GET.get("path", ""),
     )
     observations = schema_filter.observations(platform)
-    context = _panel_context(location, observations, observations, schema_filter)
+    context = panel_context(location, observations, observations, schema_filter)
     return render(request, "schemas/_location_sidepanel.html", context)
 
 
-def _panel_context(
+def panel_context(
     location: Location,
     observations: QuerySet[Observation],
     history_from: QuerySet[Observation],
@@ -158,36 +157,7 @@ def location_examples(request: HttpRequest, pk: int) -> HttpResponse:
     return render(request, "schemas/_examples_form.html", {"location": location, "form": form})
 
 
-# --- review and triage ------------------------------------------------------------------------
-
-
-@login_required
-def upload_review(request: HttpRequest, pk: int) -> HttpResponse:
-    upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
-    tab = request.GET.get("tab", "assign")
-    context = {
-        "upload": upload,
-        "review": review(upload) if upload.registered_at else None,
-        "tab": tab if tab in {"assign", "changed", "missing"} else "assign",
-    }
-    return render(request, "schemas/review/base.html", context)
-
-
-@login_required
-def review_location(request: HttpRequest, pk: int, location_pk: int) -> HttpResponse:
-    """HTMX: the side panel of a data point, as it is in the reviewed upload (a missing one: as
-    in all uploads)."""
-    upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
-    location = get_object_or_404(
-        Location.objects.select_related("annotation", "platform"),
-        pk=location_pk,
-        platform=upload.platform,
-    )
-    counted = Observation.objects.filter(upload__registered_at__isnull=False)
-    observation = upload.observations.filter(location=location).first()
-    scope = upload.observations.all() if observation else counted
-    context = _panel_context(location, scope, counted, SchemaFilter(), observation)
-    return render(request, "schemas/_location_sidepanel.html", context)
+# --- triage (the explorer's panel and the review share it) -------------------------------
 
 
 def _row_context(request: HttpRequest, location: Location) -> dict[str, Any]:
@@ -204,11 +174,12 @@ def _row_context(request: HttpRequest, location: Location) -> dict[str, Any]:
     )
     found = choices(observation) if observation else []
     is_new = observation is not None and location.pk in new_in(observation.upload)
+    upload = observation.upload if observation else None
     return {
         "location": location,
         "observation": observation,
-        "item": TriageItem(observation, found, is_new) if observation else None,
-        "upload": observation.upload if observation else None,
+        "upload": upload,
+        "own": own_values(request, upload),
         "is_new": is_new,
         "choices": found,
         "annotations": location.platform.annotations.all(),
@@ -218,17 +189,11 @@ def _row_context(request: HttpRequest, location: Location) -> dict[str, Any]:
 
 
 def _list_context(location: Location) -> dict[str, Any]:
-    """For a list's item: whether its list could get the suggested annotation too. For a list
-    whose item is annotated: the suggested name ("List of ID").
-    """
-    platform = location.platform_id
-    if location.path.endswith(ITEM):
-        parent = Location.objects.filter(platform=platform, path=location.parent_path).first()
-        free = parent is not None and parent.annotation_id is None and not parent.ignored
-        return {"list_open": free}
+    """For a list whose item is annotated: the suggested name ("List of ID"). A list is
+    annotated in its own step, after its item (which carries the meaning)."""
     item = (
         Location.objects.filter(
-            platform=platform, path=location.path + ITEM, annotation__isnull=False
+            platform=location.platform_id, path=location.path + ITEM, annotation__isnull=False
         )
         .select_related("annotation")
         .first()
@@ -237,13 +202,9 @@ def _list_context(location: Location) -> dict[str, Any]:
 
 
 def triage_row(request: HttpRequest, pk: int) -> HttpResponse:
-    """HTMX: a data point's triage row (read-only, reloaded after a change)."""
+    """HTMX: the side panel's annotation block (read-only, reloaded after a change)."""
     location = get_object_or_404(Location.objects.select_related("platform", "annotation"), pk=pk)
-    context = _row_context(request, location)
-    # a review row needs the reviewed upload; everything else is the side panel's block
-    in_review = context["item"] is not None and not context["panel"]
-    template = "schemas/review/_review_row.html" if in_review else "schemas/_triage_panel.html"
-    return render(request, template, context)
+    return render(request, "schemas/_triage_panel.html", _row_context(request, location))
 
 
 @login_required
@@ -261,11 +222,13 @@ def triage(request: HttpRequest, pk: int) -> HttpResponse:
         )
         link(location, annotation)
     elif action == "new":
-        name, user = request.POST.get("name", ""), signed_in_user(request)
-        if request.POST.get("with_list"):
-            create_with_list(location, name, user)
-        else:
-            create_annotation(location, name, user)
+        create_annotation(
+            location,
+            request.POST.get("name", ""),
+            signed_in_user(request),
+            description=request.POST.get("description", "").strip(),
+            note=request.POST.get("note", "").strip(),
+        )
     elif action == "ignore":
         ignore(location)
     elif action == "reset":

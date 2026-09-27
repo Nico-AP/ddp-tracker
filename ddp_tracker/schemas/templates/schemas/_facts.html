@@ -1,0 +1,29 @@
+{# A location's kind, type, shape, format and how often it was seen (its profile). #}
+<dl class="facts">
+  <dt>Kind</dt>
+  <dd>
+    {% include "schemas/_values.html" with counter=profile.kinds %}
+  </dd>
+  {% if profile.types %}
+    <dt>Type</dt>
+    <dd>
+      {% include "schemas/_values.html" with counter=profile.types %}
+    </dd>
+  {% endif %}
+  {% if profile.shapes %}
+    <dt>Shape</dt>
+    <dd>
+      {% include "schemas/_values.html" with counter=profile.shapes %}
+    </dd>
+  {% endif %}
+  {% if profile.formats %}
+    <dt>Format</dt>
+    <dd>
+      {% include "schemas/_values.html" with counter=profile.formats %}
+    </dd>
+  {% endif %}
+  <dt>Seen</dt>
+  <dd>
+    in {{ profile.uploads }} upload{{ profile.uploads|pluralize }}, requested {{ profile.first_seen }} – {{ profile.last_seen }}
+  </dd>
+</dl>

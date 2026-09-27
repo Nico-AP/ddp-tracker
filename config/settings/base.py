@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "ddp_tracker.core",
     "ddp_tracker.ddps",
     "ddp_tracker.schemas",
+    "ddp_tracker.reviews",
     "ddp_tracker.annotations",
     "ddp_tracker.representations",
     "ddp_tracker.users",
@@ -114,6 +115,10 @@ DDP_MAX_UPLOAD_SIZE = env.int("DDP_MAX_UPLOAD_SIZE", default=2 * 1024**3)  # byt
 # Below this share of known data points (0 to 1), an upload is unusual: the uploader confirms it and
 # staff approve it before it counts (ddp_tracker/ddps/checks.py).
 DDP_SIMILARITY_THRESHOLD = env.float("DDP_SIMILARITY_THRESHOLD", default=0.3)
+# The uploader's own values (ddp_tracker/ddps/values.py): up to this many per data point, sealed
+# with a key only the uploader's browser holds, and deleted after this many days.
+DDP_VALUES_PER_POINT = env.int("DDP_VALUES_PER_POINT", default=5)
+DDP_VALUES_RETENTION_DAYS = env.int("DDP_VALUES_RETENTION_DAYS", default=3)
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]

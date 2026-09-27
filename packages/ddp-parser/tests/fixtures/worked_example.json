@@ -10,6 +10,13 @@
   "options": {
     "samples": false,
     "max_samples": 3,
+    "masked_shapes": [
+      "email",
+      "url",
+      "text",
+      "alphanumeric",
+      "uuid"
+    ],
     "shape_threshold": 0.95,
     "max_depth": 3,
     "max_entries": 200000,

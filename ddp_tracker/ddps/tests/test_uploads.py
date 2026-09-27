@@ -110,7 +110,7 @@ class UploadPagesTests(TestCase):
         first = parsed_upload(self.platform, PROFILE, register=True)
         second = parsed_upload(self.platform, PROFILE)
         response = self.client.get(first.get_absolute_url())
-        self.assertContains(response, reverse("schemas:review", args=[first.pk]))
+        self.assertContains(response, reverse("reviews:review", args=[first.pk]))
         decide(second)
         response = self.client.get(second.get_absolute_url())
         self.assertContains(response, "Not part of the collected schema")

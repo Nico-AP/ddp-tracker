@@ -1,0 +1,5 @@
+<span id="{{ root_id }}"
+      class="review-root__count"
+      {% if oob %}hx-swap-oob="true"{% endif %}>
+  {% if root_open %}{{ root_open }} to assign{% else %}done{% endif %}
+</span>

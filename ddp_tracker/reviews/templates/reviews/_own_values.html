@@ -1,0 +1,19 @@
+{# The uploader's own values of a data point, to contribute as they are to its public examples (marked "extracted"; reviews.views.review_add_examples). Only ever rendered for the uploader, once the data point is annotated. #}
+{% load core_tags %}
+{% with mine=own|values_at:location.path %}
+  <form class="own-values__form"
+        hx-post="{% url 'reviews:add-examples' upload.pk location.pk %}"
+        hx-target="#examples"
+        hx-swap="outerHTML">
+    {% for value in mine %}
+      <label class="own-values__row">
+        <input type="checkbox" name="use" value="{{ forloop.counter0 }}">
+        <code class="own-value" title="{{ value }}">{{ value }}</code>
+      </label>
+    {% endfor %}
+    <p class="form__help">
+      Examples are public: only add values without personal data. They are added as they are, marked as extracted.
+    </p>
+    <button type="submit" class="btn btn--small">Add to examples</button>
+  </form>
+{% endwith %}

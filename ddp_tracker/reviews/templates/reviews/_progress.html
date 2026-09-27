@@ -1,0 +1,9 @@
+{# How many of the upload's data points are decided (annotated or not a data point). #}
+<div id="review-progress"
+     class="review-progress"
+     {% if oob %}hx-swap-oob="true"{% endif %}>
+  <progress max="{{ progress.total }}"
+            value="{{ progress.decided }}"
+            aria-label="Data points decided"></progress>
+  <span>{{ progress.decided }} of {{ progress.total }} annotated</span>
+</div>

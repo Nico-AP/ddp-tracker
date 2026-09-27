@@ -6,6 +6,7 @@ from django import template
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
+from ddp_tracker.ddps.values import OwnValues, Value
 from ddp_tracker.schemas import labels
 
 register = template.Library()
@@ -48,3 +49,9 @@ def ranked(counter: Counter[str]) -> list[tuple[str, int]]:
     themselves: on a ``Counter``, the attribute lookup finds the missing key ``0`` first.
     """
     return counter.most_common()
+
+
+@register.filter
+def values_at(own: OwnValues | None, path: str) -> list[Value]:
+    """The uploader's own values of a data point (``ddps/values.py``), if any."""
+    return own.values.get(path, []) if own else []

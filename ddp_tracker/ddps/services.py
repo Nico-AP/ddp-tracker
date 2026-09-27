@@ -11,9 +11,10 @@ from ddp_tracker.ddps.models import Upload
 from ddp_tracker.ddps.tasks import parse_upload
 
 
-def receive(upload: Upload, file: UploadedFile) -> None:
+def receive(upload: Upload, file: UploadedFile, public_key: str = "") -> None:
     """Store ``file`` in the private incoming directory and enqueue its parsing once ``upload``
-    is committed. The task deletes the file after reading it.
+    is committed. The task deletes the file after reading it; ``public_key`` seals the
+    uploader's values (``ddps/values.py``).
     """
     incoming = Path(settings.DDP_INCOMING_DIR)
     incoming.mkdir(parents=True, exist_ok=True)
@@ -21,4 +22,4 @@ def receive(upload: Upload, file: UploadedFile) -> None:
     with path.open("wb") as target:
         for chunk in file.chunks():
             target.write(chunk)
-    transaction.on_commit(lambda: parse_upload.enqueue(upload.pk, str(path)))
+    transaction.on_commit(lambda: parse_upload.enqueue(upload.pk, str(path), public_key))

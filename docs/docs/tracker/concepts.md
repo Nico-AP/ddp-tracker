@@ -11,7 +11,7 @@ and tests follow these definitions; change them here first.
 | **Location**    | A path (see the [parser spec](../ddp_parser/index.md#23-paths)) ever seen in a platform's registered uploads. It holds only identity (the path), its place in the tree, and curation: its annotation, "not a data point", example values.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | **Observation** | A location as it appears in one upload: kind, type, shape, format, stats. **Everything descriptive about a location is derived from its observations**, so any view can be restricted to a subset of uploads.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | **Annotation**  | A data point (e.g. "watched videos") and what is known about it: name, description, note. It has one or more locations: moved or renamed keys, keys named differently in exports of another language. A location belongs to at most one annotation. Example values are kept per location, since they can differ between them.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| **Data point**  | A location that carries meaning of its own, and so is open for annotation: a **value**, a **list**, a **list's item** (`<item>`, path `…/[]`), or a **media** file. The item carries the meaning ("ID", "watched video"): its examples, format and representations; its fields (`VideoList[]/<item>/Date`) are data points of their own. List and item each get their own annotation; the list's name is suggested from the item's ("List of …", created together from the item's dialog). An item isn't *missing* from an upload whose list is present but empty. A parsed file whose content is a list (a JSON array, a CSV's rows) *is* that list. Objects only group keys (e.g. `profile`, `user`) unless they are a list's item, and other files, unmatched files, folders, zip containers and the root only describe where data lies: they are never annotated. A location is a data point in a view if any of its observations in the view is one. |
+| **Data point**  | A location that carries meaning of its own, and so is open for annotation: a **value**, a **list**, a **list's item** (`<item>`, path `…/[]`), or a **media** file. The item carries the meaning ("ID", "watched video"): its examples, format and representations; its fields (`VideoList[]/<item>/Date`) are data points of their own. List and item each get their own annotation; the list is annotated in its own step after the item, its name suggested from the item's ("List of …"). An item isn't *missing* from an upload whose list is present but empty. A parsed file whose content is a list (a JSON array, a CSV's rows) *is* that list. Objects only group keys (e.g. `profile`, `user`) unless they are a list's item, and other files, unmatched files, folders, zip containers and the root only describe where data lies: they are never annotated. A location is a data point in a view if any of its observations in the view is one. |
 
 ## Upload checks
 
@@ -34,6 +34,30 @@ part of the explorer, reviews, "new" and "changed") once it passed these checks
 
 **Approval** is by staff (the *Approvals* page, or the upload's page), their own uploads
 included. Approved uploads count; rejected ones don't.
+
+## The uploader's values
+
+Everything public is derived from the structure only. To make annotating easier, each upload also
+keeps a few real values per data point (`DDP_VALUES_PER_POINT`, default 5) **for its uploader
+alone** (`ddp_tracker/ddps/values.py`):
+
+- **What.** The parser's samples: the first distinct values of each data point. Email addresses
+  are masked (`anna@example.com` → `axxx@xxxxxxx.xxx`), also inside texts. They are taken out of
+  the upload's schema document: no observation, explorer or review ever holds them.
+- **Where.** Encrypted with the upload's public key. The private key is only in a signed cookie
+  in the browser the DDP was uploaded from, never in the session or the database: the database
+  alone doesn't reveal them.
+- **Who.** Only the uploader, logged in, in that browser; not other curators and not staff (they
+  aren't in the admin either).
+- **How long.** Until `DDP_VALUES_RETENTION_DAYS` (default 30) are over, the uploader deletes
+  them, or logs out (which deletes the key). `manage.py purge_upload_values` removes expired ones.
+- **Shown** on the upload's review page (rows, side panel, annotation dialog). In the side panel,
+  the uploader can **contribute values to the data point's examples** once it is annotated, as they are (not editable):
+  only then do they become public.
+
+Each example records where it came from (`schemas/examples.py`): **extracted** (contributed from
+an uploader's file, never edited; curators can only keep or remove it) or **user input** (typed
+in the examples form).
 
 ## How nodes are labelled
 
@@ -71,10 +95,31 @@ with the same request date don't count as earlier than each other.
 | **Untriaged**  | A data point with no annotation that isn't marked "not a data point". Values, lists and objects all need a decision.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | **Suggestion** | For an unknown data point, a known path it may correspond to (`moved` or `renamed`, [parser spec §9.3](../ddp_parser/index.md#93-suggesting-correspondences)), and so that path's annotation. Computed against the uploads **requested earlier** (the same cut-off as *new*), merged on the fly; nothing aggregated is stored. Recomputed for the later uploads when an older export is registered afterwards, so registration order doesn't matter. Uploads of different root formats (a single JSON file vs. a zip) are separate references: their trees don't share a root, so each gives its own candidates, and a path any of them knows gets none. |
 
-On the **review page**, every data point still to assign is one entry: its path, the annotation
-suggestion, and in brackets why: the earlier path it **likely matches** (annotated or not; nothing is
-claimed about why the path differs), or that it is **new** (no earlier upload has the path) or was
-**seen before** (earlier uploads had it, but it was never annotated). *Changed* rows say, per field, what earlier uploads had and what this one has.
+On the **review page** (`ddp_tracker/reviews`), the upload's data points form a tree (the
+annotated ones too, unless *Hide annotated* is on; the counts are always the open ones):
+
+- **Files** come first: one collapsible block per file (data points that are files themselves,
+  like a file whose content is a list or a media file, sit in their folder's block). Only the
+  first file with something to assign, and its first such group, start expanded.
+- **Groups** inside a file are the key chains that need no annotation themselves (plain
+  objects), e.g. *Ads and data › Off TikTok Activity*, with how many rows in them are open. The
+  data points directly in the file have no group heading.
+- **One row per data point**, except that a **list and its item share one row** (`VideoList[]`):
+  the item carries the meaning, so the row is annotated item first, then the list in its own
+  step (its name prefilled *List of …*); the row is done once both are. The fields of the items are rows below it; a
+  decided list stays there while any of them is open.
+- Each row shows the type, a suggestion (*Moved? …* / *Renamed? …*: the earlier path it
+  **likely matches**; nothing is claimed about why the path differs), a preview (the uploader's
+  own values, else the number of items or the format) and whether it is decided.
+- The **annotation dialog** lies over the tree, so the side panel stays readable and usable:
+  a new annotation (name, description, note), or a search through the existing ones to link.
+- The **side panel** is for annotating: why the data point is here (**new**: no earlier upload
+  has the path; **likely moved/renamed**; **seen before**: earlier uploads had it, but it was
+  never annotated), the suggestion as the main action, the values found in the file (uploader
+  only), and, **once it is annotated**, contributing those values to the examples and linking
+  representations. The technical details are collapsed.
+
+*Changed* rows say, per field, what earlier uploads had and what this one has.
 
 Example for **changed**, one location's `format`, uploads in order of request date:
 

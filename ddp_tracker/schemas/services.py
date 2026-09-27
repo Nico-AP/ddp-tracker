@@ -1,4 +1,7 @@
-"""The collected schema: registering uploads, reviewing them, triaging their data points."""
+"""The collected schema: registering uploads, suggesting annotations, triaging data points.
+
+Reviewing an upload is the ``reviews`` app.
+"""
 
 from collections.abc import Iterator
 from dataclasses import asdict, dataclass
@@ -14,9 +17,7 @@ from ddp_parser import Candidate, children, from_dict, is_data_point, merge_tree
 from ddp_parser.model import FilesystemNode, Node
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform, Upload
-from ddp_tracker.schemas.models import ITEM, Location, Observation
-from ddp_tracker.schemas.profiles import Profile, profiles
-from ddp_tracker.schemas.timeline import FieldChange, change_details, new_in
+from ddp_tracker.schemas.models import Location, Observation
 from ddp_tracker.users.models import User
 
 # Fields shown as the node's headline; everything else goes into ``details``.
@@ -166,7 +167,7 @@ def suggest_for(upload: Upload) -> None:
     Observation.objects.bulk_update(observations, ["suggestions"], batch_size=_BATCH)
 
 
-# --- reviewing --------------------------------------------------------------------------------
+# --- suggestions -----------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -175,73 +176,6 @@ class Choice:
     reason: str  # "moved" / "renamed"
     score: float
     via: str  # the known path it was found through
-
-
-@dataclass(frozen=True)
-class TriageItem:
-    observation: Observation
-    choices: list[Choice]
-    is_new: bool  # no earlier-requested upload has the path
-
-    @property
-    def location(self) -> Location:
-        return self.observation.location
-
-    @property
-    def candidate(self) -> dict[str, Any] | None:
-        """The best suggestion ``{path, reason, score}``, annotated or not."""
-        suggestions = self.observation.suggestions
-        return suggestions[0] if suggestions else None
-
-    @property
-    def status(self) -> str:
-        """``moved`` / ``renamed`` (a suggestion), ``new`` (no earlier upload has the path) or
-        ``seen`` (earlier uploads had it, but it was never annotated)."""
-        if self.candidate is not None:
-            return str(self.candidate["reason"])
-        return "new" if self.is_new else "seen"
-
-    @property
-    def within_group(self) -> str:
-        """The path below its list (``<item>/date``), for rows grouped under the list."""
-        rest = self.location.path[len(self.group) :].lstrip("/")
-        return "/".join("<item>" if part == "[]" else part for part in rest.split("/"))
-
-    @property
-    def block(self) -> str:
-        """Rows that belong together (a list and its items' fields share one stripe): the list's
-        path for a list and everything inside its items, else the row's own path."""
-        return self.group or self.location.path
-
-    @property
-    def group(self) -> str:
-        """For data points inside a list's items: the list's path (their rows are grouped under
-        it); "" for everything else."""
-        path = self.location.path
-        return path.rsplit(ITEM, 1)[0] if ITEM + "/" in path or path.endswith(ITEM) else ""
-
-
-@dataclass(frozen=True)
-class ChangedItem:
-    observation: Observation
-    diffs: list[FieldChange]  # each field with a value no earlier upload had, and what they had
-
-    @property
-    def fields(self) -> list[str]:
-        return [diff.field for diff in self.diffs]
-
-
-@dataclass(frozen=True)
-class MissingItem:
-    location: Location
-    profile: Profile  # over all uploads: how often and until when it was seen
-
-
-@dataclass(frozen=True)
-class Review:
-    triage: list[TriageItem]  # untriaged data points of this upload, grouped by parent
-    changed: list[ChangedItem]
-    missing: list[MissingItem]  # locations of annotations this upload has nowhere (unless moved)
 
 
 def choices(observation: Observation) -> list[Choice]:
@@ -263,68 +197,6 @@ def choices(observation: Observation) -> list[Choice]:
     return list(found.values())
 
 
-def _in_file_order(found: list[Observation]) -> list[Observation]:
-    """Depth first, siblings in file order (as the explorer's tree shows them)."""
-    if not found:
-        return found
-    ancestors: set[str] = set()
-    for observation in found:
-        parts = observation.location.path.split("/")
-        ancestors.update("/".join(parts[:end]) for end in range(2, len(parts) + 1))
-    positions = dict(
-        Location.objects.filter(
-            platform=found[0].location.platform_id, path__in=ancestors
-        ).values_list("path", "position")
-    )
-
-    def key(observation: Observation) -> tuple[tuple[int, str], ...]:
-        parts = observation.location.path.split("/")
-        prefixes = ["/".join(parts[:end]) for end in range(2, len(parts) + 1)]
-        return tuple((positions.get(prefix, 0), prefix) for prefix in prefixes)
-
-    return sorted(found, key=key)
-
-
-def review(upload: Upload) -> Review:
-    """What a curator needs to look at for ``upload`` (definitions: docs/tracker/concepts.md)."""
-    observations = upload.observations.select_related("location", "location__annotation")
-    new = new_in(upload)
-    untriaged = _in_file_order(
-        list(
-            observations.filter(
-                is_data_point=True, location__annotation__isnull=True, location__ignored=False
-            )
-        )
-    )
-    changes = change_details(upload)
-    present = set(upload.observations.values_list("location__path", flat=True))
-    # an annotated path that a data point here likely matches (at another path or under another
-    # key name) isn't missing: it appears once, as that data point's "likely matches …"
-    moved_from = {o.suggestions[0]["path"] for o in untriaged if o.suggestions}
-    missing = [
-        location
-        for location in upload.platform.locations.filter(annotation__isnull=False)
-        .exclude(annotation__locations__observations__upload=upload)
-        .select_related("annotation")
-        .order_by("path")
-        # a list's item is absent when the list is empty: not missing, just no items this time
-        if not (location.path.endswith(ITEM) and location.parent_path in present)
-        and location.path not in moved_from
-    ]
-    seen = profiles(
-        (location.pk for location in missing),
-        Observation.objects.filter(upload__registered_at__isnull=False),
-    )
-    return Review(
-        triage=[TriageItem(o, choices(o), o.location_id in new) for o in untriaged],
-        changed=[
-            ChangedItem(o, changes[o.location_id])
-            for o in observations.filter(location_id__in=changes).order_by("location__path")
-        ],
-        missing=[MissingItem(location, seen[location.pk]) for location in missing],
-    )
-
-
 # --- triaging ---------------------------------------------------------------------------------
 
 
@@ -341,37 +213,36 @@ def ignore(location: Location) -> None:
     location.save(update_fields=["annotation", "ignored"])
 
 
-def create_annotation(location: Location, name: str, user: User | None) -> Annotation:
+def create_annotation(
+    location: Location, name: str, user: User | None, *, description: str = "", note: str = ""
+) -> Annotation:
     """A new annotation for ``location``, named ``name`` (made unique on the platform)."""
-    annotation = _unique_annotation(location.platform, name, user)
+    annotation = _unique_annotation(
+        location.platform, name, user, description=description, note=note
+    )
     link(location, annotation)
     return annotation
 
 
-def _unique_annotation(platform: Platform, name: str, user: User | None) -> Annotation:
+def _unique_annotation(
+    platform: Platform, name: str, user: User | None, *, description: str = "", note: str = ""
+) -> Annotation:
     base = name.strip() or "unnamed"
     for attempt in range(1, 1000):
         candidate = base if attempt == 1 else f"{base} ({attempt})"
         try:
             with transaction.atomic():
-                return Annotation.objects.create(platform=platform, name=candidate, updated_by=user)
+                return Annotation.objects.create(
+                    platform=platform,
+                    name=candidate,
+                    description=description,
+                    note=note,
+                    updated_by=user,
+                )
         except IntegrityError:
             continue
     msg = f"no free annotation name for {base!r}"  # pragma: no cover
     raise RuntimeError(msg)  # pragma: no cover
-
-
-def create_with_list(item: Location, name: str, user: User | None) -> Annotation:
-    """A new annotation for a list's item (e.g. "ID"), and the suggested one for its list ("List
-    of ID") if the list has none yet.
-    """
-    annotation = create_annotation(item, name, user)
-    parent = Location.objects.filter(
-        platform=item.platform_id, path=item.parent_path, annotation__isnull=True, ignored=False
-    ).first()
-    if parent is not None:
-        create_annotation(parent, list_name(annotation.name), user)
-    return annotation
 
 
 def list_name(item_name: str) -> str:

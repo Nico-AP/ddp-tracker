@@ -3,14 +3,16 @@ from collections.abc import Callable
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from ddp_tracker.ddps import checks
+from ddp_tracker.ddps import checks, values
 from ddp_tracker.ddps.forms import UploadForm
 from ddp_tracker.ddps.models import Upload
 from ddp_tracker.ddps.services import receive
@@ -33,9 +35,13 @@ def upload_create(request: HttpRequest) -> HttpResponse:
             upload.file_name = form.cleaned_data["file"].name
             upload.uploaded_by = signed_in_user(request)
             upload.save()
-            receive(upload, form.cleaned_data["file"])
-        return redirect(upload)
-    return render(request, "ddps/upload_form.html", {"form": form})
+            private_key, public_key = values.new_key_pair()
+            receive(upload, form.cleaned_data["file"], public_key)
+        response = redirect(upload)
+        values.remember(response, upload, private_key)  # only this browser can read them
+        return response
+    context = {"form": form, "retention_days": settings.DDP_VALUES_RETENTION_DAYS}
+    return render(request, "ddps/upload_form.html", context)
 
 
 @login_required
@@ -108,3 +114,28 @@ def upload_approvals(request: HttpRequest) -> HttpResponse:
         .order_by("created_at")
     )
     return render(request, "ddps/upload_approvals.html", {"uploads": waiting})
+
+
+# --- the uploader's own values (ddps/values.py) ------------------------------------------------
+
+
+@login_required
+@require_POST
+def upload_forget_values(request: HttpRequest, pk: int) -> HttpResponse:
+    """The uploader deletes their values of an upload, and the key to them."""
+    upload = get_object_or_404(Upload, pk=pk)
+    if upload.uploaded_by_id != signed_in_user(request).pk:
+        raise PermissionDenied
+    response = redirect(reverse("reviews:review", args=[upload.pk]))
+    values.forget(response, upload)
+    messages.success(request, "Your values of this upload were deleted.")
+    return response
+
+
+class LogoutView(auth_views.LogoutView):
+    """Logging out also deletes the keys to the uploader's values: they become unreadable."""
+
+    def post(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
+        response = super().post(request, *args, **kwargs)
+        values.forget_keys(request, response)
+        return response

@@ -247,7 +247,8 @@ With `options.samples = true`, scalar nodes get:
 ```
 
 - at most `options.max_samples` (default 3) distinct values per node
-- shapes `email`, `url`, `text`, `alphanumeric`, `uuid` are **redacted**:
+- the shapes in `options.masked_shapes` (default `email`, `url`, `text`,
+  `alphanumeric`, `uuid`) are **redacted**:
   the first character is kept, then letters become `x`, digits `0`, and all
   other characters stay, so the shape remains visible
   (`anna@example.com` → `axxx@xxxxxxx.xxx`)
@@ -487,6 +488,13 @@ timestamp,action,device
   "options": {
     "samples": false,
     "max_samples": 3,
+    "masked_shapes": [
+      "email",
+      "url",
+      "text",
+      "alphanumeric",
+      "uuid"
+    ],
     "shape_threshold": 0.95,
     "max_depth": 3,
     "max_entries": 200000,

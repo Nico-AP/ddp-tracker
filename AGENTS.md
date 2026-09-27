@@ -40,7 +40,8 @@ config/
 apps/
   core/              # index, health check, shared helpers (auth.py, testing.py, template tags)
   ddps/              # Platform, Upload; upload form + background parse task (tasks.py)
-  schemas/           # Location, Observation, filters/profiles/timeline, explorer, review/triage
+  schemas/           # Location, Observation, filters/profiles/timeline, explorer, triage
+  reviews/           # the review of an upload: data points to assign, changed, missing (no models)
   annotations/       # Annotation: a data point and what is known about it (examples live on Location)
   representations/   # Representation: cross-platform concept (ontology) linking annotations
     every app has the same shape: models.py, views.py, urls.py, tests.py, templates/<app>/
@@ -68,7 +69,7 @@ from observations at query time** (`ddp_tracker`), restricted by a `SchemaFilter
 (`ddp_tracker`). The definitions are in `docs/docs/tracker/concepts.md`: change them
 there first. An **`Annotation`** describes a data point; it has many locations (moves,
 languages). Curators triage an upload's unassigned data points (values, lists and their items, media files; `ddp_parser.is_data_point`)
-on its review page. The UI is
+on its review page (`ddp_tracker/reviews`). The UI is
 server-side templates plus htmx (served from `static/vendor/`; the production CSP allows no inline
 scripts or styles and no eval, so don't add any).
 
@@ -81,7 +82,15 @@ across apps.
 Sass compiles with plain Node tooling (`npm run build` / `npm run watch`), not a Python/Django
 package — deliberately kept out of `pyproject.toml` and `uv`'s dependency tree.
 
-- Source: `assets/scss/` (7-1-lite: `abstracts/`, `base/`, `components/`, `layout/`, `main.scss`).
+- Source: `assets/scss/` (7-1-lite: `abstracts/`, `base/`, `components/`, `layout/`, `vendors/`,
+  `main.scss`).
+- **Bootstrap 5.3** is the styling framework: an npm devDependency, compiled from its SCSS in
+  `vendors/_bootstrap.scss` (first in `main.scss`) and configured there with our tokens from
+  `abstracts/_variables.scss`; its JS bundle is copied to `static/vendor/` (same origin, CSP-safe).
+  Prefer Bootstrap's components and utilities for new UI, and customise through its variables
+  (Sass, or `--bs-*` custom properties as in `components/_buttons.scss`) rather than overriding
+  its rules. The shared dialog is a native `<dialog class="dialog">`, not Bootstrap's `.modal`.
+  Bootstrap's own Sass still uses `@import`; `--quiet-deps` silences its deprecation warnings.
 - Output: `static/css/main.css` — a build artifact, gitignored, never hand-edited or committed.
 - `templates/base.html` links it with the plain `{% static 'css/main.css' %}` tag.
 - Partials use the `@use` module system (`@use "../abstracts/variables" as *;`), not the legacy

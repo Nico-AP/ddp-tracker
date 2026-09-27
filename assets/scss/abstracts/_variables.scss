@@ -1,13 +1,18 @@
 // Design tokens — colors, spacing, typography scale.
 // Keep this the single source of truth; don't hardcode values elsewhere.
 
-$color-primary: #2563eb;
-$color-primary-dark: #1d4ed8;
+$color-primary-light: #22396F;
+$color-primary: #0D1C42;
+$color-primary-dark: #010736;
 $color-text: #111827;
 $color-text-muted: #6b7280;
 $color-bg: #ffffff;
-$color-bg-darker: #e0e0e0;
+$color-bg-darker: #FCF1D0;
+$color-bg-accent: #d3d3d35e;
 $color-border: #e5e7eb;
+
+$bg-button-primary: #4965a5;
+$bg-button-primary-hover: #22396F;
 
 $font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 $font-size-base: 16px;

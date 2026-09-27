@@ -11,7 +11,7 @@ uv run pre-commit install
 cp .env.example .env   # only needed if you want to override local defaults (e.g. Postgres)
 uv run manage.py migrate
 npm install
-npm run build          # compiles assets/scss/ -> static/css/main.css, copies htmx to static/vendor/
+npm run build          # compiles assets/scss/ (incl. Bootstrap) -> static/css/main.css, copies htmx + Bootstrap JS to static/vendor/
 uv run manage.py createsuperuser
 uv run manage.py runserver
 ```
@@ -34,6 +34,13 @@ A maintenance command works on already stored schema documents (no re-upload nee
 uv run manage.py refresh_observations   # re-apply the parser's current rules (e.g. which nodes are data points)
 ```
 
+In production, run this daily (e.g. from cron): it deletes the uploaders' own values whose retention
+time (`DDP_VALUES_RETENTION_DAYS`, default 30) is over; see `ddp_tracker/ddps/values.py`.
+
+```bash
+uv run manage.py purge_upload_values
+```
+
 Run any project command through `uv run` (e.g. `uv run manage.py shell`, `uv run ruff check .`)
 so it uses the project's `.venv` rather than whatever Python happens to be on your `PATH`.
 
@@ -50,6 +57,11 @@ npm run watch   # recompile on change while developing
 
 Partials use Sass's `@use` module system, not the older `@import` — each partial
 pulls in exactly the abstracts it needs via `@use "../abstracts/..." as *;`.
+
+[Bootstrap 5.3](https://getbootstrap.com/docs/5.3/) is compiled in from `node_modules`
+(`vendors/_bootstrap.scss`, configured with our design tokens); its JS bundle is served from
+`static/vendor/`. Use its components and utilities for new UI and customise it through its
+variables.
 
 ## Testing
 

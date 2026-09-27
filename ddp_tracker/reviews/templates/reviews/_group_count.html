@@ -1,0 +1,5 @@
+<span id="{{ group_id }}"
+      class="review-group__count{% if hidden %} visually-hidden{% endif %}"
+      {% if oob %}hx-swap-oob="true"{% endif %}>
+  {% if group_open %}{{ group_open }} to assign{% else %}done{% endif %}
+</span>
