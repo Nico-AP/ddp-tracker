@@ -127,9 +127,7 @@ class LabelledPagesTests(TestCase):
     def test_pages_show_labels(self):
         detail = reverse("schemas:location", args=["tiktok"])
         response = self.client.get(detail, {"path": "/data.json/Watch History/VideoList"})
-        self.assertContains(response, "<h3>Details</h3>", html=True)
-        self.assertContains(response, "<dt>Summary</dt>", html=True)
-        self.assertContains(response, "<dd>List of objects</dd>", html=True)
+        self.assertContains(response, "<h3>Data Structure Details</h3>", html=True)
         children = self.client.get(
             reverse("schemas:children", args=["tiktok"]),
             {"path": "/data.json/Watch History/VideoList"},

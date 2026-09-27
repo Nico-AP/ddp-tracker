@@ -1,4 +1,9 @@
 {% load core_tags %}
+
+<p class="detail-panel__path">
+  <code class="path">{{ location.path|default:"/" }}</code>
+</p>
+
 <h2 class="detail-panel__title">
   {% if location.path %}
     {{ location.display_name }}{% if profile.is_list %}[]{% endif %}
@@ -6,20 +11,16 @@
     Root
   {% endif %}
 </h2>
-<p class="detail-panel__path">
-  <code class="path">{{ location.path|default:"/" }}</code>
-</p>
+
 {% if json_path %}
   {% include "schemas/_json_path.html" %}
 {% endif %}
+
 <hr />
-<h3>Details</h3>
-{% if filter.is_active %}<p class="muted">Within the current filter.</p>{% endif %}
+
+<h3>Data Structure Details</h3>
+
 <dl class="facts">
-  <dt>Summary</dt>
-  <dd>
-    {{ profile.label|capfirst }}
-  </dd>
   <dt>Kind</dt>
   <dd>
     {% include "schemas/_values.html" with counter=profile.kinds %}
@@ -47,6 +48,7 @@
     in {{ profile.uploads }} upload{{ profile.uploads|pluralize }}, requested {{ profile.first_seen }} – {{ profile.last_seen }}
   </dd>
 </dl>
+
 {% if profile.is_data_point %}
   <hr />
   {% include "schemas/_examples.html" %}
@@ -60,6 +62,7 @@
     <p class="muted">Loading…</p>
   </div>
 {% endif %}
+
 {% if history %}
   <hr />
   <h3>History</h3>

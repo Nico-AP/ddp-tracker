@@ -125,7 +125,7 @@ class ReviewStatusTests(TestCase):
         self.client.force_login(self.user)
         name = Location.objects.get(path="/user_data_tiktok.json/Profile/name")
         panel = self.client.get(reverse("schemas:review-location", args=[self.zipped.pk, name.pk]))
-        self.assertContains(panel, "<h3>Details</h3>", html=True)
+        self.assertContains(panel, "<h3>Data Structure Details</h3>", html=True)
         # the annotation block and its dialog know the upload (for the suggestions)
         self.assertContains(panel, f"upload={self.zipped.pk}")
         missing = self.client.get(

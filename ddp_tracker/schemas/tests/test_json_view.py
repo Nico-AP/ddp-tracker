@@ -98,6 +98,6 @@ class JsonPathTests(TestCase):
     def test_side_panel(self):
         url = reverse("schemas:location", args=["tiktok"])
         response = self.client.get(url, {"path": HISTORY + "/VideoList/[]/Date"})
-        self.assertContains(response, "<summary>As JSON</summary>", html=True)
+        self.assertContains(response, "<summary>Show JSON path</summary>", html=True)
         self.assertContains(response, "&quot;Link&quot;: &lt;text · url&gt;")
         self.assertNotContains(self.client.get(url, {"path": ""}), "As JSON")

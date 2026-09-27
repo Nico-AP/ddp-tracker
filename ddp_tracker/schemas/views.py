@@ -118,7 +118,7 @@ def location_detail(request: HttpRequest, slug: str) -> HttpResponse:
     )
     observations = schema_filter.observations(platform)
     context = _panel_context(location, observations, observations, schema_filter)
-    return render(request, "schemas/_location_detail.html", context)
+    return render(request, "schemas/_location_sidepanel.html", context)
 
 
 def _panel_context(
@@ -187,7 +187,7 @@ def review_location(request: HttpRequest, pk: int, location_pk: int) -> HttpResp
     observation = upload.observations.filter(location=location).first()
     scope = upload.observations.all() if observation else counted
     context = _panel_context(location, scope, counted, SchemaFilter(), observation)
-    return render(request, "schemas/_location_detail.html", context)
+    return render(request, "schemas/_location_sidepanel.html", context)
 
 
 def _row_context(request: HttpRequest, location: Location) -> dict[str, Any]:

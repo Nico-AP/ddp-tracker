@@ -68,11 +68,6 @@ class FilterTests(TestCase):
             reverse("schemas:children", args=["tiktok"]), {"path": "/new.json", "languages": ["en"]}
         )
         self.assertContains(children, "Empty.")  # new.json's keys aren't in English exports
-        detail = self.client.get(
-            reverse("schemas:location", args=["tiktok"]),
-            {"path": "/new.json/k", "languages": ["de"]},
-        )
-        self.assertContains(detail, "Within the current filter")
 
     def test_form_choices_and_query(self):
         rendered = FilterForm(platform=self.platform).as_div()
