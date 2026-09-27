@@ -28,19 +28,20 @@ class FilterTests(TestCase):
         parsed_file(self.platform, "single.csv", b"a,b\n1,2\n", register=True)
         self.url = reverse("schemas:platform", args=["tiktok"])
 
-    def names(self, response):
-        return [row["location"].name for row in response.context["rows"]]
+    def keys(self, response):
+        return [row.key for group in response.context["tree"].groups for row in group.lines()]
 
-    def test_unfiltered(self):
+    def test_unfiltered_is_the_most_common_format(self):
         response = self.client.get(self.url)
-        self.assertEqual(response.context["counts"]["uploads"], 3)
+        self.assertEqual(response.context["counts"]["uploads"], 2)  # the two zips, not the CSV
+        self.assertEqual(response.context["filter"].root_format, "zip")
         self.assertFalse(response.context["filter"].is_active)
 
     def test_date_range(self):
         response = self.client.get(
             self.url, {"requested_from": "2025-01-01", "requested_to": "2026-06-30"}
         )
-        self.assertEqual(self.names(response), ["new.json"])
+        self.assertEqual(self.keys(response), ["/new.json/k"])
         self.assertEqual(response.context["counts"]["uploads"], 1)
         self.assertContains(response, "Filtered:")
 
@@ -51,37 +52,48 @@ class FilterTests(TestCase):
         )
 
     def test_language(self):
-        self.assertEqual(self.names(self.client.get(self.url, {"languages": ["en"]})), ["old.json"])
-
-    def test_root_format(self):
-        response = self.client.get(self.url, {"root_formats": ["csv"]})
-        self.assertEqual(self.names(response), [None])  # the CSV's row node below the root
-        self.assertContains(response, '<span class="badge badge--root">CSV file</span>', html=True)
-        self.assertNotContains(
-            response, '<span class="badge badge--root">ZIP archive</span>', html=True
+        self.assertEqual(
+            self.keys(self.client.get(self.url, {"languages": ["en"]})), ["/old.json/k"]
         )
+
+    def test_root_format_is_one_choice(self):
+        response = self.client.get(self.url, {"root_format": "csv"})
+        self.assertEqual(response.context["counts"]["uploads"], 1)
+        (root,) = response.context["tree"].roots
+        self.assertEqual(root.title, [("CSV file", True)])
+        self.assertContains(response, "?root_format=zip")  # the selector's other choice
+        # the other filters keep the format; the format keeps the other filters
+        languages = self.client.get(self.url, {"languages": ["en"], "root_format": "zip"})
+        self.assertContains(languages, 'name="root_format" value="zip"')
+        self.assertContains(languages, "?languages=en&amp;root_format=csv")
 
     def test_filter_travels_into_htmx_urls(self):
         response = self.client.get(self.url, {"languages": ["de"]})
-        self.assertContains(response, "?path=/new.json&languages=de")
-        children = self.client.get(
-            reverse("schemas:children", args=["tiktok"]), {"path": "/new.json", "languages": ["en"]}
-        )
-        self.assertContains(children, "Empty.")  # new.json's keys aren't in English exports
+        self.assertContains(response, "?path=/new.json/k&languages=de&amp;root_format=zip")
+        groups = self.client.get(self.url, {"languages": ["en"]}, HTTP_HX_REQUEST="true")
+        self.assertTemplateUsed(groups, "schemas/tree/_groups.html")
+        self.assertNotContains(groups, "new.json")  # new.json isn't in English exports
 
     def test_form_choices_and_query(self):
         rendered = FilterForm(platform=self.platform).as_div()
-        for value in ('value=""', 'value="de"', 'value="en"', 'value="csv"', 'value="zip"'):
+        for value in ('value=""', 'value="de"', 'value="en"'):
             self.assertIn(value, rendered)
         request = RequestFactory().get(
             "/", {"requested_from": "2026-01-01", "languages": ["de", "en"]}
         )
         schema_filter = SchemaFilter.from_request(request, self.platform)
-        self.assertEqual(schema_filter.query, "requested_from=2026-01-01&languages=de&languages=en")
+        self.assertEqual(
+            schema_filter.query,
+            "requested_from=2026-01-01&languages=de&languages=en&root_format=zip",
+        )
+        self.assertEqual(
+            schema_filter.with_format("csv"),
+            "requested_from=2026-01-01&languages=de&languages=en&root_format=csv",
+        )
         invalid = SchemaFilter.from_request(
             RequestFactory().get("/", {"requested_from": "nope"}), self.platform
         )
-        self.assertEqual(invalid, SchemaFilter())
+        self.assertEqual(invalid, SchemaFilter(root_format="zip"))
         self.assertEqual(
             [format_label("zip"), format_label("json"), format_label("")],
             ["ZIP archive", "JSON file", "file"],

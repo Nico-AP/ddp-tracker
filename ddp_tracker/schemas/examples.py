@@ -54,3 +54,9 @@ def set_examples(location: Location, extracted: list[str], typed: list[str]) -> 
     ]
     add_examples(location, typed, USER_INPUT)
     location.save(update_fields=["example_values"])
+
+
+def preview(location: Location, count: int) -> tuple[list[str], int]:
+    """The location's first ``count`` examples, and how many more there are."""
+    values = [example["value"] for example in location.example_values]
+    return values[:count], max(len(values) - count, 0)

@@ -40,8 +40,8 @@
         title="{% if row.ignored %}Not a data point{% elif row.decided %}Annotated{% else %}To assign{% endif %}"></span>
 </div>
 {% if oob %}
-  {% include "reviews/_group_count.html" %}
-  {% include "reviews/_root_count.html" %}
+  {% include "schemas/tree/_group_count.html" %}
+  {% include "schemas/tree/_root_count.html" %}
   {% include "reviews/_progress.html" %}
   <span id="open-count" class="badge rounded-pill" hx-swap-oob="true">{{ open_count }}</span>
 {% endif %}

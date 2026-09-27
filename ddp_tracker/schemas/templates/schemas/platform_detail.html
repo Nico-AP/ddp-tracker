@@ -3,15 +3,27 @@
 {% block title %}{{ platform }} · DDP Tracker{% endblock %}
 {% block content %}
   <script src="{% static 'js/explorer.js' %}" defer></script>
-
   <div class="page-header">
     <h1>{{ platform }}</h1>
     <a class="btn"
-      href="{% url 'annotations:annotations' platform.slug %}">Annotations ({{ counts.annotations }})</a>
+       href="{% url 'annotations:annotations' platform.slug %}">Annotations ({{ counts.annotations }})</a>
   </div>
-
+  {% if formats %}
+    <ul class="nav nav-pills format-choice" aria-label="Uploaded as">
+      {% for value, label, count, query in formats %}
+        <li class="nav-item">
+          <a class="nav-link{% if value == filter.root_format %} active{% endif %}"
+             href="?{{ query }}"
+             {% if value == filter.root_format %}aria-current="page"{% endif %}>
+            {{ label }} <span class="badge rounded-pill">{{ count }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
   <form method="get" class="filter-bar">
-    {% for field in filter_form %}
+    <input type="hidden" name="root_format" value="{{ filter.root_format }}">
+    {% for field in filter_form.visible_fields %}
       <fieldset class="filter-bar__field">
         <legend>{{ field.label }}</legend>
         {{ field }}
@@ -19,39 +31,50 @@
     {% endfor %}
     <button type="submit" class="btn btn--small">Filter</button>
     {% if filter.is_active %}
-      <a href="{{ platform.get_absolute_url }}">Reset</a>
+      <a href="?root_format={{ filter.root_format }}">Reset</a>
     {% endif %}
   </form>
-
   <p class="muted">
     {% if filter.is_active %}Filtered:{% endif %}
     {{ counts.uploads }} upload{{ counts.uploads|pluralize }}, {{ counts.data_points }} data points,
     {{ counts.untriaged }} not yet assigned to an annotation.
   </p>
-
   <h2>Collected schema</h2>
-  {% if root %}
-    <div class="explorer">
-      <ul class="tree tree--root" data-dialog-over>
-        <li class="tree__item">
-          <details open>
-            <summary>
-              <button type="button"
-                class="tree__name"
-                hx-get="{% url 'schemas:location' platform.slug %}?path=&{{ filter.query }}"
-                hx-target="#node-detail">Root</button>
-              {% for format, count in root_formats %}
-                <span class="badge badge--root">{{ format }}{% if root_formats|length > 1 %} ×{{ count }}{% endif %}</span>
-              {% endfor %}
-            </summary>
-            <ul class="tree">
-              {% include "schemas/_tree.html" %}
-            </ul>
-          </details>
-        </li>
-      </ul>
-      <aside id="node-detail" class="detail-panel">
-        <p class="muted">Select a node to see its history and annotation.</p>
+  {% if counts.uploads %}
+    <div class="review-toolbar">
+      <form class="review-filters"
+            hx-get="{{ platform.get_absolute_url }}"
+            hx-trigger="input changed delay:250ms from:find [name=q], search from:find [name=q], change from:find [name=hide]"
+            hx-target="#review-groups"
+            hx-swap="outerHTML"
+            hx-push-url="true">
+        {% for name, value in filter.params %}
+          <input type="hidden" name="{{ name }}" value="{{ value }}">
+        {% endfor %}
+        <input type="search"
+               name="q"
+               value="{{ q }}"
+               class="form-control"
+               placeholder="Filter by field name or path"
+               aria-label="Filter by field name or path">
+        <div class="form-check form-switch">
+          <input type="checkbox"
+                 class="form-check-input"
+                 role="switch"
+                 id="hide-annotated"
+                 name="hide"
+                 value="1"
+                 {% if hide %}checked{% endif %}>
+          <label class="form-check-label" for="hide-annotated">Hide annotated</label>
+        </div>
+      </form>
+    </div>
+    <div class="review-layout">
+      <div class="review-main" data-dialog-over>{% include "schemas/tree/_groups.html" %}</div>
+      <aside id="node-detail" class="review-panel-slot" aria-live="polite">
+        <div class="review-panel review-panel--empty">
+          <p class="muted">Select a data point to see what is known about it.</p>
+        </div>
       </aside>
     </div>
   {% else %}
@@ -63,28 +86,27 @@
       {% endif %}
     </p>
   {% endif %}
-
   {% if uploads is not None %}
     <h2>Recent uploads</h2>
     {% if uploads %}
       <table class="table">
         <thead>
-        <tr>
-          <th scope="col">File</th>
-          <th scope="col">Request Date</th>
-          <th scope="col">Language</th>
-          <th scope="col">Status</th>
-        </tr>
+          <tr>
+            <th scope="col">File</th>
+            <th scope="col">Request Date</th>
+            <th scope="col">Language</th>
+            <th scope="col">Status</th>
+          </tr>
         </thead>
         <tbody>
-        {% for upload in uploads %}
-          <tr>
-            <td><a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a></td>
-            <td>{{ upload.requested_at }}</td>
-            <td>{% if upload.language %}{{ upload.get_language_display }}{% else %}-{% endif %}</td>
-            <td><span class="badge badge--{{ upload.status }}">{{ upload.get_status_display }}</span></td>
-          </tr>
-        {% endfor %}
+          {% for upload in uploads %}
+            <tr>
+              <td><a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a></td>
+              <td>{{ upload.requested_at }}</td>
+              <td>{% if upload.language %}{{ upload.get_language_display }}{% else %}-{% endif %}</td>
+              <td><span class="badge badge--{{ upload.status }}">{{ upload.get_status_display }}</span></td>
+            </tr>
+          {% endfor %}
         </tbody>
       </table>
     {% else %}
@@ -93,5 +115,4 @@
       </p>
     {% endif %}
   {% endif %}
-
 {% endblock %}

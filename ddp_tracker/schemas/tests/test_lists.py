@@ -34,10 +34,8 @@ class ListTests(TestCase):
         self.assertIn("/data.json/Ids", self.triage())
         create_annotation(self.item, "ID", self.user)
         self.assertIn("/data.json/Ids", self.triage())  # the list still needs its own
-        children = self.client.get(
-            reverse("schemas:children", args=["tiktok"]), {"path": "/data.json"}
-        )
-        self.assertContains(children, "Ids[]")
+        page = self.client.get(reverse("schemas:platform", args=["tiktok"]))
+        self.assertContains(page, "Ids[]")  # one row for the list and its item
         create_annotation(self.ids, "List of ID", self.user)
         self.assertNotIn("/data.json/Ids", self.triage())
 

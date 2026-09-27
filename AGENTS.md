@@ -40,7 +40,7 @@ config/
 apps/
   core/              # index, health check, shared helpers (auth.py, testing.py, template tags)
   ddps/              # Platform, Upload; upload form + background parse task (tasks.py)
-  schemas/           # Location, Observation, filters/profiles/timeline, explorer, triage
+  schemas/           # Location, Observation, filters/profiles/timeline, tree (shared), explorer, triage
   reviews/           # the review of an upload: data points to assign, changed, missing (no models)
   annotations/       # Annotation: a data point and what is known about it (examples live on Location)
   representations/   # Representation: cross-platform concept (ontology) linking annotations

@@ -1,21 +1,23 @@
 """The collected schema of a platform (public explorer) and triaging its data points (the
 explorer's panel and the review, ``reviews``, share it).
 
-The explorer loads one level of the tree at a time (HTMX), so large schemas stay fast.
+The explorer shows one root format's data points as a tree (``schemas/tree.py``,
+``schemas/explorer.py``), like the review.
 """
 
-from collections import Counter
 from typing import Any
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, QuerySet
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 
 from ddp_tracker.annotations.models import Annotation
-from ddp_tracker.ddps.models import Platform, Upload
+from ddp_tracker.ddps.models import Platform
 from ddp_tracker.ddps.values import own_values
-from ddp_tracker.schemas.filters import FilterForm, SchemaFilter, format_label
+from ddp_tracker.schemas.explorer import build_row as explorer_row_of
+from ddp_tracker.schemas.explorer import explorer_tree
+from ddp_tracker.schemas.filters import FilterForm, SchemaFilter, format_label, root_formats
 from ddp_tracker.schemas.forms import ExamplesForm
 from ddp_tracker.schemas.json_view import json_path
 from ddp_tracker.schemas.models import ITEM, Location, Observation
@@ -31,63 +33,38 @@ from ddp_tracker.schemas.timeline import new_in
 from ddp_tracker.users.auth import signed_in_user
 
 
-def _children(
-    platform: Platform, parent_path: str, schema_filter: SchemaFilter
-) -> list[dict[str, Any]]:
-    """The locations below ``parent_path`` seen in the filtered uploads, each with its profile
-    and how many children it has itself (in the same uploads).
-    """
-    observations = schema_filter.observations(platform)
-    locations = list(
-        platform.locations.filter(parent_path=parent_path, observations__in=observations)
-        .distinct()
-        .select_related("annotation")
-    )
-    counts = dict(
-        platform.locations.filter(
-            parent_path__in=[location.path for location in locations],
-            observations__in=observations,
-        )
-        .values("parent_path")
-        .annotate(count=Count("id", distinct=True))
-        .values_list("parent_path", "count")
-    )
-    found = profiles((location.pk for location in locations), observations)
-    # Files and folders sort by name, as within any single upload. Keys of parsed data keep
-    # their order in the file; positions from different uploads can tie, so the path decides.
-    locations.sort(
-        key=lambda loc: (
-            (loc.position, loc.path) if found[loc.pk].main_kind == "data" else (0, loc.name or "")
-        )
-    )
-    return [
-        {"location": loc, "profile": found[loc.pk], "children": counts.get(loc.path, 0)}
-        for loc in locations
-    ]
-
-
-def root_formats(uploads: QuerySet[Upload]) -> list[tuple[str, int]]:
-    """What the uploads were as a whole ("ZIP archive", "CSV file" …), most common first."""
-    formats = Counter(
-        format_label(value) for value in uploads.values_list("root_format", flat=True)
-    )
-    return formats.most_common()
+def _explorer_context(request: HttpRequest, platform: Platform) -> dict[str, Any]:
+    schema_filter = SchemaFilter.from_request(request, platform)
+    q = request.GET.get("q", "").strip()
+    hide = request.GET.get("hide") == "1"  # the annotated ones
+    return {
+        "platform": platform,
+        "filter": schema_filter,
+        "q": q,
+        "hide": hide,
+        "tree": explorer_tree(platform, schema_filter, q, annotated=not hide),
+        "row_template": "schemas/tree/_row.html",
+    }
 
 
 def platform_detail(request: HttpRequest, slug: str) -> HttpResponse:
+    """The collected schema of one root format, as a tree; with htmx (the filter box, the
+    switch), only the tree's groups."""
     platform = get_object_or_404(Platform, slug=slug)
-    schema_filter = SchemaFilter.from_request(request, platform)
+    context = _explorer_context(request, platform)
+    if request.headers.get("HX-Request"):
+        return render(request, "schemas/tree/_groups.html", context)
+    schema_filter: SchemaFilter = context["filter"]
     observations = schema_filter.observations(platform)
     data_points = platform.locations.filter(
         observations__in=observations.filter(is_data_point=True)
     ).distinct()
-    context = {
-        "platform": platform,
-        "filter": schema_filter,
+    context |= {
         "filter_form": FilterForm(request.GET or None, platform=platform),
-        "root": platform.locations.filter(path="", observations__in=observations).first(),
-        "root_formats": root_formats(schema_filter.uploads(platform)),
-        "rows": _children(platform, "", schema_filter),
+        "formats": [
+            (value, format_label(value), count, schema_filter.with_format(value))
+            for value, count in root_formats(platform)
+        ],
         "counts": {
             "annotations": platform.annotations.count(),
             "data_points": data_points.count(),
@@ -99,15 +76,19 @@ def platform_detail(request: HttpRequest, slug: str) -> HttpResponse:
     return render(request, "schemas/platform_detail.html", context)
 
 
-def location_children(request: HttpRequest, slug: str) -> HttpResponse:
+def explorer_row(request: HttpRequest, slug: str, location_pk: int) -> HttpResponse:
+    """HTMX: one row of the explorer's tree, reloaded after a change."""
     platform = get_object_or_404(Platform, slug=slug)
+    location = get_object_or_404(Location, pk=location_pk, platform=platform)
     schema_filter = SchemaFilter.from_request(request, platform)
-    rows = _children(platform, request.GET.get("path", ""), schema_filter)
-    context = {"platform": platform, "filter": schema_filter, "rows": rows}
-    return render(request, "schemas/_tree.html", context)
+    row = explorer_row_of(platform, schema_filter, location)[0]
+    context = {"platform": platform, "filter": schema_filter, "row": row}
+    return render(request, "schemas/tree/_row.html", context)
 
 
 def location_detail(request: HttpRequest, slug: str) -> HttpResponse:
+    """HTMX: the explorer's side panel of a location: its annotation (for a list's row: the
+    item's and the list's), examples, representations, structure and history."""
     platform = get_object_or_404(Platform, slug=slug)
     schema_filter = SchemaFilter.from_request(request, platform)
     location = get_object_or_404(
@@ -117,7 +98,22 @@ def location_detail(request: HttpRequest, slug: str) -> HttpResponse:
     )
     observations = schema_filter.observations(platform)
     context = panel_context(location, observations, observations, schema_filter)
+    locations = [location]
+    if context["profile"].is_data_point:
+        row = explorer_row_of(platform, schema_filter, location)[0]
+        locations = [row.primary, *(loc for loc in row.locations if loc != row.primary)]
+    # the item (the meaning) first
+    context["entries"] = [(_annotation_label(loc, locations), loc) for loc in locations]
+    context["decided"] = all(loc.annotation_id or loc.ignored for loc in locations)
+    context["ignored"] = all(loc.ignored for loc in locations)
+    context["triggers"] = ", ".join(f"triaged-{loc.pk} from:body" for loc in locations)
     return render(request, "schemas/_location_sidepanel.html", context)
+
+
+def _annotation_label(location: Location, locations: list[Location]) -> str:
+    if len(locations) == 1:
+        return "Annotation"
+    return "Each item" if location.path.endswith(ITEM) else "The list"
 
 
 def panel_context(
@@ -183,7 +179,6 @@ def _row_context(request: HttpRequest, location: Location) -> dict[str, Any]:
         "is_new": is_new,
         "choices": found,
         "annotations": location.platform.annotations.all(),
-        "panel": bool(request.GET.get("panel")),  # the explorer's side panel
         **_list_context(location),
     }
 
@@ -199,12 +194,6 @@ def _list_context(location: Location) -> dict[str, Any]:
         .first()
     )
     return {"list_suggestion": list_name(item.annotation.name) if item and item.annotation else ""}
-
-
-def triage_row(request: HttpRequest, pk: int) -> HttpResponse:
-    """HTMX: the side panel's annotation block (read-only, reloaded after a change)."""
-    location = get_object_or_404(Location.objects.select_related("platform", "annotation"), pk=pk)
-    return render(request, "schemas/_triage_panel.html", _row_context(request, location))
 
 
 @login_required

@@ -3,7 +3,7 @@
   {% for root in missing %}
     <details class="review-root"{% if root.is_open %} open{% endif %}>
       <summary class="review-root__head">
-        {% include "reviews/_root_title.html" %}
+        {% include "schemas/tree/_root_title.html" %}
         <span class="review-root__count">{{ root.open_count }}</span>
       </summary>
       {% for section in root.groups %}

@@ -16,11 +16,12 @@ from django.views.decorators.http import require_POST
 from ddp_tracker.ddps.models import Upload
 from ddp_tracker.ddps.values import OwnValues, own_values
 from ddp_tracker.reviews.services import Review, review, triage_items
-from ddp_tracker.reviews.tree import build, build_row, sections
+from ddp_tracker.reviews.tree import build, build_row
 from ddp_tracker.schemas.examples import EXTRACTED, add_examples, as_text
 from ddp_tracker.schemas.filters import SchemaFilter
 from ddp_tracker.schemas.models import Location, Observation
 from ddp_tracker.schemas.timeline import change_details
+from ddp_tracker.schemas.tree import sections
 from ddp_tracker.schemas.views import panel_context
 
 TABS = ("assign", "changed", "missing")
@@ -52,7 +53,7 @@ def upload_review(request: HttpRequest, pk: int) -> HttpResponse:
     if upload.registered_at:
         context |= _review_context(request, upload, tab)
     if request.headers.get("HX-Request") and tab == "assign":
-        return render(request, "reviews/_groups.html", context)
+        return render(request, "schemas/tree/_groups.html", context)
     return render(request, "reviews/base.html", context)
 
 
@@ -65,6 +66,8 @@ def _review_context(request: HttpRequest, upload: Upload, tab: str) -> dict[str,
     everything = build(upload, result.triage, own) if q else tree
     platform = upload.platform_id
     return {
+        "row_template": "reviews/_row.html",
+        "annotating": True,  # counts of what is still to assign, Enter to annotate
         "review": result,
         "own": own,
         "q": q,

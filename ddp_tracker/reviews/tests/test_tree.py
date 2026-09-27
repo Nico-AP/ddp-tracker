@@ -11,17 +11,10 @@ from ddp_tracker.core.tests.utils import parsed_file, parsed_upload
 from ddp_tracker.ddps.models import Platform
 from ddp_tracker.ddps.values import OwnValues
 from ddp_tracker.reviews.services import review, triage_items
-from ddp_tracker.reviews.tree import (
-    CHAIN,
-    build,
-    build_row,
-    places,
-    row_key,
-    sections,
-    type_badge,
-)
+from ddp_tracker.reviews.tree import build, build_row
 from ddp_tracker.schemas.models import Location
 from ddp_tracker.schemas.services import create_annotation
+from ddp_tracker.schemas.tree import CHAIN, places, row_key, sections, type_badge
 from ddp_tracker.users.models import User
 
 F = "/data.json"

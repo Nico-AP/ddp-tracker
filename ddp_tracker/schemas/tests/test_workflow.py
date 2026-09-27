@@ -208,54 +208,54 @@ class ViewTests(TestCase):
         self.upload = parsed_upload(self.platform, ENGLISH, register=True)
         self.name = Location.objects.get(path="/profile/profile.json/name")
 
+    def keys(self, response):
+        return [row.key for group in response.context["tree"].groups for row in group.lines()]
+
     def test_platform_explorer_is_public(self):
         response = self.client.get(reverse("schemas:platform", args=["tiktok"]))
         self.assertContains(response, "7 not yet assigned")
-        self.assertContains(response, 'hx-trigger="toggle once"')
+        self.assertContains(response, "data-review-tree")  # the review's tree
         self.assertNotContains(response, "Recent uploads")
-        children = self.client.get(
-            reverse("schemas:children", args=["tiktok"]), {"path": "/profile/profile.json"}
-        )
-        self.assertContains(children, "untriaged")
+        self.assertIn("/profile/profile.json/name", self.keys(response))
         detail = self.client.get(
             reverse("schemas:location", args=["tiktok"]), {"path": self.name.path}
         )
         self.assertContains(detail, "Not assigned to an annotation yet")
         self.assertNotContains(detail, "Add annotation")
 
-    def test_root_shows_what_the_uploads_were(self):
+    def test_root_is_the_format_not_the_file(self):
         response = self.client.get(reverse("schemas:platform", args=["tiktok"]))
-        self.assertContains(
-            response, '<span class="badge badge--root">ZIP archive</span>', html=True
-        )
+        self.assertContains(response, '<a class="nav-link active"', count=1)  # ZIP archive
+        self.assertContains(response, "ZIP archive")
         root = Location.objects.get(platform=self.platform, path="")
         self.assertIsNone(root.name)  # the uploaded file's name is not kept
+        self.assertNotContains(response, "export.zip")
         detail = self.client.get(reverse("schemas:location", args=["tiktok"]), {"path": ""})
         self.assertContains(detail, "Root")
         self.assertNotContains(detail, "export.zip")
 
-    def test_single_file_and_mixed_roots(self):
+    def test_one_format_per_tree(self):
         csv_only = Platform.objects.create(name="Spotify", slug="spotify")
         parsed_file(csv_only, "streams.csv", b"track,ms\nA,1000\n", register=True)
-        response = self.client.get(reverse("schemas:platform", args=["spotify"]))
-        self.assertContains(response, '<span class="badge badge--root">CSV file</span>', html=True)
-        self.assertContains(response, "?path=/%5B%5D")  # the file's row node, right below the root
+        url = reverse("schemas:platform", args=["spotify"])
+        response = self.client.get(url)
+        self.assertEqual(response.context["filter"].root_format, "csv")
+        (root,) = response.context["tree"].roots
+        self.assertEqual(root.title, [("CSV file", True)])  # a single file's tree
         parsed_upload(csv_only, {"streams.csv": b"track,ms\nB,2000\n"}, register=True)
-        response = self.client.get(reverse("schemas:platform", args=["spotify"]))
-        self.assertContains(response, "CSV file \u00d71")
-        self.assertContains(response, "ZIP archive \u00d71")
+        parsed_upload(csv_only, {"streams.csv": b"track,ms\nC,3000\n"}, register=True)
+        response = self.client.get(url)  # the most common format now
+        self.assertEqual(response.context["filter"].root_format, "zip")
+        self.assertTrue(all(key.startswith("/streams.csv") for key in self.keys(response)))
+        self.assertContains(response, "?root_format=csv")  # the other one, one click away
+        csv = self.client.get(url, {"root_format": "csv"})
+        self.assertFalse(any(key.startswith("/streams.csv") for key in self.keys(csv)))
 
-    def test_children_order(self):
+    def test_rows_are_alphabetical(self):
         parsed_upload(self.platform, {"a_first.json": b'{"z": 1, "a": 2}'}, register=True)
         response = self.client.get(reverse("schemas:platform", args=["tiktok"]))
-        names = [row["location"].name for row in response.context["rows"]]
-        self.assertEqual(names, sorted(names))  # files and folders by name, across uploads
-        keys = self.client.get(
-            reverse("schemas:children", args=["tiktok"]), {"path": "/a_first.json"}
-        )
-        self.assertEqual(
-            [row["location"].name for row in keys.context["rows"]], ["z", "a"]
-        )  # file order
+        keys = self.keys(response)
+        self.assertLess(keys.index("/a_first.json/a"), keys.index("/a_first.json/z"))
 
     def test_edit_examples(self):
         url = reverse("schemas:examples", args=[self.name.pk])
@@ -351,14 +351,13 @@ class ViewTests(TestCase):
         self.assertTrue(Location.objects.get(pk=other.pk).ignored)
         self.client.post(other_url, {"action": "reset", "upload": self.upload.pk})
         self.assertFalse(Location.objects.get(pk=other.pk).ignored)
-        row = self.client.get(reverse("schemas:triage-row", args=[other.pk]))
-        self.assertContains(row, "Add annotation")
-        # the row swaps itself (outerHTML); the button must not inherit that and replace the modal
-        self.assertRegex(row.content.decode(), r'hx-target="#modal"\s+hx-swap="innerHTML"')
+        panel_url = reverse("schemas:location", args=["tiktok"])
+        panel = self.client.get(panel_url, {"path": other.path})
+        self.assertContains(panel, "Add annotation")
+        # the panel swaps itself (outerHTML); the button must not inherit that and replace the modal
+        self.assertRegex(panel.content.decode(), r'hx-target="#modal"\s+hx-swap="innerHTML"')
         self.client.logout()
-        self.assertNotContains(
-            self.client.get(reverse("schemas:triage-row", args=[other.pk])), "Add annotation"
-        )
+        self.assertNotContains(self.client.get(panel_url, {"path": other.path}), "Add annotation")
 
     def test_existing_annotations_are_a_searchable_table(self):
         self.client.force_login(self.user)

@@ -1,38 +1,73 @@
+{# The explorer's side panel (schemas.views.location_detail), in the review panel's layout but informative: everything about the location is shown, nothing collapsed. For a list's row, "entries" are the item (first: it carries the meaning) and the list. Reloads itself after a change. #}
 {% load core_tags %}
-<div class="detail-panel__top detail-panel__section">
-  <p class="detail-panel__path">
-    <code class="path">{{ location.path|default:"/" }}</code>
-  </p>
-  <h2 class="detail-panel__title">
-    {% if location.path %}
-      {{ location.display_name }}{% if profile.is_list %}[]{% endif %}
-    {% else %}
-      Root
-    {% endif %}
-  </h2>
-  {% if json_path %}
-    {% include "schemas/_json_path.html" %}
-  {% endif %}
-</div>
-<div class="detail-panel__body detail-panel__section">
-  <h3>Data Structure Details</h3>
-  {% include "schemas/_facts.html" %}
-  {% if profile.is_data_point %}
-    <hr />
-    {% include "schemas/_examples.html" %}
-    <hr />
-    <h3>Annotation</h3>
-    {% include "schemas/_triage_panel.html" %}
-    <hr />
-    <h3>Representations</h3>
-    <div hx-get="{% url 'representations:location-section' location.pk %}"
-         hx-trigger="load, triaged-{{ location.pk }} from:body">
-      <p class="muted">Loading…</p>
+<div class="review-panel"
+     hx-get="{% url 'schemas:location' platform.slug %}?path={{ location.path|urlencode }}&{{ filter.query }}"
+     hx-trigger="{{ triggers }}"
+     hx-swap="outerHTML">
+  <header class="review-panel__section review-panel__head">
+    <h2 class="review-panel__title">
+      {% if location.path %}
+        {{ location.display_name }}{% if profile.is_list %}[]{% endif %}
+      {% else %}
+        Root
+      {% endif %}
+    </h2>
+    <div class="review-panel__path">
+      <code>{{ location.path|default:"/" }}</code>
+      <button type="button"
+              class="copy-button"
+              data-copy="{{ location.path }}"
+              aria-label="Copy the path"
+              title="Copy the path">⧉</button>
     </div>
+    <div class="review-panel__chips">
+      {% if profile.is_data_point %}
+        {% if ignored %}
+          <span class="chip chip--muted">Not a data point</span>
+        {% elif decided %}
+          <span class="chip chip--done">Annotated</span>
+        {% else %}
+          <span class="chip chip--new">Not annotated yet</span>
+        {% endif %}
+      {% endif %}
+      <span class="chip">{{ profile.label }}</span>
+      <span class="chip">
+        Seen in {{ profile.uploads }} upload{{ profile.uploads|pluralize }} · {{ profile.first_seen }}{% if profile.last_seen != profile.first_seen %} – {{ profile.last_seen }}{% endif %}
+      </span>
+    </div>
+  </header>
+  {% if profile.is_data_point %}
+    <section class="review-panel__section">
+      <h3 class="review-panel__label">Annotation</h3>
+      {% for label, loc in entries %}
+        {% if entries|length > 1 %}<p class="review-panel__entry">{{ label }}</p>{% endif %}
+        {% include "schemas/_triage_controls.html" with location=loc panel=True %}
+      {% endfor %}
+    </section>
+    <section class="review-panel__section">
+      <h3 class="review-panel__label">Example values</h3>
+      {% include "schemas/_examples.html" with location=entries.0.1 %}
+    </section>
+    <section class="review-panel__section">
+      <h3 class="review-panel__label">Representations</h3>
+      <div hx-get="{% url 'representations:location-section' entries.0.1.pk %}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+        <p class="muted">Loading…</p>
+      </div>
+    </section>
   {% endif %}
+  <section class="review-panel__section">
+    <h3 class="review-panel__label">Data structure</h3>
+    {% include "schemas/_facts.html" %}
+    {% if json_path %}
+      {% include "schemas/_json_path.html" %}
+    {% endif %}
+  </section>
   {% if history %}
-    <hr />
-    <h3>History</h3>
-    {% include "schemas/_history.html" %}
+    <section class="review-panel__section">
+      <h3 class="review-panel__label">History</h3>
+      {% include "schemas/_history.html" %}
+    </section>
   {% endif %}
 </div>

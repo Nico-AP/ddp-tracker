@@ -1,0 +1,52 @@
+{# The tree (schemas/tree.py), the review's and the explorer's; ``row_template`` is their row, ``annotating`` (the review) adds what is still to assign and Enter to annotate: one collapsible block per file (root), inside it the key chains without data points (groups) with their rows; the data points directly in the file without a group heading. #}
+<div id="review-groups"
+     class="review-tree"
+     data-review-tree{% if annotating %}
+     data-annotating{% endif %}>
+  {% for root in tree.roots %}
+    <details class="review-root"{% if root.is_open %} open{% endif %}>
+      <summary class="review-root__head">
+        {% include "schemas/tree/_root_title.html" %}
+        {% if annotating %}
+          {% include "schemas/tree/_root_count.html" with root_id=root.id root_open=root.open_count %}
+        {% endif %}
+      </summary>
+      {% for group in root.groups %}
+        {% if group.crumbs %}
+          <details class="review-group"{% if group.is_open %} open{% endif %}>
+            <summary class="review-group__head">
+              {% include "schemas/tree/_crumbs.html" with crumbs=group.crumbs %}
+              {% if annotating %}
+                {% include "schemas/tree/_group_count.html" with group_id=group.id group_open=group.open_count %}
+              {% endif %}
+            </summary>
+            <div class="review-group__rows" role="list">
+              {% for row in group.lines %}
+                {% include row_template %}
+              {% endfor %}
+            </div>
+          </details>
+        {% else %}
+          <div class="review-group review-group--loose" role="list">
+            {% if annotating %}
+              {% include "schemas/tree/_group_count.html" with group_id=group.id group_open=group.open_count hidden=True %}
+            {% endif %}
+            {% for row in group.lines %}
+              {% include row_template %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </details>
+  {% empty %}
+    <p class="muted review-tree__empty">
+      {% if q %}
+        Nothing matches “{{ q }}”.
+      {% elif hide %}
+        Everything here is annotated.
+      {% else %}
+        Nothing to show.
+      {% endif %}
+    </p>
+  {% endfor %}
+</div>

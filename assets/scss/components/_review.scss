@@ -1,8 +1,9 @@
 @use "sass:color";
 @use "../abstracts/variables" as *;
 
-// The review page (ddp_tracker/reviews): a dense tree on the left, the annotating panel on the
-// right. Bootstrap does the tabs, badges, inputs and buttons.
+// The review page (ddp_tracker/reviews) and the platform explorer (schemas): a dense tree on
+// the left (schemas/tree.py), the panel on the right. Bootstrap does the tabs, badges, inputs
+// and buttons.
 
 .review-title code {
   font-size: 0.9em;
@@ -515,4 +516,34 @@
   color: $color-text-muted;
   font-size: $font-size-small;
   cursor: pointer;
+}
+
+// a node that is never a data point (the explorer's): for completeness, not to act on
+.review-row--muted {
+  color: $color-text-muted;
+
+  .review-row__name {
+    color: $color-text-muted;
+  }
+}
+
+.review-panel__entry {
+  margin: $spacing-unit 0 ($spacing-unit * 0.5);
+  color: $color-text-muted;
+  font-size: $font-size-small;
+}
+
+// the explorer's upload format: one tree per format
+.format-choice {
+  margin-bottom: $spacing-unit * 2;
+
+  .badge {
+    background: $color-bg-accent;
+    color: $color-text;
+  }
+
+  .nav-link.active .badge {
+    background: rgb(255 255 255 / 25%);
+    color: inherit;
+  }
 }

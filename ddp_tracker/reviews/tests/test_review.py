@@ -109,6 +109,7 @@ class ReviewStatusTests(TestCase):
         self.assertContains(
             page, '<div class="review-main" data-dialog-over>'
         )  # the dialog's place
+        self.assertContains(page, "data-annotating")  # Enter annotates here
         self.assertContains(self.client.get(url, {"tab": "missing"}), "Nothing missing")
         self.assertContains(self.client.get(url, {"tab": "nonsense"}), "3 to assign")
 
@@ -133,7 +134,7 @@ class ReviewStatusTests(TestCase):
         self.client.force_login(self.user)
         url = reverse("reviews:review", args=[self.zipped.pk])
         found = self.client.get(url, {"q": "comm"}, HTTP_HX_REQUEST="true")
-        self.assertTemplateUsed(found, "reviews/_groups.html")
+        self.assertTemplateUsed(found, "schemas/tree/_groups.html")
         self.assertTemplateNotUsed(found, "reviews/base.html")
         self.assertContains(found, "App[]")  # its field "comment" matches: kept with its list
         self.assertNotContains(found, "Profile")

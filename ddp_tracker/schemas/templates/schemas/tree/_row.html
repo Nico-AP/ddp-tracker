@@ -1,0 +1,35 @@
+{# One line of the explorer's tree (schemas/explorer.py): name, type, annotation, a preview. Muted rows are nodes that are never data points (an unparsed file, an always-empty object). Reloads itself after a change to any of its locations. #}
+<div class="review-row review-row--depth-{{ row.depth|default:0 }}{% if row.decided %} review-row--decided{% endif %}{% if row.muted %} review-row--muted{% endif %}"
+     role="listitem"
+     data-panel-row
+     {% if not row.muted %}hx-get="{% url 'schemas:row' platform.slug row.location.pk %}?{{ filter.query }}" hx-trigger="{{ row.triggers }}" hx-swap="outerHTML"{% endif %}>
+  <button type="button"
+          class="review-row__name"
+          title="{{ row.location.path }}"
+          data-panel-open
+          hx-get="{% url 'schemas:location' platform.slug %}?path={{ row.location.path|urlencode }}&{{ filter.query }}"
+          hx-target="#node-detail"
+          hx-swap="innerHTML">
+    <span class="review-row__icon" aria-hidden="true">{% if row.muted %}{% if row.observation.kind == "data" %}◦{% else %}▫{% endif %}{% elif row.is_list %}[ ]{% elif row.depth %}└{% else %}◦{% endif %}</span>{{ row.name }}
+  </button>
+  <span class="review-row__type">{% if row.muted %}{{ row.observation.kind }}{% else %}{{ row.type_badge }}{% endif %}</span>
+  <span class="review-row__summary">
+    {% if row.muted %}
+      <span class="review-row__values muted">{% if row.observation.kind == "data" %}always empty{% else %}not read{% endif %}</span>
+    {% else %}
+      {% if row.decided %}
+        {% if row.ignored %}
+          <span class="review-pill review-pill--muted">not a data point</span>
+        {% else %}
+          <span class="review-pill review-pill--done">{{ row.primary.annotation|default:row.location.annotation }}</span>
+        {% endif %}
+      {% endif %}
+      {% if row.preview %}
+        <span class="review-row__values">{{ row.preview|join:", " }}{% if row.more %} +{{ row.more }}{% endif %}</span>
+      {% elif row.summary %}
+        <span class="review-row__values muted">{{ row.summary }}</span>
+      {% endif %}
+    {% endif %}
+  </span>
+  {# djlint:off #}<span></span>{# no status: the explorer doesn't track annotating #}{# djlint:on #}
+</div>

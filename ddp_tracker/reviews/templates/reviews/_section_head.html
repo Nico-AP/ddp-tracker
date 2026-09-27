@@ -1,5 +1,5 @@
 {# A group's heading in the Changed and Missing tabs: its key chain and how many rows. #}
 <summary class="review-group__head">
-  {% include "reviews/_crumbs.html" with crumbs=section.crumbs %}
+  {% include "schemas/tree/_crumbs.html" with crumbs=section.crumbs %}
   <span class="review-group__count">{{ section.entries|length }}</span>
 </summary>

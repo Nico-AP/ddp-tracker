@@ -1,9 +1,9 @@
-// The explorer's tree and the review's tables: keep what the side panel shows highlighted. A
-// click on a .tree__name or [data-panel-open] button loads #node-detail (htmx); the selected
-// element is the button's [data-panel-row] (a table row), or the button itself.
+// The explorer's and the review's trees: keep what the side panel shows highlighted. A click on
+// a [data-panel-open] button loads #node-detail (htmx); the selected element is the button's
+// [data-panel-row], or the button itself.
 document.addEventListener("htmx:beforeRequest", (event) => {
   const opener = event.detail.elt;
-  if (!opener.matches(".tree__name, [data-panel-open]")) return;
+  if (!opener.matches("[data-panel-open]")) return;
   if (event.detail.target?.id !== "node-detail") return;
   document.querySelectorAll(".is-selected").forEach((previous) => {
     previous.classList.remove("is-selected");
@@ -22,8 +22,9 @@ document.addEventListener("click", (event) => {
   row.querySelector("[data-panel-open]")?.click();
 });
 
-// The review's tree: ↑/↓ select the previous/next row (opening its panel), Enter presses the
-// panel's primary action ("Use suggestion" or "Add annotation"). Not while typing in a field.
+// The review's and the explorer's trees: ↑/↓ select the previous/next row (opening its panel);
+// in the review ([data-annotating]), Enter presses the panel's primary action ("Use suggestion"
+// or "Add annotation"). Not while typing in a field.
 document.addEventListener("keydown", (event) => {
   const tree = document.querySelector("[data-review-tree]");
   if (!tree || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -32,6 +33,7 @@ document.addEventListener("keydown", (event) => {
   const target = event.target instanceof Element ? event.target : document.body;
   if (target.closest("input, select, textarea, dialog, [contenteditable]")) return;
   if (event.key === "Enter") {
+    if (!tree.hasAttribute("data-annotating")) return; // the explorer: only the review annotates
     const action = document.querySelector("#node-detail [data-primary-action]");
     // on another button or link, Enter is that one's (a focused row name is the row itself)
     const other = target.closest("button, a, summary");

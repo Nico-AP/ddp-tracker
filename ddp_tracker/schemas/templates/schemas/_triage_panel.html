@@ -1,8 +1,0 @@
-{# A data point's annotation in the explorer's side panel: not a list row, laid out like the panel's facts. #}
-<div
-  hx-get="{% url 'schemas:triage-row' location.pk %}?panel=1{% if observation %}&upload={{ observation.upload_id }}{% endif %}"
-  hx-trigger="triaged-{{ location.pk }} from:body"
-  hx-swap="outerHTML"
->
-  {% include "schemas/_triage_controls.html" with panel=True %}
-</div>

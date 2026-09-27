@@ -127,21 +127,15 @@ class LabelledPagesTests(TestCase):
     def test_pages_show_labels(self):
         detail = reverse("schemas:location", args=["tiktok"])
         response = self.client.get(detail, {"path": "/data.json/Watch History/VideoList"})
-        self.assertContains(response, "<h3>Data Structure Details</h3>", html=True)
-        children = self.client.get(
-            reverse("schemas:children", args=["tiktok"]),
-            {"path": "/data.json/Watch History/VideoList"},
-        )
-        self.assertContains(children, "&lt;item&gt;")
-        self.assertContains(children, ">object<", html=False)
+        self.assertContains(response, '<span class="chip">list of objects</span>', html=True)
+        self.assertContains(response, "Data structure")
 
-    def test_tree_labels_stay_short(self):
-        children = self.client.get(
-            reverse("schemas:children", args=["tiktok"]),
-            {"path": "/data.json/Watch History/VideoList/[]"},
-        )
-        self.assertContains(children, '<span class="tree__shape">date</span>', html=True)
-        self.assertNotContains(children, "%Y")  # formats: in the side panel
-        self.assertNotContains(children, "tree__presence")  # upload counts: in the side panel
-        ids = self.client.get(reverse("schemas:children", args=["tiktok"]), {"path": "/data.json"})
-        self.assertNotContains(ids, '<span class="tree__shape">plain</span>', html=True)
+    def test_tree_badges_stay_short(self):
+        page = self.client.get(reverse("schemas:platform", args=["tiktok"]))
+        rows = {row.key: row for group in page.context["tree"].groups for row in group.lines()}
+        videos = rows["/data.json/Watch History/VideoList"]
+        self.assertEqual((videos.name, videos.type_badge), ("VideoList[]", "array"))
+        date = rows["/data.json/Watch History/VideoList/[]/Date"]
+        self.assertEqual(date.type_badge, "date")  # the shape, not "string"
+        self.assertContains(page, '<span class="review-row__type">date</span>', html=True)
+        self.assertNotContains(page, "tree__presence")  # upload counts: in the side panel

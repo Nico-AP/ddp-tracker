@@ -95,12 +95,8 @@ class AnnotationInPanelTests(TestCase):
         self.assertContains(panel, "The account&#x27;s address.")
         self.assertContains(panel, reverse("annotations:modal", args=[self.annotation.pk]))
         self.assertContains(panel, "Show annotation")
-        # the row reloads itself in the same (panel) form after a change
-        self.assertContains(panel, "panel=1")
-        row = self.client.get(
-            reverse("schemas:triage-row", args=[self.location.pk]), {"panel": "1"}
-        )
-        self.assertContains(row, "Show annotation")
+        # the panel reloads itself after a change
+        self.assertContains(panel, f'hx-trigger="triaged-{self.location.pk} from:body"')
         # in a review (with its upload) it is a list item, not the panel's block
         review_row = self.client.get(
             reverse("reviews:row", args=[self.upload.pk, self.location.pk])

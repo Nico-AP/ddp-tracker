@@ -153,9 +153,16 @@ records what (subject and role × platform).
 
 ## Filtering
 
-The collected schema (platform page) can be restricted to the uploads matching a filter: request
-date range, account languages, and how the DDP was uploaded (ZIP archive, single CSV/JSON file).
-Everything shown (which paths exist, their observed values with counts, when and how often they
+The collected schema (platform page) shows **one upload format at a time** (ZIP archive, single
+CSV/JSON file): a single file and a zip don't share a tree. It opens on the platform's most
+common format; the others are one click away. Within it, a filter restricts the uploads by
+request date range and account languages. The tree is alphabetical, ignoring case (positions in
+a file differ between uploads; the review keeps its one upload's file order), so paths that differ
+only in case, like TikTok's `TikTok Live` and `Tiktok Live`, are separate locations shown right
+next to each other. The tree looks like the review's (files, key chains,
+one row per data point, list and item together), with nodes that are never data points but hold
+something (an unparsed file, an object always seen empty) as muted rows, and a side panel that
+shows everything known about a location. Everything shown (which paths exist, their observed values with counts, when and how often they
 were seen, the counts at the top) is computed from the matching uploads only. Triage and
 suggestions are not filtered: whether a path is known doesn't depend on the current view.
 
