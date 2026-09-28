@@ -21,11 +21,12 @@ from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.proposals.models import Proposal
 from ddp_tracker.representations.forms import (
     SLOTS,
+    SUBJECTS,
     VOCABULARIES,
     DescribeForm,
     RepresentationForm,
 )
-from ddp_tracker.representations.models import ObjectType
+from ddp_tracker.representations.models import MetadataRole, ObjectType
 from ddp_tracker.representations.services import describe, represent
 from ddp_tracker.schemas.services import create_annotation, ignore, link
 from ddp_tracker.users.models import User
@@ -107,6 +108,24 @@ def _check_representation(proposal: Proposal, user: User) -> None:
     _valid(RepresentationForm(data=proposal.values, instance=instance, user=user))
     if proposal.values.get("relation"):
         _need(proposal.annotation, "an annotation")
+    _metadata_rows(proposal, user)
+
+
+def _metadata_rows(proposal: Proposal, user: User) -> list[tuple[str, MetadataRole, Annotation]]:
+    """A new representation's metadata links (``values["metadata"]``): subjects its pattern
+    fills, roles offered to ``user``, annotations that exist."""
+    rows = proposal.values.get("metadata") or []
+    subjects = SUBJECTS.get(proposal.values.get("pattern", ""), ())
+    roles = MetadataRole.for_user(user)
+    found = []
+    for row in rows:
+        role = roles.filter(pk=row.get("role") or 0).first()
+        annotation = Annotation.objects.filter(pk=row.get("annotation") or 0).first()
+        if row.get("subject") not in subjects or role is None or annotation is None:
+            msg = f"A metadata row can't be used as it is: {row}."
+            raise ProposalError(msg)
+        found.append((row["subject"], role, annotation))
+    return found
 
 
 def _check_entity_link(proposal: Proposal, user: User) -> None:
@@ -330,6 +349,8 @@ def _representation(proposal: Proposal, author: User, actor: User) -> None:
             _need(proposal.role, "a role"),
             proposal.subject,
         )
+    for subject, role, annotation in _metadata_rows(proposal, actor):
+        describe(representation, annotation, role, subject)
     proposal.representation = representation
 
 
@@ -408,6 +429,7 @@ def changes(proposal: Proposal) -> list[tuple[str, str, str]]:
         ]
         if values.get("relation"):
             rows.append(("Linked", "", f"{values['relation']} {proposal.annotation}"))
+        rows += [("Metadata", "", _metadata_row(row)) for row in values.get("metadata") or []]
         return rows
     linked = f"{proposal.representation}"
     if kind == Kind.REPRESENT:
@@ -417,6 +439,14 @@ def changes(proposal: Proposal) -> list[tuple[str, str, str]]:
     if kind == Kind.UNREPRESENT:
         return [("Entity of", linked, "none")]
     return [("Describes", values.get("link", ""), "none")]
+
+
+def _metadata_row(row: dict[str, Any]) -> str:
+    """``{"subject": "activity", "role": 3, "annotation": 7}`` in words: "Date: when of the
+    activity"."""
+    role = MetadataRole.objects.filter(pk=row.get("role") or 0).first()
+    annotation = Annotation.objects.filter(pk=row.get("annotation") or 0).first()
+    return f"{annotation or '(deleted)'}: {role or '(deleted)'} of the {row.get('subject', '')}"
 
 
 def _assignment(base: dict[str, Any]) -> str:

@@ -1,0 +1,15 @@
+{# One metadata link of a new representation (forms.MetadataRowForm): the annotation describes the subject as the role. Also the <template> the "Add metadata" button clones (prefix __prefix__). #}
+<tr data-row>
+  <td>
+    {{ row.subject }}
+    {% for error in row.non_field_errors %}<div class="form__error">{{ error }}</div>{% endfor %}
+  </td>
+  <td>{{ row.role }}</td>
+  <td>{{ row.annotation }}</td>
+  <td>
+    <button type="button"
+            class="link-button"
+            data-remove-row
+            aria-label="Remove this metadata row">✕</button>
+  </td>
+</tr>

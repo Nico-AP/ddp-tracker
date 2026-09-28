@@ -198,10 +198,29 @@ class CurationTests(ViewTestCase):
     def test_modal(self):
         page = self.client.get(self.item.get_absolute_url())
         self.assertContains(page, "Add representation")
-        self.assertNotContains(page, "This data point is")  # only in the modal
+        self.assertNotContains(page, "Select existing")  # only in the modal
+        video = Representation.objects.create(
+            pattern=Pattern.OBJECT, name="Video", object=self.video, description="A clip"
+        )
+        represent(video, self.item)
         modal = self.client.get(reverse("representations:add", args=[self.item.pk]))
-        for text in ("This data point is", "This data point describes", "Create and link"):
+        for text in ("Select existing", "Add new", "Something happened", "Something exists"):
             self.assertContains(modal, text)
+        # the switch's two tables: activities and objects
+        self.assertEqual([e["representation"] for e in modal.context["happened"]], [self.watched])
+        self.assertEqual([e["representation"] for e in modal.context["exists"]], [video])
+        self.assertContains(modal, 'data-filter-text="video video a clip"')
+        # linked already: no "Is it", but it can still be described (its filled slot)
+        (entry,) = modal.context["exists"]
+        self.assertTrue(entry["linked"])
+        self.assertEqual([value for value, _ in entry["subjects"]], ["object"])
+        (watched,) = modal.context["happened"]
+        self.assertEqual(
+            [value for value, _ in watched["subjects"]], ["actor", "activity", "object"]
+        )  # no target: it has none
+        # the metadata rows: a management form and a row template
+        self.assertContains(modal, 'name="metadata-TOTAL_FORMS"')
+        self.assertContains(modal, "metadata-__prefix__-subject")
         self.client.logout()
         self.assertEqual(
             self.client.get(reverse("representations:add", args=[self.item.pk])).status_code, 302
@@ -213,7 +232,7 @@ class CurationTests(ViewTestCase):
         self.assertEqual(list(self.watched.annotations.all()), [self.item])
         # linked already: no longer offered, the modal comes back with the error
         response = self.client.post(url, {"representation": self.watched.pk})
-        self.assertContains(response, "form__error")
+        self.assertContains(response, "message--error")
         self.assertContains(response, "Add representation")
 
     def test_describe(self):
@@ -225,37 +244,67 @@ class CurationTests(ViewTestCase):
         response = self.client.post(url, data | {"subject": Subject.ACTIVITY})
         self.assertContains(response, "already exists")
 
-    def test_create_and_link(self):
-        url = reverse("representations:create-linked", args=[self.date.pk])
-        video = {"pattern": Pattern.OBJECT, "name": "Video", "object": self.video.pk}
-        data = self.form_data(**video)
-        response = self.client.post(url, data | {"relation": "describes"})
-        self.assertContains(response, "Required to describe it.")
-        # describing a slot the new representation doesn't fill: nothing is created
+    def rows(self, *rows):
+        """A metadata formset's data: ``rows`` of (subject, role, annotation)."""
+        data = {"metadata-TOTAL_FORMS": str(len(rows)), "metadata-INITIAL_FORMS": "0"}
+        for index, (subject, role, annotation) in enumerate(rows):
+            data |= {
+                f"metadata-{index}-subject": subject,
+                f"metadata-{index}-role": getattr(role, "pk", role),
+                f"metadata-{index}-annotation": getattr(annotation, "pk", annotation),
+            }
+        return data
+
+    def test_create_with_metadata(self):
+        url = reverse("representations:create-linked", args=[self.item.pk])
+        video = self.form_data(pattern=Pattern.OBJECT, name="Video", object=self.video)
+        # a subject the new representation doesn't fill: nothing is created
         response = self.client.post(
-            url,
-            data | {"relation": "describes", "role": self.when.pk, "subject": Subject.ACTIVITY},
+            url, video | self.rows((Subject.ACTIVITY, self.when, self.date))
         )
         self.assertContains(response, "This representation has no activity.")
         self.assertFalse(Representation.objects.filter(name="Video").exists())
+        # a partly filled row
+        response = self.client.post(url, video | self.rows((Subject.OBJECT, "", self.date)))
+        self.assertContains(response, "needs a subject, a role and an annotation")
+        # two rows (the second empty: skipped); the annotation is the entity
         self.assert_changed(
             self.client.post(
-                url,
-                data | {"relation": "describes", "role": self.when.pk, "subject": Subject.OBJECT},
+                url, video | self.rows((Subject.OBJECT, self.when, self.date), ("", "", ""))
             ),
-            self.date,
+            self.item,
         )
         created = Representation.objects.get(name="Video")
-        self.assertEqual(created.updated_by, self.curator)
-        self.assertEqual(list(created.metadata_links.values_list("subject", flat=True)), ["object"])
-        response = self.client.post(
-            reverse("representations:create-linked", args=[self.item.pk]),
-            self.form_data(pattern=Pattern.UNMAPPED, name="Unclear", relation="represents"),
-        )
-        self.assert_changed(response, self.item)
         self.assertEqual(
-            list(self.item.representations.all()), [Representation.objects.get(name="Unclear")]
+            (created.updated_by, list(created.annotations.all())), (self.curator, [self.item])
         )
+        self.assertEqual(
+            list(created.metadata_links.values_list("subject", "annotation__name")),
+            [("object", "Date")],
+        )
+
+    def test_create_activity_and_unmapped(self):
+        url = reverse("representations:create-linked", args=[self.item.pk])
+        activity = self.form_data(
+            name="Watched with",
+            actor=self.user,
+            activity=self.view,
+            object=self.video,
+            target=self.collection,
+        )
+        self.assert_changed(
+            self.client.post(url, activity | self.rows((Subject.TARGET, self.when, self.date))),
+            self.item,
+        )
+        created = Representation.objects.get(name="Watched with")
+        self.assertEqual(created.statement, "user · view · video · collection")
+        unmapped = self.form_data(pattern=Pattern.UNMAPPED, name="Unclear")
+        response = self.client.post(
+            url, unmapped | self.rows((Subject.OBJECT, self.when, self.date))
+        )
+        self.assertContains(response, "No confident mapping has no metadata.")
+        self.assert_changed(self.client.post(url, unmapped | self.rows()), self.item)
+        self.assertIn(Representation.objects.get(name="Unclear"), self.item.representations.all())
 
     def test_remove(self):
         represent(self.watched, self.item)

@@ -57,19 +57,40 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-// [data-filter-table="#id"]: hide the table's rows whose data-filter-text doesn't contain the
-// query; its [data-filter-empty] row shows when none are left.
+// [data-filter-table="<selector>"]: in each table it matches, hide the rows whose
+// data-filter-text doesn't contain the query; a table's [data-filter-empty] row shows when none
+// of its rows are left.
 document.addEventListener("input", (event) => {
   const input = event.target;
   if (!(input instanceof HTMLInputElement) || !input.dataset.filterTable) return;
-  const table = document.querySelector(input.dataset.filterTable);
-  if (!table) return;
   const query = input.value.trim().toLowerCase();
-  let shown = 0;
-  table.querySelectorAll("tbody tr[data-filter-text]").forEach((row) => {
-    row.hidden = !row.dataset.filterText.includes(query);
-    if (!row.hidden) shown += 1;
+  document.querySelectorAll(input.dataset.filterTable).forEach((table) => {
+    let shown = 0;
+    table.querySelectorAll("tbody tr[data-filter-text]").forEach((row) => {
+      row.hidden = !row.dataset.filterText.includes(query);
+      if (!row.hidden) shown += 1;
+    });
+    const empty = table.querySelector("[data-filter-empty]");
+    if (empty) empty.hidden = shown > 0 || !table.querySelector("tr[data-filter-text]");
   });
-  const empty = table.querySelector("[data-filter-empty]");
-  if (empty) empty.hidden = shown > 0;
+});
+
+// A formset's rows (e.g. a new representation's metadata): [data-add-row] clones the form's
+// <template data-row-template> (its "__prefix__" becoming the next index) into [data-rows] and
+// raises TOTAL_FORMS; [data-remove-row] removes its row (an index left empty is ignored).
+document.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  const add = target?.closest("[data-add-row]");
+  if (add) {
+    const scope = add.closest("form");
+    const template = scope?.querySelector("template[data-row-template]");
+    const total = scope?.querySelector("input[name$='-TOTAL_FORMS']");
+    if (!template || !total) return;
+    const index = Number(total.value);
+    const html = template.innerHTML.replaceAll("__prefix__", String(index));
+    scope.querySelector("[data-rows]").insertAdjacentHTML("beforeend", html);
+    total.value = String(index + 1);
+    return;
+  }
+  target?.closest("[data-remove-row]")?.closest("[data-row]")?.remove();
 });

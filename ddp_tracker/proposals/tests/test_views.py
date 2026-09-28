@@ -7,7 +7,7 @@ from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.core.tests.utils import parsed_upload
 from ddp_tracker.ddps.models import Platform
 from ddp_tracker.proposals.models import Proposal
-from ddp_tracker.proposals.services import submit
+from ddp_tracker.proposals.services import changes, submit
 from ddp_tracker.representations.models import (
     MetadataRole,
     ObjectType,
@@ -110,11 +110,18 @@ class SuggestingTests(TestCase):
                 "pattern": Pattern.OBJECT,
                 "name": "Mail",
                 "object": video.pk,
-                "relation": "represents",
+                "metadata-TOTAL_FORMS": "1",
+                "metadata-INITIAL_FORMS": "0",
+                "metadata-0-subject": "object",
+                "metadata-0-role": MetadataRole.objects.get(slug="when").pk,
+                "metadata-0-annotation": self.shown.pk,
             },
         )
         self.assertFalse(existing.annotations.exists())
         self.assertFalse(RepresentationMetadata.objects.exists())
+        suggested = Proposal.objects.get(kind=Kind.NEW_REPRESENTATION, values__name="Mail")
+        self.assertEqual(len(suggested.values["metadata"]), 1)
+        self.assertIn("Metadata", [field for field, _, _ in changes(suggested)])
         self.assertEqual(
             sorted(Proposal.objects.values_list("kind", flat=True)),
             sorted(

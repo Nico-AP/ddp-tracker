@@ -5,6 +5,7 @@
 .dialog {
   width: min(960px, calc(100vw - #{$spacing-unit * 4}));
   max-height: calc(100vh - #{$spacing-unit * 8});
+  overflow-y: auto; // long dialogs scroll inside, their bottom stays reachable
   border: 1px solid $color-border;
   border-radius: $radius-base;
   padding: $spacing-unit * 3;
@@ -39,6 +40,9 @@
   inset: ($spacing-unit * 2) auto ($spacing-unit * 2) auto;
   z-index: 1050;
   max-width: none;
+  // between its top and bottom offsets (the browser's own dialog style is height: fit-content,
+  // which lets a long one run off the screen), scrolling inside
+  height: auto;
   max-height: none;
   margin: 0;
   overflow-y: auto;
@@ -83,5 +87,94 @@
 
   form {
     margin: 0;
+  }
+}
+
+// the representation dialog (representations/_representation_modal.html)
+.rep-select__bar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-unit * 1.5;
+  margin-bottom: $spacing-unit;
+
+  .form-control {
+    flex: 1;
+  }
+}
+
+// the switch shows one kind's table (no script: :has)
+.rep-table--object,
+.rep-select:has(#rep-kind-object:checked) .rep-table--activity {
+  display: none;
+}
+
+.rep-select:has(#rep-kind-object:checked) .rep-table--object {
+  display: block;
+}
+
+.rep-table__actions {
+  width: 1%;
+  white-space: nowrap;
+
+  form {
+    display: inline;
+  }
+}
+
+.rep-describe {
+  display: inline-block;
+  margin-left: $spacing-unit;
+
+  > summary {
+    color: $color-primary;
+    cursor: pointer;
+    font-size: $font-size-small;
+  }
+}
+
+.rep-describe__form {
+  display: flex !important;
+  gap: $spacing-unit * 0.5;
+  margin-top: $spacing-unit * 0.5;
+}
+
+// a new representation: the pattern decides which slots and whether metadata show (:has)
+.rep-new__slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: $spacing-unit;
+}
+
+.rep-new__slot,
+.rep-new__metadata {
+  display: none;
+}
+
+.rep-new__form:has([name="pattern"][value="activity"]:checked) .rep-new__slot,
+.rep-new__form:has([name="pattern"][value="object"]:checked) .rep-new__slot[data-slot="object"],
+.rep-new__form:has([name="pattern"][value="activity"]:checked) .rep-new__metadata,
+.rep-new__form:has([name="pattern"][value="object"]:checked) .rep-new__metadata {
+  display: block;
+}
+
+.rep-new__pattern {
+  margin-bottom: $spacing-unit;
+}
+
+.rep-new__metadata h4 {
+  margin: ($spacing-unit * 1.5) 0 0;
+  font-size: 1rem;
+}
+
+.metadata-rows {
+  margin: $spacing-unit 0 ($spacing-unit * 0.5);
+
+  td {
+    padding: ($spacing-unit * 0.5);
+    vertical-align: top;
+  }
+
+  td:last-child {
+    width: 1%;
   }
 }

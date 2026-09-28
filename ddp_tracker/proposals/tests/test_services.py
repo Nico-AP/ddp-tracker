@@ -199,6 +199,32 @@ class RepresentationTests(ProposalTestCase):
         proposal.refresh_from_db()
         self.assertEqual(proposal.representation, created)
 
+    def test_new_representation_with_metadata_rows(self):
+        when = MetadataRole.objects.get(slug="when")
+        row = {"subject": "object", "role": when.pk, "annotation": self.when.pk}
+        with self.assertRaisesMessage(ProposalError, "metadata row"):
+            submit(
+                self.curator,
+                Kind.NEW_REPRESENTATION,
+                annotation=self.item,
+                values=self.values | {"metadata": [row | {"subject": "actor"}]},  # no actor
+            )
+        proposal = submit(
+            self.curator,
+            Kind.NEW_REPRESENTATION,
+            annotation=self.item,
+            values=self.values | {"relation": "represents", "metadata": [row]},
+        )
+        assert proposal is not None
+        self.assertIn(("Metadata", "", "When: when of the object"), changes(proposal))
+        accept(proposal, self.staff)
+        created = Representation.objects.get(name="Video")
+        self.assertEqual(list(created.annotations.all()), [self.item])
+        self.assertEqual(
+            list(created.metadata_links.values_list("annotation", "role", "subject")),
+            [(self.when.pk, when.pk, "object")],
+        )
+
     def test_links_and_their_removal(self):
         video = Representation.objects.create(
             pattern=Pattern.OBJECT, name="Video", object=self.video

@@ -147,9 +147,37 @@ stable name code and seeds use to look it up, and is fixed once created; its nam
 
 Curators assign annotations and link representations through **"Add annotation"** and **"Add
 representation"** (a dialog), from the explorer's side panel, the upload review and the annotation's
-page ("this data point is …", "… describes …", or a new representation linked right away). The
+page: **select an existing** one (something happened or something exists; the data point *is* it,
+or *describes* one of its slots), or **add a new** one, the data point as its entity, with any
+number of metadata rows (subject, role, annotation; not for "no confident mapping"). The
 representation's page shows the result across platforms: what represents it, and a table of who
 records what (subject and role × platform).
+
+## Suggestions and approval
+
+**Only staff decide** what is curated; everyone else **suggests** (`ddp_tracker/proposals`). The
+curated data (annotations, which annotation a location has, representations and their links)
+only ever holds approved changes; a suggestion waits beside it as a *proposal*.
+
+- **What is suggested:** annotating a location (link to an annotation, a new annotation, "not a
+  data point", removing the assignment), editing an annotation, and representations (new, edited,
+  linked as the entity or as metadata, links removed). Suggestions can be corrections to what is
+  already annotated. Example values are not suggested: they change directly.
+- **Staff's own changes apply directly**; for everyone else the same buttons read "Suggest …".
+- **Deciding:** staff go through two queues, annotations (by platform) and representations, one
+  suggestion at a time. **Accepting** applies it (as the proposer's change) and **supersedes** the
+  other open suggestions for the same target; **rejecting** records a reason for the proposer. A
+  suggestion made on a state that has changed since is **stale**: staff confirm before accepting.
+  A representation using vocabulary terms that aren't approved yet waits for those.
+- **Statuses:** open, accepted, rejected, withdrawn (by the proposer, or replaced by their newer
+  one for the same target), superseded. Proposals stay as the history of who suggested and
+  decided what.
+- **No chaining:** a suggestion refers to approved annotations and representations only (a list's
+  "List of …" waits until its item's annotation is approved).
+- **Pending:** open suggestions are visible to everyone. A data point with one shows "N
+  suggestions"; in the review it still counts as open, with its own (pending) dot. Panels and the
+  annotation and representation pages list the open suggestions; "My suggestions" shows a user's
+  own, with how they were decided.
 
 ## Filtering
 

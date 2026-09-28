@@ -1,9 +1,9 @@
-from typing import Any
+from typing import Any, cast
 
 from django import forms
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.core.exceptions import ValidationError
-from django.db.models import Model
+from django.db.models import Case, Model, When
 from django.utils.text import slugify
 
 from ddp_tracker.annotations.models import Annotation
@@ -153,29 +153,94 @@ class SuggestTermForm(forms.Form):
 
 
 class NewRepresentationForm(RepresentationForm):
-    """A new representation, linked to the annotation it's created from."""
-
-    relation = forms.ChoiceField(
-        choices=[("represents", "This data point is it"), ("describes", "It describes it")],
-        widget=forms.RadioSelect,
-        initial="represents",
-    )
-    role = TermField(queryset=MetadataRole.objects.none(), required=False)
-    subject = forms.ChoiceField(
-        choices=[("", "---------"), *RepresentationMetadata.Subject.choices], required=False
-    )
+    """A new representation, created from an annotation: that annotation is its entity."""
 
     def __init__(self, *args: Any, user: AnyUser, **kwargs: Any) -> None:
         super().__init__(*args, user=user, **kwargs)
+        self.fields["pattern"].initial = Pattern.ACTIVITY
+        for slot in SLOTS:
+            self.fields[slot].widget.attrs["class"] = "form-select"
+        for field in ("name", "description", "note"):
+            self.fields[field].widget.attrs["class"] = "form-control"
+
+
+# the subjects a pattern's representation fills (what its metadata can describe)
+SUBJECTS: dict[str, tuple[str, ...]] = {
+    Pattern.ACTIVITY: ("actor", "activity", "object", "target"),
+    Pattern.OBJECT: ("object",),
+    Pattern.UNMAPPED: (),
+}
+
+
+ROW_FIELDS = ("subject", "role", "annotation")
+
+
+class MetadataRowForm(forms.Form):
+    """One metadata link of a new representation: ``annotation`` describes ``subject`` as
+    ``role``. An empty row is skipped; a partly filled one is an error."""
+
+    subject = forms.ChoiceField(
+        choices=[("", "---------"), *RepresentationMetadata.Subject.choices], required=False
+    )
+    role = TermField(queryset=MetadataRole.objects.none(), required=False)
+    annotation = forms.ModelChoiceField(queryset=Annotation.objects.none(), required=False)
+
+    def __init__(self, *args: Any, user: AnyUser, annotation: Annotation, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
         role = self.fields["role"]
         assert isinstance(role, forms.ModelChoiceField)
         role.queryset = MetadataRole.for_user(user)
+        choices = self.fields["annotation"]
+        assert isinstance(choices, forms.ModelChoiceField)
+        # the platform's annotations, the one the dialog is for first
+        choices.queryset = Annotation.objects.filter(platform=annotation.platform_id).order_by(
+            Case(When(pk=annotation.pk, then=0), default=1), "name"
+        )
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "form-select form-select-sm"
 
     def clean(self) -> dict[str, Any]:
         super().clean()
         data = self.cleaned_data
-        if data.get("relation") == "describes":
-            for field in ("role", "subject"):
-                if not data.get(field):
-                    self.add_error(field, "Required to describe it.")
+        filled = [field for field in ROW_FIELDS if data.get(field)]
+        if filled and len(filled) < len(ROW_FIELDS):
+            self.add_error(None, "A metadata row needs a subject, a role and an annotation.")
         return data
+
+    @property
+    def link(self) -> dict[str, Any] | None:
+        """The row as a link (``None`` for an empty row)."""
+        data = self.cleaned_data
+        if not all(data.get(field) for field in ROW_FIELDS):
+            return None
+        return {"subject": data["subject"], "role": data["role"], "annotation": data["annotation"]}
+
+
+class BaseMetadataFormSet(forms.BaseFormSet):
+    def __init__(self, *args: Any, pattern: str = "", **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.pattern = pattern
+
+    def clean(self) -> None:
+        if any(self.errors):
+            return
+        filled = SUBJECTS.get(self.pattern, ())
+        for link in self.links:
+            if link["subject"] not in filled:
+                msg = (
+                    "No confident mapping has no metadata."
+                    if self.pattern == Pattern.UNMAPPED
+                    else f"This representation has no {link['subject']}."
+                )
+                raise ValidationError(msg)
+
+    @property
+    def links(self) -> list[dict[str, Any]]:
+        return [form.link for form in self.forms if form.is_valid() and form.link]
+
+
+# formset_factory builds a subclass of ``formset``; the stubs only know it as a BaseFormSet
+MetadataFormSet = cast(
+    "type[BaseMetadataFormSet]",
+    forms.formset_factory(MetadataRowForm, formset=BaseMetadataFormSet, extra=0),
+)

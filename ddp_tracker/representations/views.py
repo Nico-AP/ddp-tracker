@@ -15,7 +15,10 @@ from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.proposals.models import Proposal
 from ddp_tracker.proposals.services import REPRESENTATION_FIELDS, ProposalError, submit
 from ddp_tracker.representations.forms import (
+    SUBJECTS,
+    BaseMetadataFormSet,
     DescribeForm,
+    MetadataFormSet,
     NewRepresentationForm,
     RepresentationForm,
     RepresentForm,
@@ -26,6 +29,7 @@ from ddp_tracker.representations.models import (
     ActorType,
     MetadataRole,
     ObjectType,
+    Pattern,
     Representation,
     RepresentationMetadata,
 )
@@ -236,7 +240,27 @@ def _modal(
     represent_form: RepresentForm | None = None,
     describe_form: DescribeForm | None = None,
     create_form: NewRepresentationForm | None = None,
+    metadata: BaseMetadataFormSet | None = None,
 ) -> HttpResponse:
+    """The "Add representation" dialog: (a) select an existing one, (b) add a new one."""
+    labels = dict(RepresentationMetadata.Subject.choices)
+    linked = set(annotation.representations.values_list("pk", flat=True))
+    existing: dict[str, list[dict[str, Any]]] = {Pattern.ACTIVITY: [], Pattern.OBJECT: []}
+    for representation in Representation.objects.filter(pattern__in=list(existing)).order_by(
+        "name"
+    ):
+        subjects = [
+            (subject, labels[subject])
+            for subject in SUBJECTS[representation.pattern]
+            if getattr(representation, f"{subject}_id") is not None
+        ]
+        existing[representation.pattern].append(
+            {
+                "representation": representation,
+                "linked": representation.pk in linked,
+                "subjects": subjects,
+            }
+        )
     context = {
         "annotation": annotation,
         # a list's annotation: representations usually point at its item ("watched video")
@@ -245,11 +269,33 @@ def _modal(
             locations__parent_path__in=annotation.locations.values("path"),
             locations__platform=annotation.platform_id,
         ).distinct(),
-        "represent_form": represent_form or RepresentForm(annotation=annotation),
-        "describe_form": describe_form or DescribeForm(annotation=annotation, user=request.user),
+        "happened": existing[Pattern.ACTIVITY],
+        "exists": existing[Pattern.OBJECT],
+        "roles": MetadataRole.for_user(request.user),
+        "errors": [
+            error
+            for form in (represent_form, describe_form)
+            if form is not None
+            for error in form.non_field_errors()
+            + [message for field_errors in form.errors.values() for message in field_errors]
+        ],
         "create_form": create_form or NewRepresentationForm(user=request.user),
+        "metadata": metadata or _metadata_formset(request, annotation),
     }
     return render(request, "representations/_representation_modal.html", context)
+
+
+def _metadata_formset(
+    request: HttpRequest,
+    annotation: Annotation,
+    data: Any = None,  # noqa: ANN401 - a QueryDict
+) -> BaseMetadataFormSet:
+    return MetadataFormSet(
+        data,
+        prefix="metadata",
+        pattern=(data or {}).get("pattern", ""),
+        form_kwargs={"user": request.user, "annotation": annotation},
+    )
 
 
 @login_required
@@ -304,26 +350,32 @@ def annotation_describe(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 @require_POST
 def annotation_create(request: HttpRequest, pk: int) -> HttpResponse:
-    """A new representation, linked to the annotation (as it, or describing it) in one go."""
+    """A new representation with the annotation as its entity, and any number of metadata links, in one
+    go (staff); everyone else suggests it (``proposals``)."""
     annotation = get_object_or_404(Annotation, pk=pk)
     form = NewRepresentationForm(request.POST, user=request.user)
-    if form.is_valid():
-        data = form.cleaned_data
-        targets: dict[str, Any] = {"annotation": annotation}
-        if data["relation"] != "represents":
-            targets |= {"role": data["role"], "subject": data["subject"]}
+    metadata = _metadata_formset(request, annotation, request.POST)
+    if form.is_valid() and metadata.is_valid():
+        rows = [
+            {
+                "subject": link["subject"],
+                "role": link["role"].pk,
+                "annotation": link["annotation"].pk,
+            }
+            for link in metadata.links
+        ]
         try:
             submit(
                 signed_in_user(request),
                 Proposal.Kind.NEW_REPRESENTATION,
-                values=_values(request) | {"relation": data["relation"]},
-                **targets,
+                annotation=annotation,
+                values=_values(request) | {"relation": "represents", "metadata": rows},
             )
         except ProposalError as error:
             form.add_error(None, str(error))
         else:
             return _changed(annotation)
-    return _modal(request, annotation, create_form=form)
+    return _modal(request, annotation, create_form=form, metadata=metadata)
 
 
 # --- vocabulary --------------------------------------------------------------------------------
