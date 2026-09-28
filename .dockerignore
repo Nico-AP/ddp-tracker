@@ -12,3 +12,17 @@ venv
 .envs/
 .venv/
 **/__pycache__/
+node_modules/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+db.sqlite3
+logs/
+var/
+tmp/
+staticfiles/
+docs/site/
+ddp_tracker/media/
+.env

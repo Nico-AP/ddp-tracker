@@ -20,13 +20,17 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project --no-dev
+    --mount=type=bind,source=packages/ddp-parser/pyproject.toml,target=packages/ddp-parser/pyproject.toml \
+    uv sync --locked --no-install-project --no-install-workspace --no-dev
 COPY . ${APP_HOME}
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --locked --no-dev
+
+# Build the MkDocs site served at /docs/ (settings.MKDOCS_ROOT).
+RUN .venv/bin/mkdocs build --strict -f docs/mkdocs.yml
 
 # Python 'run' stage
 FROM python:3.14-slim-bookworm AS python-run-stage
@@ -63,8 +67,10 @@ RUN chmod +x /start
 
 # Copy the application from the builder
 COPY --from=python-build-stage --chown=django:django ${APP_HOME} ${APP_HOME}
-# explicitly create the media folder before changing ownership below
-RUN mkdir -p ${APP_HOME}/ddp_tracker/media
+# explicitly create the folders mounted as volumes, owned by django, so fresh named volumes
+# inherit that ownership (media, logs, and the DDP upload inbox shared with the worker)
+RUN mkdir -p ${APP_HOME}/ddp_tracker/media ${APP_HOME}/logs ${APP_HOME}/var/incoming \
+  && chown -R django:django ${APP_HOME}/ddp_tracker/media ${APP_HOME}/logs ${APP_HOME}/var
 
 # make django owner of the WORKDIR directory as well.
 RUN chown django:django ${APP_HOME}

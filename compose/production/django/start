@@ -7,4 +7,5 @@ set -o nounset
 
 python /app/manage.py collectstatic --noinput
 
-exec gunicorn config.wsgi --bind 0.0.0.0:5000 --chdir=/app
+# DDP uploads can be up to DDP_MAX_UPLOAD_SIZE (2 GiB by default): allow slow requests.
+exec gunicorn config.wsgi --bind 0.0.0.0:5000 --chdir=/app --timeout "${GUNICORN_TIMEOUT:-600}"

@@ -96,6 +96,13 @@ EMAIL_SUBJECT_PREFIX = env(
     default="[DDP Tracker] ",
 )
 ACCOUNT_EMAIL_SUBJECT_PREFIX = EMAIL_SUBJECT_PREFIX
+# https://docs.djangoproject.com/en/dev/ref/settings/#email-host
+EMAIL_HOST = env.str("DJANGO_EMAIL_HOST")
+EMAIL_PORT = env.int("DJANGO_EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env.str("DJANGO_EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env.str("DJANGO_EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("DJANGO_EMAIL_USE_TLS", default=True)
+EMAIL_TIMEOUT = env.int("DJANGO_EMAIL_TIMEOUT", default=10)
 
 
 # ADMIN
