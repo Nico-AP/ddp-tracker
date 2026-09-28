@@ -1,4 +1,7 @@
 <section class="annotation">
+  {% if annotation.pii %}
+    <span class="badge badge--pii" title="Personally identifiable information">PII</span>
+  {% endif %}
   <h2>Description</h2>
   {% if suggested %}<p class="message message--info">Suggested; staff will review your change.</p>{% endif %}
   {% if annotation.description %}

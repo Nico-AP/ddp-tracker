@@ -228,7 +228,7 @@ def triage(request: HttpRequest, pk: int) -> HttpResponse:
     elif action == "new":
         targets["values"] = {
             field: request.POST.get(field, "").strip() for field in ("name", "description", "note")
-        }
+        } | {"pii": request.POST.get("pii") == "on"}
     kind = TRIAGE_KINDS.get(action)
     if kind is None:
         return HttpResponse(status=400)

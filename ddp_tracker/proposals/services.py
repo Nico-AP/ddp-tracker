@@ -37,6 +37,7 @@ Status = Proposal.Status
 LOCATION_KINDS = (Kind.LINK, Kind.NEW_ANNOTATION, Kind.IGNORE, Kind.UNASSIGN)
 ANNOTATION_KINDS = (*LOCATION_KINDS, Kind.EDIT_ANNOTATION)  # the annotations queue
 REPRESENTATION_KINDS = tuple(kind for kind in Kind if kind not in ANNOTATION_KINDS)
+ANNOTATION_FIELDS = ("name", "description", "note", "pii")
 REPRESENTATION_FIELDS = ("pattern", "name", "description", "note", *SLOTS)
 
 
@@ -217,7 +218,7 @@ def snapshot(proposal: Proposal) -> dict[str, Any]:
         location = proposal.location
         return {"annotation": location.annotation_id, "ignored": location.ignored}
     if kind == Kind.EDIT_ANNOTATION and proposal.annotation is not None:
-        return model_to_dict(proposal.annotation, fields=["name", "description", "note"])
+        return model_to_dict(proposal.annotation, fields=list(ANNOTATION_FIELDS))
     if kind == Kind.EDIT_REPRESENTATION and proposal.representation is not None:
         return model_to_dict(proposal.representation, fields=list(REPRESENTATION_FIELDS))
     if kind in {Kind.REPRESENT, Kind.UNREPRESENT} and proposal.representation is not None:
@@ -313,6 +314,7 @@ def _new_annotation(proposal: Proposal, author: User, actor: User) -> None:
         author,
         description=values.get("description", ""),
         note=values.get("note", ""),
+        pii=bool(values.get("pii")),
     )
 
 
@@ -414,16 +416,14 @@ def changes(proposal: Proposal) -> list[tuple[str, str, str]]:
             rows += [
                 (field.capitalize(), "", values.get(field, "")) for field in ("description", "note")
             ]
+            if values.get("pii"):
+                rows.append(("PII", "", "yes"))
         return [row for row in rows if row[1] or row[2]]
     if kind in {Kind.EDIT_ANNOTATION, Kind.EDIT_REPRESENTATION, Kind.NEW_REPRESENTATION}:
-        fields = (
-            ("name", "description", "note")
-            if kind == Kind.EDIT_ANNOTATION
-            else REPRESENTATION_FIELDS
-        )
+        fields = ANNOTATION_FIELDS if kind == Kind.EDIT_ANNOTATION else REPRESENTATION_FIELDS
         before = proposal.base
         rows = [
-            (field.capitalize(), _shown(field, before.get(field)), _shown(field, values.get(field)))
+            (_label(field), _shown(field, before.get(field)), _shown(field, values.get(field)))
             for field in fields
             if _shown(field, before.get(field)) != _shown(field, values.get(field))
         ]
@@ -458,10 +458,16 @@ def _assignment(base: dict[str, Any]) -> str:
     return "none"
 
 
+def _label(field: str) -> str:
+    return "PII" if field == "pii" else field.capitalize()
+
+
 def _shown(field: str, value: Any) -> str:  # noqa: ANN401
     """A form value in words (vocabulary terms by name)."""
     if value in (None, ""):
         return ""
+    if isinstance(value, bool):
+        return "yes" if value else "no"
     if field in SLOTS:
         model = ObjectType if field == "target" else VOCABULARIES[field]
         term = model.objects.filter(pk=value).first()

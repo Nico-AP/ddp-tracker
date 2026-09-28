@@ -119,12 +119,14 @@ class DecideTests(ProposalTestCase):
             self.curator,
             Kind.NEW_ANNOTATION,
             location=self.name,
-            values={"name": "Display name", "note": "n"},
+            values={"name": "Display name", "note": "n", "pii": True},
         )
         assert proposal is not None
+        self.assertIn(("PII", "", "yes"), changes(proposal))
         accept(proposal, self.staff)
         created = Annotation.objects.get(name="Display name")
         self.assertEqual((created.note, created.updated_by), ("n", self.curator))
+        self.assertTrue(created.pii)
         self.assertEqual(Location.objects.get(pk=self.name.pk).annotation, created)
 
     def test_stale_proposals_need_confirming(self):
@@ -162,13 +164,15 @@ class DecideTests(ProposalTestCase):
                 self.assertEqual((self.email.annotation, self.email.ignored), expected)
 
     def test_edit_annotation(self):
-        values = {"name": "E-mail", "description": "The address", "note": ""}
+        values = {"name": "E-mail", "description": "The address", "note": "", "pii": True}
         proposal = submit(self.curator, Kind.EDIT_ANNOTATION, annotation=self.shown, values=values)
         assert proposal is not None
         self.assertIn(("Name", "Email", "E-mail"), changes(proposal))
+        self.assertIn(("PII", "no", "yes"), changes(proposal))
         accept(proposal, self.staff)
         self.shown.refresh_from_db()
         self.assertEqual((self.shown.name, self.shown.updated_by), ("E-mail", self.curator))
+        self.assertTrue(self.shown.pii)
 
 
 class RepresentationTests(ProposalTestCase):

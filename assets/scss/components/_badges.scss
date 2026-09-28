@@ -27,6 +27,7 @@
 }
 
 .badge--failed,
+.badge--pii,
 .badge--rejected,
 .badge--removed {
   @include badge-color($color-danger);

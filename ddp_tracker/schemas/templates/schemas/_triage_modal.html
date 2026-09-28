@@ -92,6 +92,14 @@
               class="form-control"
               rows="2"
               placeholder="Anything curators should know (optional)"></textarea>
+    <div class="form-check">
+      <input type="checkbox"
+             id="new-annotation-pii"
+             name="pii"
+             class="form-check-input">
+      <label for="new-annotation-pii"
+             class="form-check-label">Personally identifiable information (PII)</label>
+    </div>
     {% if not user.is_staff %}
       <label for="new-annotation-comment"
              class="form-label">Why? (for the reviewer, optional)</label>
