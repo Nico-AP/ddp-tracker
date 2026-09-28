@@ -62,6 +62,15 @@ class UploadFlowTests(TestCase):
         self.assertIsNone(upload.registered_at)
         self.assertFalse(Location.objects.exists())
 
+    def test_the_file_name_is_stored_anonymized(self):
+        self.post(b'{"name": "Fritzli"}', name="export_johndoe_12.json", file_format="json")
+        upload = Upload.objects.get()
+        self.assertEqual(upload.status, Upload.Status.DONE)  # the extension still picks the parser
+        self.assertEqual(upload.file_name, "export_xxxxxxx_00.json")
+        assert upload.document is not None
+        self.assertEqual(upload.document["source"]["name"], "export_xxxxxxx_00.json")
+        self.assertEqual(upload.document["root"]["name"], "export_xxxxxxx_00.json")
+
     def test_unreadable_zip_fails_and_is_deleted(self):
         # passes the form's quick check (the archive's end record is intact), fails parsing
         broken = make_zip(PROFILE).replace(b"PK\x01\x02", b"XX\x01\x02")

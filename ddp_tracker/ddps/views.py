@@ -15,6 +15,7 @@ from django.views.decorators.http import require_POST
 from ddp_tracker.ddps import checks, values
 from ddp_tracker.ddps.forms import UploadForm
 from ddp_tracker.ddps.models import Upload
+from ddp_tracker.ddps.names import anonymize_file_name
 from ddp_tracker.ddps.services import receive
 from ddp_tracker.users.auth import signed_in_user
 from ddp_tracker.users.models import User
@@ -32,7 +33,7 @@ def upload_create(request: HttpRequest) -> HttpResponse:
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             upload = form.save(commit=False)
-            upload.file_name = form.cleaned_data["file"].name
+            upload.file_name = anonymize_file_name(form.cleaned_data["file"].name)
             upload.uploaded_by = signed_in_user(request)
             upload.save()
             private_key, public_key = values.new_key_pair()

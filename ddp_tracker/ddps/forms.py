@@ -50,7 +50,10 @@ def looks_like(file_format: str, file: UploadedFile) -> bool:
 
 class UploadForm(forms.ModelForm):
     file = forms.FileField(
-        help_text="The DDP as downloaded from the platform: a zip, or a single JSON / CSV file.",
+        help_text=(
+            "The DDP as downloaded from the platform: a zip, or a single JSON / CSV file. "
+            "Its name is stored anonymized: numbers and words that could identify you are masked."
+        ),
         widget=forms.ClearableFileInput(
             attrs={"accept": ",".join(f".{value}" for value in Upload.FileFormat.values)}
         ),

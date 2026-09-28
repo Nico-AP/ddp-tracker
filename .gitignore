@@ -332,3 +332,4 @@ ddp_tracker/media/
 .claude
 .idea
 *.sqlite3
+tiktok_json_annotations.json
