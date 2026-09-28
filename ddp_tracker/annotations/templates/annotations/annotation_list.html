@@ -13,6 +13,7 @@
           <th>Annotation</th>
           <th>Description</th>
           <th>Locations</th>
+          <th>Contains PII</th>
           <th>Last seen</th>
         </tr>
       </thead>
@@ -21,13 +22,17 @@
           <tr>
             <td>
               <a href="{{ annotation.get_absolute_url }}">{{ annotation.name }}</a>
-              {% if annotation.pii %}
-                <span class="badge badge--pii"
-                      title="Personally identifiable information">PII</span>
-              {% endif %}
             </td>
             <td>{{ annotation.description|truncatewords:15|default:"–" }}</td>
             <td>{{ annotation.location_count }}</td>
+            <td>
+              {% if annotation.pii %}
+                <span class="badge badge--pii"
+                      title="Personally identifiable information">Yes</span>
+              {% else %}
+                -
+              {% endif %}
+            </td>
             <td>{{ annotation.last_seen|default:"–" }}</td>
           </tr>
         {% endfor %}

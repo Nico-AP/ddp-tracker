@@ -24,7 +24,7 @@ def annotation_list(request: HttpRequest, slug: str) -> HttpResponse:
     annotations = platform.annotations.annotate(
         location_count=Count("locations", distinct=True),
         last_seen=Max("locations__observations__upload__requested_at"),
-    )
+    ).order_by("name")
     return render(
         request,
         "annotations/annotation_list.html",
