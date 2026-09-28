@@ -15,7 +15,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
         name="docs",
     ),
     path("accounts/logout/", LogoutView.as_view(), name="logout"),  # also forgets value keys
-    path("accounts/", include("django.contrib.auth.urls")),
+    path("accounts/", include("allauth.urls")),
     path("uploads/", include("ddp_tracker.ddps.urls")),
     path("annotations/", include("ddp_tracker.annotations.urls")),
     path("representations/", include("ddp_tracker.representations.urls")),

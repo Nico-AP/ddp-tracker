@@ -83,7 +83,6 @@ THIRD_PARTY_APPS = [
     "allauth",
     "allauth.account",
     "allauth.mfa",
-    "allauth.socialaccount",
     "corsheaders",
     "django_guid",
     "django_tasks",
@@ -117,7 +116,7 @@ AUTH_USER_MODEL = "users.User"
 LOGIN_REDIRECT_URL = "core:index"
 LOGOUT_REDIRECT_URL = "core:index"
 # https://docs.djangoproject.com/en/dev/ref/settings/#login-url
-LOGIN_URL = "login"
+LOGIN_URL = "account_login"
 
 
 # PASSWORDS
