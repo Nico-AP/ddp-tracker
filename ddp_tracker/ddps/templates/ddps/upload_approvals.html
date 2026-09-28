@@ -16,7 +16,6 @@
           <th>Root Format</th>
           <th>Why</th>
           <th>Known data points</th>
-          <th>Uploaded by</th>
           <th>Requested</th>
         </tr>
       </thead>
@@ -37,7 +36,6 @@
                 –
               {% endif %}
             </td>
-            <td>{{ upload.uploaded_by|default:"–" }}</td>
             <td>{{ upload.requested_at }}</td>
           </tr>
         {% endfor %}

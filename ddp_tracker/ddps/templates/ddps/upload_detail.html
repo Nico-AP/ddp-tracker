@@ -28,7 +28,7 @@
     </dd>
     <dt>Uploaded</dt>
     <dd>
-      {{ upload.created_at|date:"Y-m-d H:i" }} by {{ upload.uploaded_by|default:"–" }}
+      {{ upload.created_at|date:"Y-m-d H:i" }}
     </dd>
     {% if upload.size_bytes %}
       <dt>Size</dt>

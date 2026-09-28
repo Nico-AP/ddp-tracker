@@ -34,7 +34,7 @@
                 <span class="badge badge--{{ upload.plausibility }}">{{ upload.get_plausibility_display }}</span>
               {% endif %}
             </td>
-            <td>{{ upload.created_at|date:"Y-m-d H:i" }} · {{ upload.uploaded_by|default:"–" }}</td>
+            <td>{{ upload.created_at|date:"Y-m-d H:i" }}</td>
           </tr>
         {% endfor %}
       </tbody>
