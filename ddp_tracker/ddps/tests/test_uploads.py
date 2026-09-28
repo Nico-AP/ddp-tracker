@@ -43,7 +43,9 @@ class UploadFlowTests(TestCase):
 
     def test_login_required(self):
         response = self.client.get(reverse("ddps:upload-create"))
-        self.assertRedirects(response, f"{reverse('login')}?next={reverse('ddps:upload-create')}")
+        self.assertRedirects(
+            response, f"{reverse('account_login')}?next={reverse('ddps:upload-create')}"
+        )
 
     def test_upload_is_parsed_and_the_file_deleted(self):
         response = self.post(make_zip(PROFILE))
@@ -72,9 +74,11 @@ class UploadFlowTests(TestCase):
         self.assertEqual(upload.document["root"]["name"], "export_xxxxxxx_00.json")
 
     def test_unreadable_zip_fails_and_is_deleted(self):
-        # passes the form's quick check (the archive's end record is intact), fails parsing
-        broken = make_zip(PROFILE).replace(b"PK\x01\x02", b"XX\x01\x02")
-        self.post(broken)
+        # passes the form's quick check, fails parsing: the second central directory entry is
+        # damaged (since Python 3.14, is_zipfile also checks the first one)
+        data = make_zip({**PROFILE, "posts.json": b"[]"})
+        second = data.index(b"PK\x01\x02", data.index(b"PK\x01\x02") + 1)
+        self.post(data[:second] + b"XX" + data[second + 2 :])
         upload = Upload.objects.get()
         self.assertEqual(upload.status, Upload.Status.FAILED)
         self.assertTrue(upload.error)

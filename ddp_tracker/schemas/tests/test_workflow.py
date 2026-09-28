@@ -226,8 +226,8 @@ class ViewTests(TestCase):
 
     def test_root_is_the_format_not_the_file(self):
         response = self.client.get(reverse("schemas:platform", args=["tiktok"]))
-        self.assertContains(response, '<a class="nav-link active"', count=1)  # ZIP archive
-        self.assertContains(response, "ZIP archive")
+        self.assertContains(response, '<a class="nav-link active"', count=1)  # requested as JSON
+        self.assertEqual(response.context["filter"].root_format, "zip")
         root = Location.objects.get(platform=self.platform, path="")
         self.assertIsNone(root.name)  # the uploaded file's name is not kept
         self.assertNotContains(response, "export.zip")
@@ -248,8 +248,8 @@ class ViewTests(TestCase):
         response = self.client.get(url)  # the most common format now
         self.assertEqual(response.context["filter"].root_format, "zip")
         self.assertTrue(all(key.startswith("/streams.csv") for key in self.keys(response)))
-        self.assertContains(response, "?root_format=csv")  # the other one, one click away
-        csv = self.client.get(url, {"root_format": "csv"})
+        self.assertContains(response, "?request_format=csv")  # the other one, one click away
+        csv = self.client.get(url, {"request_format": "csv"})
         self.assertFalse(any(key.startswith("/streams.csv") for key in self.keys(csv)))
 
     def test_rows_are_alphabetical(self):

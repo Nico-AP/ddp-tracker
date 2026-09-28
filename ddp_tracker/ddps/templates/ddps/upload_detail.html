@@ -14,6 +14,10 @@
     <dd>
       {{ upload.requested_at }}
     </dd>
+    <dt>Request Format</dt>
+    <dd>
+      {{ upload.get_request_format_display|default:"–" }}
+    </dd>
     <dt>Format</dt>
     <dd>
       {{ upload.get_file_format_display|default:upload.root_format|default:"–" }}

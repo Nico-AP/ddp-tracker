@@ -1,5 +1,5 @@
 """The platform explorer's tree (``schemas/tree.py``): the data points of the uploads a
-``SchemaFilter`` lets through (one root format), with nodes that are never data points but hold
+``SchemaFilter`` lets through (one request and root format), with nodes that are never data points but hold
 something themselves (an unparsed file, an object always seen empty) as muted rows."""
 
 from collections.abc import Callable

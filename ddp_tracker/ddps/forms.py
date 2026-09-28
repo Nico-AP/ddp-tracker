@@ -61,7 +61,14 @@ class UploadForm(forms.ModelForm):
 
     class Meta:
         model = Upload
-        fields = ["platform", "requested_at", "request_mode", "language", "file_format"]
+        fields = [
+            "platform",
+            "requested_at",
+            "request_mode",
+            "request_format",
+            "language",
+            "file_format",
+        ]
         labels = {"file_format": "What are you uploading?"}
         widgets = {
             "requested_at": forms.DateInput(attrs={"type": "date"}),

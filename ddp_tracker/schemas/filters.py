@@ -1,7 +1,10 @@
-"""Restricting schema views to a subset of uploads (request date, language, root format).
+"""Restricting schema views to a subset of uploads (request date, language, request format,
+root format).
 
-The root format is a single choice (the explorer's selector): a single JSON file and a zip don't
-share a tree. It defaults to the platform's most common one; ``""`` means all (the review).
+The request format is a single choice (the explorer's selector), defaulting to the platform's most
+common one. Within it, the root format is one too: a single JSON file and a zip don't share a
+tree. It defaults to the most common one among the request format's uploads; ``""`` means all
+(the review).
 
 Every descriptive view of the collected schema is computed from the observations of the uploads a
 ``SchemaFilter`` lets through; the filter travels in the URL query, including HTMX requests.
@@ -38,27 +41,43 @@ class FilterForm(forms.Form):
         required=False, label="to", widget=forms.DateInput(attrs={"type": "date"})
     )
     languages = forms.MultipleChoiceField(required=False, widget=forms.CheckboxSelectMultiple)
+    request_format = forms.ChoiceField(required=False, widget=forms.HiddenInput)
     root_format = forms.ChoiceField(required=False, widget=forms.HiddenInput)
 
     def __init__(self, *args: Any, platform: Platform, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         registered = platform.uploads.filter(registered_at__isnull=False)
         languages = sorted(set(registered.values_list("language", flat=True)))
-        formats = sorted(set(registered.values_list("root_format", flat=True)))
-        language_field, format_field = self.fields["languages"], self.fields["root_format"]
+        language_field = self.fields["languages"]
         assert isinstance(language_field, forms.MultipleChoiceField)
-        assert isinstance(format_field, forms.ChoiceField)
         language_field.choices = [
             (code, _LANGUAGE_NAMES.get(code, "unknown")) for code in languages
         ]
-        format_field.choices = [("", "all"), *((value, format_label(value)) for value in formats)]
+        for name in ("request_format", "root_format"):
+            format_field = self.fields[name]
+            assert isinstance(format_field, forms.ChoiceField)
+            formats = sorted(set(registered.values_list(name, flat=True)))
+            format_field.choices = [
+                ("", "all"),
+                *((value, format_label(value)) for value in formats),
+            ]
 
 
-def root_formats(platform: Platform) -> list[tuple[str, int]]:
-    """The platform's root formats with how many counted uploads have each, most common first
+def root_formats(platform: Platform, request_format: str = "") -> list[tuple[str, int]]:
+    """The root formats of the platform's counted uploads (of ``request_format``, if given) with
+    how many have each, most common first (ties by name)."""
+    counted = platform.uploads.filter(registered_at__isnull=False)
+    if request_format:
+        counted = counted.filter(request_format=request_format)
+    formats = Counter(counted.values_list("root_format", flat=True))
+    return sorted(formats.items(), key=lambda pair: (-pair[1], pair[0]))
+
+
+def request_formats(platform: Platform) -> list[tuple[str, int]]:
+    """The platform's request formats with how many counted uploads have each, most common first
     (ties by name)."""
     counted = platform.uploads.filter(registered_at__isnull=False)
-    formats = Counter(counted.values_list("root_format", flat=True))
+    formats = Counter(counted.values_list("request_format", flat=True))
     return sorted(formats.items(), key=lambda pair: (-pair[1], pair[0]))
 
 
@@ -67,23 +86,31 @@ class SchemaFilter:
     requested_from: date | None = None
     requested_to: date | None = None
     languages: tuple[str, ...] = ()
+    request_format: str = ""  # "" all
     root_format: str = ""  # "" all
 
     @classmethod
     def from_request(cls, request: HttpRequest, platform: Platform) -> "SchemaFilter":
-        """The filter in the request; the root format defaults to the most common one."""
+        """The filter in the request; the request format defaults to the most common one, the
+        root format to the most common one among the request format's uploads."""
         form = FilterForm(request.GET, platform=platform)
         data = form.cleaned_data if form.is_valid() else {}
         chosen = cls(
             requested_from=data.get("requested_from"),
             requested_to=data.get("requested_to"),
             languages=tuple(data.get("languages", ())),
+            request_format=data.get("request_format", ""),
             root_format=data.get("root_format", ""),
         )
-        if chosen.root_format:
-            return chosen
-        formats = root_formats(platform)
-        return replace(chosen, root_format=formats[0][0]) if formats else chosen
+        if not chosen.request_format:
+            formats = request_formats(platform)
+            if formats:
+                chosen = replace(chosen, request_format=formats[0][0])
+        if not chosen.root_format:
+            roots = root_formats(platform, chosen.request_format)
+            if roots:
+                chosen = replace(chosen, root_format=roots[0][0])
+        return chosen
 
     def uploads(self, platform: Platform) -> QuerySet[Upload]:
         uploads = platform.uploads.filter(registered_at__isnull=False)
@@ -93,6 +120,8 @@ class SchemaFilter:
             uploads = uploads.filter(requested_at__lte=self.requested_to)
         if self.languages:
             uploads = uploads.filter(language__in=self.languages)
+        if self.request_format:
+            uploads = uploads.filter(request_format=self.request_format)
         if self.root_format:
             uploads = uploads.filter(root_format=self.root_format)
         return uploads
@@ -102,7 +131,7 @@ class SchemaFilter:
 
     @property
     def is_active(self) -> bool:
-        """Dates or languages chosen (the format is always one of them)."""
+        """Dates or languages chosen (the formats are always one of them)."""
         return bool(self.requested_from or self.requested_to or self.languages)
 
     @property
@@ -119,10 +148,17 @@ class SchemaFilter:
         if self.requested_to:
             params.append(("requested_to", self.requested_to.isoformat()))
         params += [("languages", code) for code in self.languages]
+        if self.request_format:
+            params.append(("request_format", self.request_format))
         if self.root_format:
             params.append(("root_format", self.root_format))
         return params
 
-    def with_format(self, root_format: str) -> str:
-        """The query of this filter with another root format (the selector's links)."""
+    def with_format(self, request_format: str) -> str:
+        """The query of this filter with another request format (the selector's links); its root
+        format is that request format's default again."""
+        return replace(self, request_format=request_format, root_format="").query
+
+    def with_root_format(self, root_format: str) -> str:
+        """The query of this filter with another root format (the second selector's links)."""
         return replace(self, root_format=root_format).query

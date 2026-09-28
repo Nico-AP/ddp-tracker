@@ -132,6 +132,7 @@ def _references(upload: Upload) -> list[Node]:
     strictly earlier (the same cut-off as "new"), one tree per root format. A single-file export
     and a zip don't share a root, so merging them would drop one of them.
     """
+    # TODO: May have to be changed to check for root format x request format
     earlier = _registered(upload.platform).filter(requested_at__lt=upload.requested_at)
     by_format: dict[str, list[FilesystemNode]] = {}
     for other in earlier.only("document", "root_format"):

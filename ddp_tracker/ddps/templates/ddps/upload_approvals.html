@@ -12,7 +12,8 @@
         <tr>
           <th>Upload</th>
           <th>Platform</th>
-          <th>Format</th>
+          <th>Request Format</th>
+          <th>Root Format</th>
           <th>Why</th>
           <th>Known data points</th>
           <th>Uploaded by</th>
@@ -26,6 +27,7 @@
               <a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a>
             </td>
             <td>{{ upload.platform }}</td>
+            <td>{{ upload.get_request_format_display|default:upload.request_format }}</td>
             <td>{{ upload.get_file_format_display|default:upload.root_format }}</td>
             <td>{{ upload.get_plausibility_reason_display }}</td>
             <td>

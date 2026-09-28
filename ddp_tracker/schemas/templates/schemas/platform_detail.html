@@ -12,6 +12,19 @@
     <ul class="nav nav-pills format-choice" aria-label="Uploaded as">
       {% for value, label, count, query in formats %}
         <li class="nav-item">
+          <a class="nav-link{% if value == filter.request_format %} active{% endif %}"
+             href="?{{ query }}"
+             {% if value == filter.request_format %}aria-current="page"{% endif %}>
+            {{ label }} <span class="badge rounded-pill">{{ count }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% if root_formats|length > 1 %}
+    <ul class="nav nav-pills format-choice" aria-label="Uploaded file">
+      {% for value, label, count, query in root_formats %}
+        <li class="nav-item">
           <a class="nav-link{% if value == filter.root_format %} active{% endif %}"
              href="?{{ query }}"
              {% if value == filter.root_format %}aria-current="page"{% endif %}>
@@ -22,6 +35,9 @@
     </ul>
   {% endif %}
   <form method="get" class="filter-bar">
+    <input type="hidden"
+           name="request_format"
+           value="{{ filter.request_format }}">
     <input type="hidden" name="root_format" value="{{ filter.root_format }}">
     {% for field in filter_form.visible_fields %}
       <fieldset class="filter-bar__field">
@@ -31,7 +47,7 @@
     {% endfor %}
     <button type="submit" class="btn btn--small">Filter</button>
     {% if filter.is_active %}
-      <a href="?root_format={{ filter.root_format }}">Reset</a>
+      <a href="?request_format={{ filter.request_format }}&amp;root_format={{ filter.root_format }}">Reset</a>
     {% endif %}
   </form>
   <p class="muted">

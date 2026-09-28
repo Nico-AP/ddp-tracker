@@ -40,7 +40,7 @@ class ExplorerTreeTests(TestCase):
         self.platform = Platform.objects.create(name="TikTok", slug="tiktok")
         parsed_upload(self.platform, EARLY, requested_at=date(2025, 1, 1), register=True)
         parsed_upload(self.platform, LATE, requested_at=date(2026, 1, 1), register=True)
-        self.filter = SchemaFilter(root_format="zip")
+        self.filter = SchemaFilter(request_format="json")
 
     def rows(self, **kwargs):
         tree = explorer_tree(self.platform, self.filter, **kwargs)
@@ -131,7 +131,7 @@ class ExplorerPageTests(TestCase):
         self.assertNotContains(self.client.get(url), "review-pill--done")
         create_annotation(self.item, "Tag", self.user)
         create_annotation(self.tags, "List of Tag", self.user)
-        row = self.client.get(url, {"root_format": "zip"})
+        row = self.client.get(url, {"request_format": "json"})
         self.assertContains(
             row, '<span class="review-pill review-pill--done">Tag</span>', html=True
         )
@@ -153,10 +153,12 @@ class ExplorerPageTests(TestCase):
         self.assertNotContains(page, "Hide annotated")
         create_annotation(self.item, "Tag", self.user)
         create_annotation(self.tags, "List of Tag", self.user)
-        groups = self.client.get(url, {"show": "representations"}, HTTP_HX_REQUEST="true")
+        groups = self.client.get(url, {"show": "representations"}, headers={"hx-request": "true"})
         self.assertContains(groups, "tags[]")
         self.assertNotContains(groups, "when")  # not annotated: not a missing representation
-        done = self.client.get(url, {"show": "annotations", "q": "tags"}, HTTP_HX_REQUEST="true")
+        done = self.client.get(
+            url, {"show": "annotations", "q": "tags"}, headers={"hx-request": "true"}
+        )
         self.assertContains(done, "Nothing matches")
         odd = self.client.get(url, {"show": "nonsense"})
         self.assertEqual(odd.context["show"], "all")
@@ -169,11 +171,11 @@ class OrderTests(TestCase):
         self.platform = Platform.objects.create(name="TikTok", slug="tiktok")
 
     def keys(self):
-        tree = explorer_tree(self.platform, SchemaFilter(root_format="zip"))
+        tree = explorer_tree(self.platform, SchemaFilter(request_format="json"))
         return [row.key for group in tree.groups for row in group.lines()]
 
     def groups(self):
-        tree = explorer_tree(self.platform, SchemaFilter(root_format="zip"))
+        tree = explorer_tree(self.platform, SchemaFilter(request_format="json"))
         return [(root.path, group.path) for root in tree.roots for group in root.groups]
 
     def test_keys_from_different_uploads(self):

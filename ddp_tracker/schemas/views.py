@@ -25,7 +25,13 @@ from ddp_tracker.schemas.explorer import (
     explorer_tree,
 )
 from ddp_tracker.schemas.explorer import build_row as explorer_row_of
-from ddp_tracker.schemas.filters import FilterForm, SchemaFilter, format_label, root_formats
+from ddp_tracker.schemas.filters import (
+    FilterForm,
+    SchemaFilter,
+    format_label,
+    request_formats,
+    root_formats,
+)
 from ddp_tracker.schemas.forms import ExamplesForm
 from ddp_tracker.schemas.json_view import json_path
 from ddp_tracker.schemas.models import ITEM, Location, Observation
@@ -60,7 +66,7 @@ def _explorer_context(request: HttpRequest, platform: Platform) -> dict[str, Any
 
 
 def platform_detail(request: HttpRequest, slug: str) -> HttpResponse:
-    """The collected schema of one root format, as a tree; with htmx (the filter box, the
+    """The collected schema of one request and root format, as a tree; with htmx (the filter box, the
     switch), only the tree's groups."""
     platform = get_object_or_404(Platform, slug=slug)
     context = _explorer_context(request, platform)
@@ -75,7 +81,12 @@ def platform_detail(request: HttpRequest, slug: str) -> HttpResponse:
         "filter_form": FilterForm(request.GET or None, platform=platform),
         "formats": [
             (value, format_label(value), count, schema_filter.with_format(value))
-            for value, count in root_formats(platform)
+            for value, count in request_formats(platform)
+        ],
+        # a second choice only where the request format's uploads have several root formats
+        "root_formats": [
+            (value, format_label(value), count, schema_filter.with_root_format(value))
+            for value, count in root_formats(platform, schema_filter.request_format)
         ],
         "counts": {
             "annotations": platform.annotations.count(),

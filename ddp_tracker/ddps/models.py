@@ -4,6 +4,8 @@ from django.conf import global_settings, settings
 from django.db import models
 from django.urls import reverse
 
+from ddp_tracker.core.fields import OrderedJSONField
+
 LANGUAGES = global_settings.LANGUAGES
 
 
@@ -73,6 +75,11 @@ class Upload(models.Model):
         choices=RequestMode.choices,
         help_text="How the DDP was requested, if known.",
     )
+    request_format = models.CharField(
+        max_length=64,
+        blank=True,
+        choices=FileFormat.choices,
+    )
     file_format = models.CharField(max_length=16, choices=FileFormat.choices, blank=True)
     file_name = models.CharField(max_length=255)
     uploaded_by = models.ForeignKey(
@@ -82,7 +89,8 @@ class Upload(models.Model):
 
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
     error = models.TextField(blank=True)
-    document = models.JSONField(null=True, blank=True)  # ddp_parser schema document
+    # ddp_parser schema document; key order is file order (matching uses it), so not jsonb
+    document = OrderedJSONField(null=True, blank=True)
     source_sha256 = models.CharField(max_length=64, blank=True, db_index=True)
     size_bytes = models.BigIntegerField(null=True, blank=True)
     parser_version = models.CharField(max_length=32, blank=True)
@@ -112,6 +120,7 @@ class Upload(models.Model):
             models.Index(fields=["platform", "requested_at"], name="upload_platform_requested"),
             models.Index(fields=["language"], name="upload_language"),
             models.Index(fields=["root_format"], name="upload_root_format"),
+            models.Index(fields=["request_format"], name="upload_request_format"),
         ]
 
     def __str__(self) -> str:

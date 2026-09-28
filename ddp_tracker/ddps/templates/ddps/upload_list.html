@@ -12,6 +12,7 @@
           <th>File</th>
           <th>Platform</th>
           <th>Requested</th>
+          <th>Request format</th>
           <th>Language</th>
           <th>Status</th>
           <th>Uploaded</th>
@@ -25,6 +26,7 @@
             </td>
             <td>{{ upload.platform }}</td>
             <td>{{ upload.requested_at }}</td>
+            <td>{{ upload.get_request_format_display|default:"–" }}</td>
             <td>{{ upload.get_language_display|default:"–" }}</td>
             <td>
               <span class="badge badge--{{ upload.status }}">{{ upload.get_status_display }}</span>
