@@ -110,7 +110,9 @@ uv run manage.py test
 
 The same checks (minus pip-audit's "only when deps changed" gating — it always runs in CI) run
 again in GitHub Actions on every push and pull request, alongside a Node job that runs
-`npm ci && npm run build` to catch broken Sass; a PR can't merge with any of them red.
+`npm ci && npm run build` to catch broken Sass, and a second test job against PostgreSQL (the
+production database; it catches what SQLite hides, such as `jsonb` sorting JSON keys); a PR can't
+merge with any of them red.
 
 ## Settings
 
@@ -120,7 +122,8 @@ Settings are split under `config/settings/`:
 - `local.py` — local development (`DEBUG=True`, sqlite fallback, insecure default `SECRET_KEY`)
 - `production.py` — deployment (everything sensitive required from the environment, no defaults —
   a missing `DJANGO_SECRET_KEY` or `DATABASE_URL` fails at startup rather than running insecurely)
-- `cicd.py` — GitHub Actions (in-memory sqlite, no external services)
+- `cicd.py` — GitHub Actions (in-memory sqlite, no external services; `DATABASE_URL` overrides
+  the database, as the PostgreSQL job does)
 
 Upload-related settings: `DDP_INCOMING_DIR`, `DDP_MAX_UPLOAD_SIZE`, `DDP_SIMILARITY_THRESHOLD`
 (below it, an upload is unusual and needs the uploader's confirmation and a staff approval before
