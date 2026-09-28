@@ -17,6 +17,8 @@ from ddp_parser.source.zip import read_zip
 type InputData = str | Path | bytes | IO[bytes]
 
 _CHUNK = 1024 * 1024
+# a local file header (every non-empty zip starts with one), an empty zip's end record
+_ZIP_SIGNATURES = (b"PK\x03\x04", b"PK\x05\x06")
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,9 +31,15 @@ class Input:
 
     @property
     def is_zip(self) -> bool:
+        """A zip by its end record, or by a zip signature at the start. The signature matters for
+        a damaged archive: since Python 3.14 ``is_zipfile`` also checks the central directory,
+        and a zip that can't be opened must still raise ``ParseError``, not become a file."""
         position = self.stream.tell()
         try:
-            return zipfile.is_zipfile(self.stream)
+            if zipfile.is_zipfile(self.stream):
+                return True
+            self.stream.seek(0)
+            return self.stream.read(4) in _ZIP_SIGNATURES
         finally:
             self.stream.seek(position)
 

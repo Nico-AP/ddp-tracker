@@ -3,6 +3,7 @@
 import io
 import zipfile
 from datetime import date
+from pathlib import Path
 
 from ddp_parser import parse, to_dict
 from ddp_tracker.ddps.models import Platform, Upload
@@ -27,9 +28,10 @@ def parsed_upload(
     requested_at: date = date(2026, 9, 1),
     user: User | None = None,
     register: bool = False,
+    request_format: str = "json",
 ) -> Upload:
-    """An upload in state ``done`` whose document is the parsed zip of ``members``; with
-    ``register``, also added to the platform's collected schema.
+    """An upload in state ``done`` whose document is the parsed zip of ``members`` (requested as
+    ``request_format``); with ``register``, also added to the platform's collected schema.
     """
     return _upload(
         platform,
@@ -39,12 +41,16 @@ def parsed_upload(
         requested_at=requested_at,
         user=user,
         register=register,
+        request_format=request_format,
     )
 
 
 def parsed_file(platform: Platform, name: str, data: bytes, *, register: bool = False) -> Upload:
-    """Like ``parsed_upload``, for a DDP that is a single file (e.g. ``posts.csv``)."""
-    return _upload(platform, data, name, register=register)
+    """Like ``parsed_upload``, for a DDP that is a single file (e.g. ``posts.csv``), requested in
+    its own format."""
+    return _upload(
+        platform, data, name, register=register, request_format=Path(name).suffix.lstrip(".")
+    )
 
 
 def _upload(
@@ -56,6 +62,7 @@ def _upload(
     requested_at: date = date(2026, 9, 1),
     user: User | None = None,
     register: bool = False,
+    request_format: str = "",
 ) -> Upload:
     document = parse(data, name=name)
     upload = Upload.objects.create(
@@ -63,6 +70,7 @@ def _upload(
         requested_at=requested_at,
         language=language,
         file_name=name,
+        request_format=request_format,
         uploaded_by=user,
         status=Upload.Status.DONE,
         document=to_dict(document),

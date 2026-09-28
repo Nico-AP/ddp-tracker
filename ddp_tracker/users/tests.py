@@ -12,5 +12,5 @@ class AuthTests(TestCase):
         request.user = AnonymousUser()
         with self.assertRaises(PermissionDenied):
             signed_in_user(request)
-        request.user = User(username="x")
-        self.assertEqual(signed_in_user(request).username, "x")
+        request.user = User(email="x@example.com")
+        self.assertEqual(signed_in_user(request).email, "x@example.com")
