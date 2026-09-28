@@ -5,65 +5,63 @@
       <tr>
         <th scope="col">Name</th>
         <th scope="col">Description</th>
-        <th scope="col">
-          <span class="visually-hidden">Link</span>
-        </th>
       </tr>
     </thead>
     <tbody>
       {% for entry in entries %}
         {% with representation=entry.representation %}
           <tr data-filter-text="{{ representation.name|lower }} {{ representation.statement|lower }} {{ representation.description|lower }}">
-            <td>
+            <th rowspan="2">
               {{ representation.name }}
               {% if representation.statement %}
                 <br>
                 <small class="muted">{{ representation.statement }}</small>
               {% endif %}
-            </td>
-            <td class="muted">{{ representation.description|truncatechars:100|default:"–" }}</td>
-            <td class="rep-table__actions">
               {% if entry.linked %}
+                <br>
                 <span class="review-pill review-pill--done">Linked</span>
               {% else %}
                 <form hx-post="{% url 'representations:represent' annotation.pk %}"
                       hx-target="#modal"
                       hx-swap="innerHTML">
                   <input type="hidden" name="representation" value="{{ representation.pk }}">
-                  <button type="submit" class="btn btn--small">
+                  <button type="submit" class="btn btn--small mt-2">
                     {% if user.is_staff %}
-                      Is it
+                      This data point is this
                     {% else %}
-                      Suggest: is it
+                      Suggest: This data point is this
                     {% endif %}
                   </button>
                 </form>
               {% endif %}
+            </th>
+            <td class="muted">{{ representation.description|truncatechars:100|default:"–" }}</td>
+          </tr>
+          <tr>
+            <td class="rep-table__actions pe-2">
               {% if entry.subjects %}
-                <details class="rep-describe">
-                  <summary>Describes it…</summary>
-                  <form class="rep-describe__form"
-                        hx-post="{% url 'representations:describe' annotation.pk %}"
-                        hx-target="#modal"
-                        hx-swap="innerHTML">
-                    <input type="hidden" name="representation" value="{{ representation.pk }}">
-                    <select name="subject"
-                            class="form-select form-select-sm"
-                            aria-label="What it describes">
-                      {% for value, label in entry.subjects %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-                    </select>
-                    <select name="role" class="form-select form-select-sm" aria-label="As">
-                      {% for role in roles %}<option value="{{ role.pk }}">{{ role }}</option>{% endfor %}
-                    </select>
-                    <button type="submit" class="btn btn--small">
-                      {% if user.is_staff %}
-                        Link
-                      {% else %}
-                        Suggest
-                      {% endif %}
-                    </button>
-                  </form>
-                </details>
+                This data point describes the following aspect of it:
+                <form class="rep-describe__form"
+                      hx-post="{% url 'representations:describe' annotation.pk %}"
+                      hx-target="#modal"
+                      hx-swap="innerHTML">
+                  <input type="hidden" name="representation" value="{{ representation.pk }}">
+                  <select name="subject"
+                          class="form-select form-select-sm"
+                          aria-label="What it describes">
+                    {% for value, label in entry.subjects %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                  </select>
+                  <select name="role" class="form-select form-select-sm" aria-label="As">
+                    {% for role in roles %}<option value="{{ role.pk }}">{{ role }}</option>{% endfor %}
+                  </select>
+                  <button type="submit" class="btn btn--small">
+                    {% if user.is_staff %}
+                      Link
+                    {% else %}
+                      Suggest
+                    {% endif %}
+                  </button>
+                </form>
               {% endif %}
             </td>
           </tr>

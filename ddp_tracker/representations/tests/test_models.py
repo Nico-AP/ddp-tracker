@@ -26,7 +26,7 @@ class VocabularyTests(TestCase):
             set(ActorType.objects.values_list("slug", flat=True)),
             {"user", "other-user", "platform"},
         )
-        self.assertTrue(ActivityType.objects.filter(slug="view").exists())
+        self.assertTrue(ActivityType.objects.filter(slug="viewed").exists())
         self.assertTrue(ObjectType.objects.filter(slug="video").exists())
         applies_to = MetadataRole.objects.get(slug="applies-to")
         self.assertEqual(applies_to.name, "applies to")
@@ -48,8 +48,8 @@ class RepresentationTests(TestCase):
         self.person = ObjectType.objects.get(slug="person")
         self.video = ObjectType.objects.get(slug="video")
         self.collection = ObjectType.objects.get(slug="collection")
-        self.view = ActivityType.objects.get(slug="view")
-        self.add = ActivityType.objects.get(slug="add")
+        self.view = ActivityType.objects.get(slug="viewed")
+        self.add = ActivityType.objects.get(slug="added")
         platform = Platform.objects.create(name="TikTok", slug="tiktok")
         self.item = Annotation.objects.create(platform=platform, name="watch_history item")
         self.date = Annotation.objects.create(platform=platform, name="Date")
@@ -100,7 +100,7 @@ class RepresentationTests(TestCase):
 
     def test_subject_must_be_a_filled_slot(self):
         name = MetadataRole.objects.get(slug="name")
-        follow = ActivityType.objects.get(slug="follow")
+        follow = ActivityType.objects.get(slug="followed")
         # a followers list: someone else follows the account owner, the username is the actor's
         other_user = ActorType.objects.get(slug="other-user")
         follower = self.activity(

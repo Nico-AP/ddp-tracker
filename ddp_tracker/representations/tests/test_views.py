@@ -25,7 +25,7 @@ class ViewTestCase(TestCase):
         self.curator = User.objects.create_user("curator", is_staff=True)  # staff decide directly
         self.other = User.objects.create_user("other")
         self.user = ActorType.objects.get(slug="user")
-        self.view = ActivityType.objects.get(slug="view")
+        self.view = ActivityType.objects.get(slug="viewed")
         self.video = ObjectType.objects.get(slug="video")
         self.collection = ObjectType.objects.get(slug="collection")
         self.when = MetadataRole.objects.get(slug="when")
@@ -54,7 +54,7 @@ class PublicPagesTests(ViewTestCase):
         describe(self.watched, self.date, self.when, Subject.ACTIVITY)
         describe(self.watched, self.time, self.when, Subject.ACTIVITY)
         listing = self.client.get(reverse("representations:representations"))
-        self.assertContains(listing, "user · view · video")
+        self.assertContains(listing, "user · viewed · video")
         self.assertContains(listing, "<td>TikTok, YouTube</td>", html=True)
         self.assertNotContains(listing, "New representation")
         detail = self.client.get(self.watched.get_absolute_url())
@@ -77,7 +77,7 @@ class PublicPagesTests(ViewTestCase):
             pattern=Pattern.ACTIVITY,
             name="Added",
             actor=self.user,
-            activity=ActivityType.objects.get(slug="add"),
+            activity=ActivityType.objects.get(slug="added"),
             object=self.video,
             target=self.collection,
         )
@@ -172,14 +172,14 @@ class CurationTests(ViewTestCase):
                 target=self.collection,
             ),
         )
-        self.assertContains(response, "user · view · video · collection")
+        self.assertContains(response, "user · viewed · video · collection")
         self.watched.refresh_from_db()
         self.assertEqual(
             (self.watched.name, self.watched.updated_by), ("Watched a video", self.curator)
         )
         self.assertContains(
             self.client.get(reverse("representations:details", args=[self.watched.pk])),
-            "user · view · video · collection",
+            "user · viewed · video · collection",
         )
 
     def test_edit_keeps_slots_in_use(self):
@@ -297,7 +297,7 @@ class CurationTests(ViewTestCase):
             self.item,
         )
         created = Representation.objects.get(name="Watched with")
-        self.assertEqual(created.statement, "user · view · video · collection")
+        self.assertEqual(created.statement, "user · viewed · video · collection")
         unmapped = self.form_data(pattern=Pattern.UNMAPPED, name="Unclear")
         response = self.client.post(
             url, unmapped | self.rows((Subject.OBJECT, self.when, self.date))

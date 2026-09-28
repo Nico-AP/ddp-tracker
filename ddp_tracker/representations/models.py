@@ -103,7 +103,7 @@ class Representation(models.Model):
     representation only has metadata links (name, email …). A link's platform is its annotation's.
     """
 
-    pattern = models.CharField(max_length=20, choices=Pattern.choices)
+    pattern = models.CharField(max_length=20, choices=Pattern)
 
     name = models.CharField(max_length=200, unique=True)
     description = models.TextField(blank=True)
@@ -113,7 +113,11 @@ class Representation(models.Model):
 
     # activity: actor · activity · object (· target); object: object only
     actor = models.ForeignKey(
-        ActorType, null=True, blank=True, on_delete=models.PROTECT, related_name="as_actor"
+        ActorType,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="as_actor",
     )
     activity = models.ForeignKey(
         ActivityType,

@@ -53,6 +53,11 @@ class RepresentationForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 3}),
             "note": forms.Textarea(attrs={"rows": 2}),
         }
+        help_texts = {
+            "actor": "Who...",
+            "activity": "...did what...",
+            "object": "..to/with what.",
+        }
         field_classes = dict.fromkeys(SLOTS, TermField)
 
     def __init__(self, *args: Any, user: AnyUser, **kwargs: Any) -> None:
