@@ -13,7 +13,7 @@ from ddp_tracker.annotations.forms import AnnotationForm
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform
 from ddp_tracker.proposals.models import Proposal
-from ddp_tracker.proposals.services import ProposalError, submit
+from ddp_tracker.proposals.services import ANNOTATION_FIELDS, ProposalError, submit
 from ddp_tracker.schemas.models import Location, Observation
 from ddp_tracker.schemas.profiles import profiles
 from ddp_tracker.users.auth import signed_in_user
@@ -81,7 +81,7 @@ def annotation_edit(request: HttpRequest, pk: int) -> HttpResponse:
     form = AnnotationForm(request.POST or None, instance=copy.copy(annotation))
     if request.method == "POST" and form.is_valid():
         # staff: saved; everyone else: a suggestion for staff to review (proposals)
-        values = {field: form.cleaned_data[field] for field in ("name", "description", "note")}
+        values = {field: form.cleaned_data[field] for field in ANNOTATION_FIELDS}
         try:
             proposal = submit(
                 signed_in_user(request),

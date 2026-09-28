@@ -214,18 +214,30 @@ def ignore(location: Location) -> None:
 
 
 def create_annotation(
-    location: Location, name: str, user: User | None, *, description: str = "", note: str = ""
+    location: Location,
+    name: str,
+    user: User | None,
+    *,
+    description: str = "",
+    note: str = "",
+    pii: bool = False,
 ) -> Annotation:
     """A new annotation for ``location``, named ``name`` (made unique on the platform)."""
     annotation = _unique_annotation(
-        location.platform, name, user, description=description, note=note
+        location.platform, name, user, description=description, note=note, pii=pii
     )
     link(location, annotation)
     return annotation
 
 
 def _unique_annotation(
-    platform: Platform, name: str, user: User | None, *, description: str = "", note: str = ""
+    platform: Platform,
+    name: str,
+    user: User | None,
+    *,
+    description: str = "",
+    note: str = "",
+    pii: bool = False,
 ) -> Annotation:
     base = name.strip() or "unnamed"
     for attempt in range(1, 1000):
@@ -237,6 +249,7 @@ def _unique_annotation(
                     name=candidate,
                     description=description,
                     note=note,
+                    pii=pii,
                     updated_by=user,
                 )
         except IntegrityError:

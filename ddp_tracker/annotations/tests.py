@@ -4,6 +4,7 @@ from django.urls import reverse
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.core.tests.utils import parsed_upload
 from ddp_tracker.ddps.models import Platform
+from ddp_tracker.proposals.models import Proposal
 from ddp_tracker.schemas.models import Location
 from ddp_tracker.schemas.services import create_annotation
 from ddp_tracker.users.models import User
@@ -42,6 +43,33 @@ class AnnotationTests(TestCase):
         self.assertContains(response, "The account&#x27;s address")
         self.annotation.refresh_from_db()
         self.assertEqual((self.annotation.name, self.annotation.updated_by), ("Email", self.user))
+
+    def test_pii_flag(self):
+        url = reverse("annotations:edit", args=[self.annotation.pk])
+        self.client.force_login(self.user)
+        self.assertContains(self.client.get(url), 'name="pii"')
+        response = self.client.post(url, {"name": "Email", "pii": "on"})
+        self.assertContains(response, "badge--pii")
+        self.annotation.refresh_from_db()
+        self.assertTrue(self.annotation.pii)
+        listing = self.client.get(reverse("annotations:annotations", args=["tiktok"]))
+        self.assertContains(listing, "badge--pii")
+        self.client.post(url, {"name": "Email"})  # an unticked box clears it
+        self.annotation.refresh_from_db()
+        self.assertFalse(self.annotation.pii)
+
+    def test_others_suggest_the_pii_flag(self):
+        other = User.objects.create_user("other")
+        self.client.force_login(other)
+        response = self.client.post(
+            reverse("annotations:edit", args=[self.annotation.pk]),
+            {"name": "Email address", "pii": "on"},
+        )
+        self.assertContains(response, "Suggested")
+        self.annotation.refresh_from_db()
+        self.assertFalse(self.annotation.pii)
+        proposal = Proposal.objects.get()
+        self.assertEqual(proposal.values["pii"], True)
 
     def test_examples_are_shown_per_location(self):
         self.location.example_values = [{"value": "user@example.com", "source": "user_input"}]

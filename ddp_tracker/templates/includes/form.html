@@ -2,8 +2,15 @@
 {% if form.non_field_errors %}<div class="form__errors">{{ form.non_field_errors }}</div>{% endif %}
 {% for field in form %}
   <div class="form__field form__field--{{ field.name }}{% if field.errors %} form__field--error{% endif %}">
-    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-    {{ field }}
+    {% if field.widget_type == "checkbox" %}
+      <div class="form-check">
+        {{ field }}
+        <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+      </div>
+    {% else %}
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+    {% endif %}
     {% if field.help_text %}<small class="form__help">{{ field.help_text }}</small>{% endif %}
     {% for error in field.errors %}<small class="form__error">{{ error }}</small>{% endfor %}
   </div>

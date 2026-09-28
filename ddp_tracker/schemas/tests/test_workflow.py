@@ -320,7 +320,7 @@ class ViewTests(TestCase):
         modal = self.client.get(url, {"upload": self.upload.pk})
         self.assertContains(modal, "New annotation")
         self.assertContains(modal, 'value="name"')  # the default name
-        for field in ("name", "description", "note"):
+        for field in ("name", "description", "note", "pii"):
             self.assertContains(modal, f'name="{field}"')
         response = self.client.post(
             url,
@@ -329,12 +329,14 @@ class ViewTests(TestCase):
                 "name": "Display name",
                 "description": " The account's shown name. ",
                 "note": "Set at sign-up",
+                "pii": "on",
                 "upload": self.upload.pk,
             },
         )
         created = Annotation.objects.get(name="Display name")
         self.assertEqual(
-            (created.description, created.note), ("The account's shown name.", "Set at sign-up")
+            (created.description, created.note, created.pii),
+            ("The account's shown name.", "Set at sign-up", True),
         )
         # nothing to show: the modal closes, and the row reloads on the event
         self.assertEqual(response.content, b"")

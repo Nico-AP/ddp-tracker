@@ -86,7 +86,7 @@ class Proposal(models.Model):
     subject = models.CharField(
         max_length=20, blank=True, choices=RepresentationMetadata.Subject.choices
     )
-    # the proposed fields (an annotation's name/description/note, a representation's form data)
+    # the proposed fields (an annotation's name/description/note/pii, a representation's form data)
     values = models.JSONField(default=dict, blank=True)
     # the target as it was when proposed: a proposal made on another state is stale
     base = models.JSONField(default=dict, blank=True)

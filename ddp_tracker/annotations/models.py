@@ -14,6 +14,9 @@ class Annotation(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     note = models.TextField(blank=True)
+    pii = models.BooleanField(
+        "PII", default=False, help_text="Relates to personally identifiable information."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
