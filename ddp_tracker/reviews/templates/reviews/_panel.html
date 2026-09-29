@@ -1,6 +1,9 @@
 {# The review's side panel (reviews.views.review_location): what to annotate first, the values found in the file, its examples and representations; the technical details collapsed. For a list, "row" covers the list and its item. Reloads itself after a change. #}
-{% load core_tags %}
+{% load core_tags proposal_tags %}
 {% with target=row.primary|default:location %}
+  {% if row %}
+    {% open_suggestions "location" row.locations as annotation_suggestions %}
+  {% endif %}
   <div class="review-panel"
        hx-get="{% url 'reviews:location' upload.pk location.pk %}"
        hx-trigger="{% if row %}{{ row.triggers }}{% else %}triaged-{{ location.pk }} from:body{% endif %}"
@@ -24,6 +27,8 @@
           {% else %}
             <span class="chip chip--done">Annotated</span>
           {% endif %}
+        {% elif annotation_suggestions %}
+          <span class="chip chip--suggested">Suggestion open</span>
         {% elif row.item.status == "moved" or row.item.status == "renamed" %}
           <span class="chip chip--suggested" title="{{ row.item.candidate.path }}">
             Likely {{ row.item.status }} from <code>{{ row.item.candidate.path|last_part }}</code>
@@ -77,7 +82,7 @@
             </button>
           {% else %}
             <button type="button"
-                    class="btn btn-primary"
+                    class="btn btn-primary btn-sm"
                     data-primary-action
                     hx-get="{% url 'schemas:triage' open.pk %}?upload={{ upload.pk }}"
                     hx-target="#modal"
@@ -114,19 +119,10 @@
           {% endfor %}
         </dl>
       {% endif %}
+      {% if row %}
+        {% include "proposals/_marker.html" with count=annotation_suggestions target="location" things=row.locations no_chip=True %}
+      {% endif %}
     </section>
-    {% if row.pending %}
-      <section class="review-panel__section">
-        <h3 class="review-panel__label">Open suggestions</h3>
-        {% for loc in row.locations %}
-          <div hx-get="{% url 'proposals:for' 'location' loc.pk %}"
-               hx-trigger="load"
-               hx-swap="innerHTML">
-            <p class="muted">Loading…</p>
-          </div>
-        {% endfor %}
-      </section>
-    {% endif %}
     {% if own %}
       <section class="review-panel__section">
         <h3 class="review-panel__label">Values in this file</h3>

@@ -145,17 +145,106 @@ class SuggestingTests(TestCase):
         self.assertContains(review, '<span id="open-count">')
         explorer = self.client.get(reverse("schemas:platform", args=["tiktok"]))
         self.assertContains(explorer, "1 suggestion")
-        panel = self.client.get(
-            reverse("schemas:location", args=["tiktok"]), {"path": self.name.path}
+
+    def test_the_suggestion_is_its_proposers_and_staffs(self):
+        """Everyone sees that a suggestion is open; what it is, only its proposer and staff."""
+        url = reverse("schemas:triage", args=[self.name.pk])
+        self.client.post(url, {"action": "new", "name": "Display name", "upload": self.upload.pk})
+        panel_url = reverse("schemas:location", args=["tiktok"])
+        review_panel = reverse("reviews:location", args=[self.upload.pk, self.name.pk])
+        listed = reverse("proposals:for", args=["location", self.name.pk])
+        # the marker, where the annotation is, for everyone
+        for panel in (
+            self.client.get(panel_url, {"path": self.name.path}),
+            self.client.get(review_panel),
+        ):
+            self.assertContains(panel, "Suggestion open")  # the header chip is the marker
+            self.assertNotContains(panel, "open suggestion")  # no second one below
+            self.assertNotContains(panel, "Not annotated yet")
+            # the proposer's own, under a heading
+            self.assertContains(
+                panel, '<h3 class="review-panel__label mt-3">Suggestions</h3>', html=True
+            )
+            self.assertContains(panel, listed)
+        own = self.client.get(listed)
+        self.assertContains(own, "Display name")
+        self.assertContains(own, "Withdraw")
+        # in the panel, the path is clear from the context; elsewhere it says which data point
+        self.assertNotContains(own, 'class="proposal__target"')
+        self.assertContains(own, 'name="in_panel" value="1"')  # kept after withdrawing
+        mine = self.client.get(reverse("proposals:mine"))
+        self.assertContains(
+            mine, f'<code class="proposal__target">{self.name.path}</code>', html=True
         )
-        self.assertContains(panel, "Open suggestions")
-        listed = self.client.get(reverse("proposals:for", args=["location", self.name.pk]))
-        self.assertContains(listed, "Link to an annotation")
-        self.assertContains(listed, "Withdraw")  # the proposer's own
+        self.assertContains(own, f"by #{self.user.pk}")  # never the email
+        self.assertNotContains(own, self.user.email)
+        # someone else: the marker, not what is suggested
+        self.client.force_login(User.objects.create_user("someone@example.test"))
+        other = self.client.get(panel_url, {"path": self.name.path})
+        self.assertContains(other, "Suggestion open")
+        self.assertNotContains(other, "Display name")
+        self.assertNotContains(other, listed)  # none of theirs: no heading, nothing to load
+        self.assertNotContains(
+            other, '<h3 class="review-panel__label mt-3">Suggestions</h3>', html=True
+        )
+        self.assertNotContains(self.client.get(listed), "Display name")
         self.client.logout()
-        public = self.client.get(reverse("proposals:for", args=["location", self.name.pk]))
-        self.assertContains(public, "Link to an annotation")  # visible to everyone
-        self.assertNotContains(public, "Withdraw")
+        public = self.client.get(panel_url, {"path": self.name.path})
+        self.assertContains(public, "Suggestion open")
+        self.assertNotContains(public, listed)  # nothing to load
+        self.assertNotContains(self.client.get(listed), "Display name")
+        # staff: all of them, to decide; a decision in the panel keeps it without the path
+        self.client.force_login(self.staff)
+        staff_panel = self.client.get(panel_url, {"path": self.name.path})
+        self.assertContains(
+            staff_panel, '<h3 class="review-panel__label mt-3">Suggestions</h3>', html=True
+        )
+        self.assertContains(self.client.get(listed), "Display name")
+        proposal = Proposal.objects.get(kind=Kind.NEW_ANNOTATION)
+        decided = self.client.post(
+            reverse("proposals:decide", args=[proposal.pk, "reject"]),
+            {"reason": "Not now.", "in_panel": "1"},
+        )
+        self.assertContains(decided, f"Rejected by #{self.staff.pk}")
+        self.assertNotContains(decided, 'class="proposal__target"')
+
+    def test_representation_suggestions_likewise(self):
+        video = ObjectType.objects.get(slug="video")
+        item = Location.objects.get(path="/a.json/videos/[]")
+        submit(
+            self.user,
+            Kind.NEW_REPRESENTATION,
+            location=item,
+            values={"pattern": Pattern.OBJECT, "name": "Watched clip", "object": video.pk},
+        )
+        existing = Representation.objects.create(
+            location=item, pattern=Pattern.OBJECT, name="Clip", object=video
+        )
+        submit(self.user, Kind.DELETE_REPRESENTATION, representation=existing, location=item)
+        section = reverse("representations:location-section", args=[item.pk])
+        listed = reverse("proposals:for", args=["location-representations", item.pk])
+        page = existing.get_absolute_url()
+        own_section = self.client.get(section)
+        self.assertContains(own_section, "2 open suggestions")
+        self.assertContains(
+            own_section, '<h3 class="review-panel__label mt-3">Suggestions</h3>', html=True
+        )
+        own = self.client.get(listed)
+        self.assertContains(own, "Watched clip")
+        self.assertContains(own, "Delete the representation")
+        self.assertContains(self.client.get(page), "Open suggestions (1)")
+        self.client.logout()
+        self.assertContains(self.client.get(section), "2 open suggestions")
+        self.assertNotContains(self.client.get(section), ">Suggestions</h3>")
+        self.assertNotContains(self.client.get(section), listed)
+        self.assertNotContains(self.client.get(listed), "Watched clip")
+        public_page = self.client.get(page)
+        self.assertContains(public_page, "Open suggestions (1)")
+        self.assertNotContains(
+            public_page, reverse("proposals:for", args=["representation", existing.pk])
+        )
+        self.client.force_login(self.staff)
+        self.assertContains(self.client.get(listed), "Watched clip")
 
 
 class DecidingTests(TestCase):
@@ -209,13 +298,13 @@ class DecidingTests(TestCase):
         self.assertEqual(self.client.post(url).status_code, 302)  # staff only
         self.client.force_login(self.staff)
         response = self.client.post(url)
-        self.assertContains(response, "Accepted by admin")
+        self.assertContains(response, f"Accepted by #{self.staff.pk}")  # not by email
         self.assertEqual(response["HX-Trigger"], f"triaged-{self.name.pk}")
         self.assertEqual(Location.objects.get(pk=self.name.pk).annotation, self.shown)
         reject = self.client.post(
             reverse("proposals:decide", args=[rejected.pk, "reject"]), {"reason": "Not a mail."}
         )
-        self.assertContains(reject, "Rejected by admin")
+        self.assertContains(reject, f"Rejected by #{self.staff.pk}")
         self.assertContains(reject, "Not a mail.")
         again = self.client.post(url)
         self.assertContains(again, "decided already")

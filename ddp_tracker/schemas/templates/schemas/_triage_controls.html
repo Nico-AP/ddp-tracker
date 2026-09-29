@@ -1,7 +1,7 @@
 {# What a data point is (read-only); curators change it in the modal (_triage_modal.html). #}
 <div class="triage__state">
   {% if location.annotation and panel %}
-    <dl class="facts">
+    <dl class="facts mb-1">
       <dt>Name</dt>
       <dd>
         {{ location.annotation }}
@@ -12,7 +12,7 @@
       </dd>
     </dl>
     <button type="button"
-            class="btn btn-primary btn-sm"
+            class="btn btn-secondary btn-sm"
             hx-get="{% url 'annotations:modal' location.annotation.pk %}"
             hx-target="#modal"
             hx-swap="innerHTML">Show annotation</button>
@@ -23,7 +23,7 @@
   {% elif location.ignored %}
     <p class="muted">Not a data point.</p>
   {% else %}
-    <p class="muted">
+    <p class="muted mb-1">
       Not assigned to an annotation yet.
       {% if user.is_authenticated and choices %}
         Suggested: {{ choices.0.annotation }} ({{ choices.0.reason }}).
@@ -31,24 +31,30 @@
     </p>
   {% endif %}
   {% if user.is_authenticated %}
-    <button type="button"
-            class="btn btn-primary btn-sm"
-            hx-get="{% url 'schemas:triage' location.pk %}{% if observation %}?upload={{ observation.upload_id }}{% endif %}"
-            hx-target="#modal"
-            hx-swap="innerHTML">
-      {% if location.annotation or location.ignored %}
+    {% if location.annotation or location.ignored %}
+      <button type="button"
+              class="btn btn-secondary btn-sm"
+              hx-get="{% url 'schemas:triage' location.pk %}{% if observation %}?upload={{ observation.upload_id }}{% endif %}"
+              hx-target="#modal"
+              hx-swap="innerHTML">
         {% if user.is_staff %}
           Change
         {% else %}
           Suggest a change
         {% endif %}
-      {% else %}
+      </button>
+    {% else %}
+      <button type="button"
+              class="btn btn-primary btn-sm"
+              hx-get="{% url 'schemas:triage' location.pk %}{% if observation %}?upload={{ observation.upload_id }}{% endif %}"
+              hx-target="#modal"
+              hx-swap="innerHTML">
         {% if user.is_staff %}
           Add annotation
         {% else %}
           Suggest an annotation
         {% endif %}
-      {% endif %}
-    </button>
+      </button>
+    {% endif %}
   {% endif %}
 </div>

@@ -42,7 +42,6 @@ from ddp_tracker.schemas.services import (
     list_name,
 )
 from ddp_tracker.schemas.timeline import new_in
-from ddp_tracker.schemas.tree import pending_counts
 from ddp_tracker.users.auth import signed_in_user
 
 
@@ -157,7 +156,6 @@ def location_detail(request: HttpRequest, slug: str) -> HttpResponse:
     context["ignored"] = all(loc.ignored for loc in locations)
     context["triggers"] = ", ".join(f"triaged-{loc.pk} from:body" for loc in locations)
     context["suggestion_locations"] = locations
-    context["pending"] = sum(pending_counts(loc.pk for loc in locations).values())
     return render(request, "schemas/_location_sidepanel.html", context)
 
 

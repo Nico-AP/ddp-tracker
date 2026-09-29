@@ -5,7 +5,7 @@ from typing import Any
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Count, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
@@ -20,6 +20,7 @@ from ddp_tracker.proposals.services import (
     accept,
     changes,
     is_stale,
+    open_for,
     reject,
     withdraw,
 )
@@ -88,6 +89,7 @@ def _decided(request: HttpRequest, proposal: Proposal, error: str = "") -> HttpR
     context = {
         "entry": {"proposal": proposal, "changes": changes(proposal), "stale": is_stale(proposal)},
         "error": error,
+        "in_panel": request.POST.get("in_panel") == "1",  # decided in a side panel: still no path
     }
     response = render(request, "proposals/_entry.html", context)
     targets = []
@@ -134,13 +136,18 @@ def withdraw_view(request: HttpRequest, pk: int) -> HttpResponse:
     return _decided(request, proposal)
 
 
+# the lists the side panels load (proposals/_marker.html), about the panel's location
+PANEL_TARGETS = ("location", "location-representations")
+
+
 def for_target(request: HttpRequest, target: str, pk: int) -> HttpResponse:
-    """HTMX: the open suggestions for a location, an annotation or a representation (in panels
-    and on their pages). Public: suggestions are visible to everyone."""
-    field = {
-        "location": "location",
-        "annotation": "annotation",
-        "representation": "representation",
-    }[target]
-    proposals = Proposal.objects.filter(Q(**{field: pk}), status=Status.OPEN)
-    return render(request, "proposals/_for_target.html", {"entries": _entries(proposals)})
+    """HTMX: the open suggestions for a location's annotation, an annotation, a representation or
+    a location's representations (in panels and on their pages). Only their proposer and staff
+    see them (``Proposal.objects.visible_to``); that some are open is public (the markers)."""
+    proposals = Proposal.objects.visible_to(request.user).filter(open_for(target, pk))
+    context = {
+        "entries": _entries(proposals),
+        # in a location's side panel the location is clear from the context: no path
+        "in_panel": target in PANEL_TARGETS,
+    }
+    return render(request, "proposals/_for_target.html", context)

@@ -51,8 +51,9 @@ your change becomes a **suggestion** that waits for staff: a new or edited annot
 unlinking a data point, marking it as not a data point, or anything about
 [representations](representations.md).
 
-- Open suggestions are visible to everyone: a data point shows "1 suggestion", and counts as still
-  to do until it is decided.
+- Everyone sees that a suggestion is open: a data point shows "1 suggestion" (and "Suggestion
+  open" in its side panel) and counts as still to do until it is decided. **What** you suggested
+  only you and staff see, next to the data point's annotation or representations.
 - Staff **accept** (the change applies, in your name) or **reject** (with a reason for you) each
   suggestion. If several people suggested something for the same data point, accepting one
   replaces the others.

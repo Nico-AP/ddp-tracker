@@ -6,7 +6,7 @@
            id="proposal-{{ proposal.pk }}">
     <header class="proposal__head">
       <span class="proposal__kind">{{ proposal.get_kind_display }}</span>
-      {% if proposal.location %}
+      {% if proposal.location and not in_panel %}
         <code class="proposal__target">{{ proposal.location.path }}</code>
       {% elif proposal.annotation %}
         <a class="proposal__target"
@@ -16,7 +16,7 @@
            href="{{ proposal.representation.get_absolute_url }}">{{ proposal.representation }}</a>
       {% endif %}
       <span class="muted proposal__by">
-        by {{ proposal.proposed_by|default:"a former user" }}, {{ proposal.created_at|date }}
+        by {% if proposal.proposed_by_id %}#{{ proposal.proposed_by_id }}{% else %}a former user{% endif %}, {{ proposal.created_at|date }}
       </span>
       {% if not proposal.is_open %}
         <span class="badge badge--{{ proposal.status }}">{{ proposal.get_status_display }}</span>
@@ -47,6 +47,7 @@
                 hx-target="closest [data-proposal]"
                 hx-swap="outerHTML">
             {% if entry.stale %}<input type="hidden" name="stale" value="1">{% endif %}
+            {% if in_panel %}<input type="hidden" name="in_panel" value="1">{% endif %}
             <button type="submit" class="btn btn-primary btn-sm" data-accept>
               {% if entry.stale %}
                 Accept anyway
@@ -59,9 +60,10 @@
                 hx-post="{% url 'proposals:decide' proposal.pk 'reject' %}"
                 hx-target="closest [data-proposal]"
                 hx-swap="outerHTML">
+            {% if in_panel %}<input type="hidden" name="in_panel" value="1">{% endif %}
             <input type="text"
                    name="reason"
-                   class="form-control"
+                   class="form-control fs-875"
                    placeholder="Why not? (shown to the proposer)"
                    aria-label="Reason for rejecting"
                    required
@@ -74,12 +76,13 @@
               hx-post="{% url 'proposals:withdraw' proposal.pk %}"
               hx-target="closest [data-proposal]"
               hx-swap="outerHTML">
+          {% if in_panel %}<input type="hidden" name="in_panel" value="1">{% endif %}
           <button type="submit" class="link-button">Withdraw</button>
         </form>
       {% endif %}
     {% else %}
       <p class="muted proposal__decided">
-        {{ proposal.get_status_display }}{% if proposal.decided_by %} by {{ proposal.decided_by }}{% endif %}{% if proposal.decided_at %}, {{ proposal.decided_at|date }}{% endif %}{% if proposal.reason %}: {{ proposal.reason }}{% endif %}
+        {{ proposal.get_status_display }}{% if proposal.decided_by_id %} by #{{ proposal.decided_by_id }}{% endif %}{% if proposal.decided_at %}, {{ proposal.decided_at|date }}{% endif %}{% if proposal.reason %}: {{ proposal.reason }}{% endif %}
       </p>
     {% endif %}
   </article>

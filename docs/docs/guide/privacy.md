@@ -29,7 +29,7 @@ can see what a field contains while reviewing your upload:
 
 Everything shown in the explorer, on annotation and representation pages, is derived from the
 structure alone, plus examples that someone chose to share. Your uploads and their reviews are
-only visible to you and staff.
+only visible to you and staff. So is what you suggest: others only see that a suggestion is open.
 
 An upload that doesn't count yet may not be a DDP at all, so its field names could contain
 anything: only its uploader and staff can [inspect it](uploading.md#inspecting-an-upload-that-doesnt-count-yet).

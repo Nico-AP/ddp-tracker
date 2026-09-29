@@ -1,4 +1,5 @@
 {# A location's representations in the side panels (views.location_section): each with its statement (read-only; "Edit" opens the dialog), or why it has none. Reloads after a change. #}
+{% load proposal_tags %}
 <section class="location-representations"
          hx-get="{% url 'representations:location-section' location.pk %}"
          hx-trigger="representations-changed-{{ location.pk }} from:body"
@@ -36,9 +37,11 @@
       <p class="muted">Representations are for the items of lists of objects.</p>
     {% endif %}
   {% endfor %}
+  {% open_suggestions "location-representations" location as representation_suggestions %}
+  {% include "proposals/_marker.html" with count=representation_suggestions target="location-representations" one=location %}
   {% if eligible and user.is_authenticated %}
     <button type="button"
-            class="btn btn-primary btn-sm"
+            class="btn btn-primary btn-sm mt-2"
             hx-get="{% url 'representations:add' location.pk %}"
             hx-target="#modal"
             hx-swap="innerHTML">Add representation</button>

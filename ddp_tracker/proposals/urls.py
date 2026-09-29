@@ -11,7 +11,8 @@ urlpatterns = [
     re_path(r"^(?P<pk>[0-9]+)/(?P<action>accept|reject)/$", views.decide, name="decide"),
     path("<int:pk>/withdraw/", views.withdraw_view, name="withdraw"),
     re_path(
-        r"^for/(?P<target>location|annotation|representation)/(?P<pk>[0-9]+)/$",
+        r"^for/(?P<target>location|annotation|representation|location-representations)/"
+        r"(?P<pk>[0-9]+)/$",
         views.for_target,
         name="for",
     ),

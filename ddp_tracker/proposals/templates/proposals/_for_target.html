@@ -1,6 +1,4 @@
-{# The open suggestions for one location, annotation or representation (in panels and on pages). #}
+{# The open suggestions about one thing (views.for_target) that the viewer may see: their own, or all for staff. That some are open is shown to everyone by the caller's marker. #}
 {% for entry in entries %}
   {% include "proposals/_entry.html" %}
-{% empty %}
-  <p class="muted">None open.</p>
 {% endfor %}

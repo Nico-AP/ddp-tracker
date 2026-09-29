@@ -380,8 +380,11 @@ html.dialog-locked .review-panel-slot {
   }
 }
 
+// one text size for the panel's contents (labels, names, values, notes); headings, chips and
+// buttons keep their own
 .review-panel__section {
   padding: ($spacing-unit * 2) ($spacing-unit * 2.5);
+  font-size: $font-size-small;
 
   & + & {
     border-top: 1px solid $color-border;

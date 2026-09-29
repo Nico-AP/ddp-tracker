@@ -112,8 +112,12 @@ class ExplorerPageTests(TestCase):
         for heading in ("Annotation", "Example values", "Representations", "Data structure"):
             self.assertContains(panel, f'<h3 class="review-panel__label">{heading}</h3>', html=True)
         # a list's row: the item first (the meaning), then the list; Enter doesn't annotate here
-        self.assertContains(panel, '<p class="review-panel__entry">Each item</p>', html=True)
-        self.assertContains(panel, '<p class="review-panel__entry">The list</p>', html=True)
+        self.assertContains(
+            panel, '<p class="review-panel__entry border-bottom">Each item</p>', html=True
+        )
+        self.assertContains(
+            panel, '<p class="review-panel__entry border-bottom">The list</p>', html=True
+        )
         self.assertNotContains(panel, "data-primary-action")
         self.assertContains(panel, f"triaged-{self.item.pk} from:body")
         create_annotation(self.item, "Tag", self.user)

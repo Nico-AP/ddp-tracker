@@ -8,12 +8,14 @@
   <h1>{{ annotation }}</h1>
   {% include "annotations/_annotation_body.html" %}
   {% if open_suggestions %}
-    <h2>Open suggestions</h2>
-    <div class="proposals"
-         hx-get="{% url 'proposals:for' 'annotation' annotation.pk %}"
-         hx-trigger="load"
-         hx-swap="innerHTML">
-      <p class="muted">Loading…</p>
-    </div>
+    {# that some are open is public; what they are, only for their suggester and staff #}
+    <h2>Open suggestions ({{ open_suggestions }})</h2>
+    <p class="muted">Only the suggester and staff see what is suggested.</p>
+    {% if user.is_authenticated %}
+      <div class="proposals"
+           hx-get="{% url 'proposals:for' 'annotation' annotation.pk %}"
+           hx-trigger="load"
+           hx-swap="innerHTML"></div>
+    {% endif %}
   {% endif %}
 {% endblock %}

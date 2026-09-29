@@ -50,6 +50,20 @@ class StaleError(ProposalError):
     """The target changed since it was proposed: staff confirm before it is applied."""
 
 
+def open_for(target: str, pk: int) -> Q:
+    """The open suggestions about ``target`` ``pk`` (``proposals:for``): a location's annotation,
+    an annotation, a representation, or a location's representations (new ones name the
+    location, edits and deletions their representation)."""
+    about = {
+        "location": Q(location=pk, kind__in=LOCATION_KINDS),
+        "annotation": Q(annotation=pk),
+        "representation": Q(representation=pk),
+        "location-representations": Q(kind__in=REPRESENTATION_KINDS)
+        & (Q(location=pk) | Q(representation__location=pk)),
+    }[target]
+    return about & Q(status=Status.OPEN)
+
+
 # --- suggesting --------------------------------------------------------------------------------
 
 

@@ -212,10 +212,13 @@ only ever holds approved changes; a suggestion waits beside it as a *proposal*.
   decided what.
 - **No chaining:** a suggestion refers to approved annotations and representations only (a list's
   "List of …" waits until its item's annotation is approved).
-- **Pending:** open suggestions are visible to everyone. A data point with one shows "N
-  suggestions"; in the review it still counts as open, with its own (pending) dot. Panels and the
-  annotation and representation pages list the open suggestions; "My suggestions" shows a user's
-  own, with how they were decided.
+- **Pending:** that a suggestion is open is public, what it suggests only for its proposer and
+  staff (`Proposal.objects.visible_to`). A data point with one shows "N suggestions"; in the
+  review it still counts as open, with its own (pending) dot, and its side panel shows "Suggestion
+  open" and "N open suggestions" under the annotation (or the representations). Signed in, the
+  proposer sees their own there, staff all of them; the annotation and representation pages work
+  the same way. "My suggestions" shows a user's own, with how they were decided. Accounts are
+  named by number ("#4"), never by email.
 
 ## Filtering
 

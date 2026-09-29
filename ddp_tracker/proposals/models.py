@@ -4,12 +4,24 @@ curated models only ever hold approved data. See docs/docs/tracker/concepts.md, 
 and approval"."""
 
 from django.conf import settings
+from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.db import models
 
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform
 from ddp_tracker.representations.models import Representation
 from ddp_tracker.schemas.models import Location
+
+
+class ProposalQuerySet(models.QuerySet["Proposal"]):
+    def visible_to(self, user: AbstractBaseUser | AnonymousUser) -> "ProposalQuerySet":
+        """The suggestions whose contents ``user`` may see: all for staff (they decide), their
+        own otherwise, none when signed out. That one is open is public (the markers)."""
+        if not user.is_authenticated:
+            return self.none()
+        if getattr(user, "is_staff", False):
+            return self
+        return self.filter(proposed_by=user.pk)
 
 
 class Proposal(models.Model):
@@ -70,6 +82,8 @@ class Proposal(models.Model):
     values = models.JSONField(default=dict, blank=True)
     # the target as it was when proposed: a proposal made on another state is stale
     base = models.JSONField(default=dict, blank=True)
+
+    objects = ProposalQuerySet.as_manager()
 
     class Meta:
         ordering = ["created_at"]

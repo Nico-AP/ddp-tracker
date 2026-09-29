@@ -1,0 +1,31 @@
+{# Open suggestions about "things" (or "one" thing; proposals:for "target"): a marker everyone sees ("count", from proposal_tags.open_suggestions; "no_chip" where the panel's header chip says so already), and, under a "Suggestions" heading, the ones the viewer may see (their own; all for staff), loaded below it. #}
+{% load proposal_tags %}
+{% if count %}
+  <div class="suggestions mt-2">
+    {% if not no_chip %}
+      <span class="chip chip--suggested"
+            title="Only its suggester and staff see what is suggested">
+        {{ count }} open suggestion{{ count|pluralize }}
+      </span>
+    {% endif %}
+    {% if one %}
+      {% open_suggestions target one user as visible %}
+    {% else %}
+      {% open_suggestions target things user as visible %}
+    {% endif %}
+    {% if visible %}
+      <h3 class="review-panel__label mt-3">Suggestions</h3>
+      {% if one %}
+        <div hx-get="{% url 'proposals:for' target one.pk %}"
+             hx-trigger="load"
+             hx-swap="innerHTML"></div>
+      {% else %}
+        {% for thing in things %}
+          <div hx-get="{% url 'proposals:for' target thing.pk %}"
+               hx-trigger="load"
+               hx-swap="innerHTML"></div>
+        {% endfor %}
+      {% endif %}
+    {% endif %}
+  </div>
+{% endif %}

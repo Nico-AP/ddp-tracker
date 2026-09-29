@@ -1,5 +1,6 @@
 {# The explorer's side panel (schemas.views.location_detail), in the review panel's layout but informative: everything about the location is shown, nothing collapsed. For a list's row, "entries" are the item (first: it carries the meaning) and the list. Reloads itself after a change. #}
-{% load core_tags %}
+{% load core_tags proposal_tags %}
+{% open_suggestions "location" suggestion_locations as annotation_suggestions %}
 <div class="review-panel"
      hx-get="{% url 'schemas:location' platform.slug %}?path={{ location.path|urlencode }}&{{ filter.query }}"
      hx-trigger="{{ triggers }}"
@@ -26,6 +27,8 @@
           <span class="chip chip--muted">Not a data point</span>
         {% elif decided %}
           <span class="chip chip--done">Annotated</span>
+        {% elif annotation_suggestions %}
+          <span class="chip chip--suggested">Suggestion open</span>
         {% else %}
           <span class="chip chip--new">Not annotated yet</span>
         {% endif %}
@@ -36,25 +39,14 @@
       </span>
     </div>
   </header>
-  {% if pending %}
-    <section class="review-panel__section">
-      <h3 class="review-panel__label">Open suggestions</h3>
-      {% for loc in suggestion_locations %}
-        <div hx-get="{% url 'proposals:for' 'location' loc.pk %}"
-             hx-trigger="load"
-             hx-swap="innerHTML">
-          <p class="muted">Loading…</p>
-        </div>
-      {% endfor %}
-    </section>
-  {% endif %}
   {% if profile.is_data_point %}
     <section class="review-panel__section">
       <h3 class="review-panel__label">Annotation</h3>
       {% for label, loc in entries %}
-        {% if entries|length > 1 %}<p class="review-panel__entry">{{ label }}</p>{% endif %}
+        {% if entries|length > 1 %}<p class="review-panel__entry border-bottom">{{ label }}</p>{% endif %}
         {% include "schemas/_triage_controls.html" with location=loc panel=True %}
       {% endfor %}
+      {% include "proposals/_marker.html" with count=annotation_suggestions target="location" things=suggestion_locations no_chip=True %}
     </section>
     <section class="review-panel__section">
       <h3 class="review-panel__label">Example values</h3>
