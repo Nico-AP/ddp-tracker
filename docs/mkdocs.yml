@@ -1,4 +1,24 @@
-site_name: DDP Tracker Documentation
+site_name: DDP Tracker
+site_description: What platforms' data download packages (DDPs) contain, what their data points mean, and how they change.
 theme:
   name: material
 dev_addr: 'localhost:8001'
+markdown_extensions:
+  - admonition
+  - def_list
+  - toc:
+      permalink: true
+nav:
+  - Home: index.md
+  - User guide:
+      - Exploring platforms: guide/exploring.md
+      - Uploading a DDP: guide/uploading.md
+      - Reviewing an upload: guide/reviewing.md
+      - Annotating: guide/annotating.md
+      - Representations: guide/representations.md
+      - Privacy: guide/privacy.md
+      - Glossary: guide/glossary.md
+  - Technical reference:
+      - Definitions: tracker/concepts.md
+      - "Parser: schema format": ddp_parser/index.md
+      - "Parser: pipeline": ddp_parser/pipeline.md

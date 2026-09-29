@@ -1,36 +1,42 @@
-# DDP Tracker: concepts and definitions
+# Definitions (technical reference)
 
-How the web app models what it learns from uploaded DDPs, and what its statuses mean. Code, UI
-and tests follow these definitions; change them here first.
+!!! note "For developers"
+    This page defines precisely how the DDP Tracker models what it learns from uploaded DDPs and
+    what its statuses mean, with the parts of the code that implement them. Code, interface and
+    tests follow these definitions; change them here first. For a plain-language description, see
+    the [user guide](../index.md).
 
 ## Building blocks
 
-| Term            | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-|-----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Upload**      | One DDP as uploaded, with its platform, request date and (optionally) account language. The file itself is parsed and deleted; only its schema document is kept. Its file name is stored anonymized (`ddps/names.py`): whitelisted words (formats, export terms, platforms) stay, other letters become `x`, digits `0`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| **Location**    | A path (see the [parser spec](../ddp_parser/index.md#23-paths)) ever seen in a platform's registered uploads. It holds only identity (the path), its place in the tree, and curation: its annotation, "not a data point", example values.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| **Observation** | A location as it appears in one upload: kind, type, shape, format, stats. **Everything descriptive about a location is derived from its observations**, so any view can be restricted to a subset of uploads.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| **Annotation**  | A data point (e.g. "watched videos") and what is known about it: name, description, note, and whether it is personally identifiable information (PII). It has one or more locations: moved or renamed keys, keys named differently in exports of another language. A location belongs to at most one annotation. Example values are kept per location, since they can differ between them.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| **Data point**  | A location that carries meaning of its own, and so is open for annotation: a **value**, a **list**, a **list's item** (`<item>`, path `…/[]`), or a **media** file. The item carries the meaning ("ID", "watched video"): its examples, format and representations; its fields (`VideoList[]/<item>/Date`) are data points of their own. List and item each get their own annotation; the list is annotated in its own step after the item, its name suggested from the item's ("List of …"). An item isn't *missing* from an upload whose list is present but empty. A parsed file whose content is a list (a JSON array, a CSV's rows) *is* that list. Objects only group keys (e.g. `profile`, `user`) unless they are a list's item, and other files, unmatched files, folders, zip containers and the root only describe where data lies: they are never annotated. A location is a data point in a view if any of its observations in the view is one.  |
+| Term            | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|-----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Upload**      | One DDP as uploaded, with its platform, request date, request format and (optionally) account language. The file itself is parsed and deleted; only its schema document is kept. Its file name is stored anonymized (`ddps/names.py`): whitelisted words (formats, export terms, platforms) stay, other letters become `x`, digits `0`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Location**    | A path (see the [parser spec](../ddp_parser/index.md#23-paths)) ever seen in a platform's registered uploads. It holds only identity (the path), its place in the tree, and curation: its annotation, "not a data point", example values.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Observation** | A location as it appears in one upload: kind, type, shape, format, stats. **Everything descriptive about a location is derived from its observations**, so any view can be restricted to a subset of uploads.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Annotation**  | A data point (e.g. "watched videos") and what is known about it: name, description, note, and whether it is personally identifiable information (PII). It has one or more locations: moved or renamed keys, keys named differently in exports of another language. A location belongs to at most one annotation. Example values are kept per location, since they can differ between them.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Data point**  | A location that carries meaning of its own, and so is open for annotation: a **value**, a **list**, a **list's item** (`<item>`, path `…/[]`), or a **media** file. The item carries the meaning ("ID", "watched video"): its examples, format and representations; its fields (`VideoList[]/<item>/Date`) are data points of their own. List and item each get their own annotation; the list is annotated in its own step after the item, its name suggested from the item's ("List of …"). An item isn't *missing* from an upload whose list is present but empty. A parsed file whose content is a list (a JSON array, a CSV's rows) *is* that list. Objects only group keys (e.g. `profile`, `user`) unless they are a list's item, and other files, unmatched files, folders, zip containers and the root only describe where data lies: they are never annotated. A location is a data point in a view if any of its observations in the view is one. |
 
 ## Upload checks
 
 To keep wrong or spam files out of the public schema, an upload only **counts** (is registered:
 part of the explorer, reviews, "new" and "changed") once it passed these checks
-(`ddp_tracker/ddps/checks.py`):
+(`ddp_tracker/ddps/checks.py`). Unlike "new" and "changed", they compare with the platform's
+uploads **whatever their request date**: the duplicate check with all its uploads, the
+similarity with all its counted uploads of the same root format.
 
 - **Declared format.** The uploader says what the file is (ZIP archive, JSON file, CSV file). The
   form refuses a file whose extension or first bytes don't fit; after parsing, an upload whose
-  parsed format differs from the declared one fails.
+  parsed format differs from the declared one fails. This prevents accidental uploads of
+  wrong files.
 - **Duplicate.** The same file (SHA-256) as an upload of the platform that counts or waits for
   approval: kept, but never counted twice.
 - **First of its kind.** The first upload of a platform and format has nothing to be compared
-  with and defines what later ones are compared with: it **waits for approval**.
+  with and defines what later ones are compared with: it **waits for approval by a staff account**.
 - **Similarity.** The share of the upload's data points that the counted uploads of the same
   platform and format already know, at the same path or through a *moved*/*renamed* suggestion
   (so moved or translated exports still match). Below `DDP_SIMILARITY_THRESHOLD` (default 30 %),
   or with no data points at all, the upload is **unusual**: its uploader confirms it (it then
-  waits for approval) or discards it.
+  waits for approval by a staff account) or discards it.
 
 **Approval** is by staff (the *Approvals* page, or the upload's page), their own uploads
 included. Approved uploads count; rejected ones don't.
@@ -38,10 +44,11 @@ included. Approved uploads count; rejected ones don't.
 **Inspecting a held upload.** An upload that doesn't count isn't registered, so it has no review.
 To decide on it, its uploader and staff (nobody else: it may not be a DDP at all) can
 **inspect** it (`ddp_tracker/ddps/inspection.py`): its files and data points, computed from its
-schema document, each data point compared with the counted uploads of the same platform and
-format as **known** (at the same path), **matched** (a *moved*/*renamed* suggestion links it to a
-known path) or **new**; and the **missing** known data points it has neither at their path nor
-matched. The share of known and matched data points is the similarity above. The uploader also
+schema document. Each data point is compared with what is already known about the platform, that
+is, the counted uploads of the same platform and root format, whatever their request date. It is
+**known** (at the same path), **matched** (a *moved*/*renamed* suggestion links it to a known
+path) or **new**; **missing** are the known data points it has neither at their path nor matched.
+The share of known and matched data points is the similarity above. The uploader also
 sees their own values. Inspecting registers nothing.
 
 ## The uploader's values
@@ -58,7 +65,7 @@ alone** (`ddp_tracker/ddps/values.py`):
   alone doesn't reveal them.
 - **Who.** Only the uploader, logged in, in that browser; not other curators and not staff (they
   aren't in the admin either).
-- **How long.** Until `DDP_VALUES_RETENTION_DAYS` (default 30) are over, the uploader deletes
+- **How long.** Until `DDP_VALUES_RETENTION_DAYS` (default 3) are over, the uploader deletes
   them, or logs out (which deletes the key). `manage.py purge_upload_values` removes expired ones.
 - **Shown** on the upload's review page (rows, side panel, annotation dialog). In the side panel,
   the uploader can **contribute values to the data point's examples** once it is annotated, as they are (not editable):
@@ -71,7 +78,7 @@ in the examples form).
 ## How nodes are labelled
 
 The explorer and review describe nodes in plain language; paths and the technical kinds and
-types (shown on hover and in the node's facts) don't change.
+types (shown in the node's facts) don't change.
 
 | Node                               | Label                                                                                                                                     |
 |------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
@@ -92,9 +99,12 @@ It reflects the uploads in view (the filter), not any single file.
 
 ## Statuses of an upload's locations
 
-All comparisons are between an upload and the uploads of the same platform **requested strictly
-earlier**: request dates decide, never the order in which uploads were registered. Two uploads
-with the same request date don't count as earlier than each other.
+**New**, **changed** and the **suggestions** compare an upload with the registered uploads of the
+same platform **requested strictly earlier** (`schemas/timeline.py`, `schemas/services.py`):
+request dates decide, never the order in which uploads were registered. Two uploads with the same
+request date don't count as earlier than each other. **Missing** isn't date-based: it is about
+the platform's annotations, whichever upload their locations came from, later-requested ones
+included. The upload checks aren't date-based either (see *Upload checks*).
 
 | Status         | Definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 |----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -113,20 +123,17 @@ tabs, each data point in exactly one:
 - **Changed**: earlier uploads had the path, but a field is new (see *changed* above).
 - **Missing**: annotated locations this upload doesn't have.
 
-New and Known are trees of the data points (the annotated ones too, unless *Only to assign* is
-on); next to the switch, how many rows in the tab are still **to assign** (untriaged). The trees
+New and Known are paths of the data points (the annotated ones too, unless *Only to assign* is
+on); next to the switch, how many rows in the tab are still **to assign** (untriaged). The paths
 look as follows:
 
 - **Files** come first: one collapsible block per file (data points that are files themselves,
-  like a file whose content is a list or a media file, sit in their folder's block). Only the
-  first file with something to assign, and its first such group, start expanded.
+  like a file whose content is a list or a media file, sit in their folder's block).
 - **Groups** inside a file are the key chains that need no annotation themselves (plain
-  objects), e.g. *Ads and data › Off TikTok Activity*, with how many rows in them are open. The
-  data points directly in the file have no group heading.
+  objects), e.g. *Ads and data › Off TikTok Activity*, with how many rows in them are open.
 - **One row per data point**, except that a **list and its item share one row** (`VideoList[]`):
   the item carries the meaning, so the row is annotated item first, then the list in its own
-  step (its name prefilled *List of …*); the row is done once both are. The fields of the items are rows below it; a
-  decided list stays there while any of them is open.
+  step (its name prefilled *List of …*); the row is done once both are. The fields of the items are rows below it.
 - Each row shows the type, a suggestion (*Moved? …* / *Renamed? …*: the earlier path it
   **likely matches**; nothing is claimed about why the path differs), a preview (the uploader's
   own values, else the number of items or the format) and whether it is decided.
@@ -155,7 +162,8 @@ Example for **changed**, one location's `format`, uploads in order of request da
 A **representation** describes a concept independently of any platform, so annotations of different
 platforms can be compared. Its terms (actor types, activity types, object types, metadata roles)
 are curated in the database and can be extended. Relations point at a term's id; its slug is the
-stable name code and seeds use to look it up, and is fixed once created; its name can be edited. A slot that metadata links describe can't be emptied until those links are removed.
+stable name code and seeds use to look it up, and is fixed once created; its name can be edited.
+A slot that metadata links describe can't be emptied until those links are removed.
 
 | Term                | Definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 |---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -200,23 +208,17 @@ only ever holds approved changes; a suggestion waits beside it as a *proposal*.
 
 ## Filtering
 
-The collected schema (platform page) shows **one upload format at a time** (ZIP archive, single
-CSV/JSON file): a single file and a zip don't share a tree. It opens on the platform's most
-common format; the others are one click away. Within it, a filter restricts the uploads by
-request date range and account languages. The tree is alphabetical, ignoring case (positions in
-a file differ between uploads; the review keeps its one upload's file order), so paths that differ
-only in case, like TikTok's `TikTok Live` and `Tiktok Live`, are separate locations shown right
-next to each other. The tree looks like the review's (files, key chains,
-one row per data point, list and item together), with nodes that are never data points but hold
-something (an unparsed file, an object always seen empty) as muted rows, and a side panel that
-shows everything known about a location. A selector shows all data points, only
-those **missing an annotation**, or only annotated ones **missing a representation** (their
-annotation, for a list its item's, is linked to no representation, neither as the entity nor as
-metadata); a list stays shown while rows below it match. Everything shown (which paths exist, their observed values with counts, when and how often they
-were seen, the counts at the top) is computed from the matching uploads only. Triage and
-suggestions are not filtered: whether a path is known doesn't depend on the current view.
+The platform page shows one **request format** at a time (the platform's most common first) and,
+within it, one **root format**: a ZIP and a single file don't share a tree, so a second selector
+appears when a request format has both. Filters narrow the uploads by request date range and
+account language. Everything shown (paths, observed values and counts, when and how often they
+were seen, the figures) comes from the matching uploads only; triage and suggestions aren't
+filtered.
 
-## Not yet
-
-- Filters on the annotation list and annotation pages (they show all uploads for now).
-- More filter dimensions, e.g. specific uploads or the parser version.
+The tree looks like the review's (files, key chains, one row per data point, list and item
+together); nodes that hold something but are never data points (an unparsed file, an object
+always empty) are muted rows. It is alphabetical, ignoring case, so paths that differ only in
+case (`TikTok Live`, `Tiktok Live`) sit side by side. A selector shows all data points, only
+those **missing an annotation**, or only annotated ones **missing a representation** (linked to
+none, neither as entity nor as metadata; for a list, its item's annotation counts); a list stays
+while rows below it match.

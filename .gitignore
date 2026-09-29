@@ -52,6 +52,8 @@ coverage.xml
 
 # Django stuff:
 staticfiles/
+# MkDocs build output (uv run mkdocs build -f docs/mkdocs.yml)
+docs/site/
 
 # Sphinx documentation
 docs/_build/

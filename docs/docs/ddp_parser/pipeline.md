@@ -1,13 +1,16 @@
-# DDP Parser: Pipeline & Package Structure
+# Parser: pipeline and package structure (technical reference)
 
-How the `ddp_parser` package (`packages/ddp-parser/`) turns an input into the schema document
-described in [DDP Parser](index.md).
+!!! note "For developers"
+    How the `ddp_parser` package (`packages/ddp-parser/`) turns a DDP into the schema document
+    described in [Parser: schema format](index.md), and how the package is organised. To use the
+    DDP Tracker, see the [user guide](../index.md).
 
-**Scope of the first implementation:** zip, JSON (incl. JSON Lines and `js-json`), CSV and media
-detection. HTML and TXT follow in a later round.
+**Scope of the current implementation:** zip, JSON (incl. JSON Lines and `js-json`), CSV and media
+detection. HTML and TXT will follow in a future release.
 
-**Out of scope for the package:** platforms, storage, annotations and ontologies. These are
-separate layers (a platform package, the Django app). The parser knows nothing about them; its
+**Out of scope for the package:** platforms, storage, annotations and ontologies.
+These are part of the platform package in the Django app.
+The parser knows nothing about them; its
 only job is to produce a stable, serialisable `Document`.
 
 ## Pipeline
@@ -171,14 +174,8 @@ uv run python -m ddp_parser export.zip --collapse /messages/inbox > schema.json
 or cannot be read at all (`OSError`); every problem inside the input becomes an `unmatched`
 node or a document warning.
 
-## Open questions
+## Notes
 
-- **Name clash.** The Django app `../../../ddp_tracker` has the same name as the package. Rename the
-  app (e.g. `../../../ddp_tracker` or `../../../ddp_tracker`) once it gets real models.
-- **Tuning on real exports.** The folder-collapse threshold ("at least half"), the date-format
-  grid and the size-limit defaults are first guesses; run real DDPs and adjust.
 - **Partly read group members.** A file of a group that fails halfway (a bad line in JSON Lines,
   a broken CSV row) has its earlier rows counted already; the file itself is reported in the
   `group_member_failed` warning.
-- **Next round:** HTML and TXT parsers; `ijson` for very large JSON files if memory becomes an
-  issue.

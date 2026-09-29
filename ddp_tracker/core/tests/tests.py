@@ -26,7 +26,7 @@ class IndexViewTests(TestCase):
         for url in (
             reverse("representations:representations"),
             reverse("representations:vocabulary"),
-            reverse("docs", args=["tracker/concepts/"]),
+            f'href="{reverse("docs", args=[""])}"',
         ):
             self.assertContains(response, url)
         login = reverse("account_login")

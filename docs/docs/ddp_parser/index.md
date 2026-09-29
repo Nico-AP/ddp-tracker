@@ -1,13 +1,16 @@
-# DDP Parser
+# Parser: schema format (technical reference)
 
-This app takes a zip container or single file and derives a schematic
-representation of its contents.
+!!! note "For developers and researchers"
+    This page describes the format of the **schema document** the DDP Parser produces from a DDP -
+    in other words what the DDP Tracker keeps of every upload.
+    Generally, you only need it if you work with these documents (`packages/ddp-parser`)
+    or to interpret certain information included in the schema explorer.
+    To use the DDP Tracker, see the [user guide](../index.md).
 
-## Schematic Representation
-
-The schematic representation consists of a `Schema Version` that itself represents
-the whole tree which itself consists of many `Schema Nodes` - with each node
-representing one tree branch (i.e., a folder, a file, a JSON key/variable, a value etc.
+The parser takes a ZIP archive or a single file and describes its structure as a tree of
+**nodes**: one for every folder, file, key and value position. Each node records what kind of
+thing it is and what its values looked like, never the values themselves (unless samples are
+explicitly requested, see [Samples](#samples)).
 
 ## Nodes
 
