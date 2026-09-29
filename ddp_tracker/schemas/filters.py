@@ -4,7 +4,8 @@ root format).
 The request format is a single choice (the explorer's selector), defaulting to the platform's most
 common one. Within it, the root format is one too: a single JSON file and a zip don't share a
 tree. It defaults to the most common one among the request format's uploads; ``""`` means all
-(the review).
+(the review). The request format is optional when uploading: uploads without one are chosen
+with ``UNKNOWN`` (``""`` would mean "all", and vanish from URLs).
 
 Every descriptive view of the collected schema is computed from the observations of the uploads a
 ``SchemaFilter`` lets through; the filter travels in the URL query, including HTMX requests.
@@ -25,12 +26,29 @@ from ddp_tracker.schemas.models import Observation
 
 _LANGUAGE_NAMES = dict(LANGUAGES)
 
+# the request format of uploads that weren't given one (stored as ""), in filters and URLs
+UNKNOWN = "unknown"
+
 
 def format_label(root_format: str) -> str:
     """How an upload's root format is shown: "ZIP archive", "CSV file" …"""
     if root_format == "zip":
         return "ZIP archive"
     return f"{root_format.upper()} file" if root_format else "file"
+
+
+def request_format_label(request_format: str) -> str:
+    """How a request format is shown: "JSON file" …, "Format not provided" for ``UNKNOWN``."""
+    return "Format not provided" if request_format == UNKNOWN else format_label(request_format)
+
+
+def _of_request_format(uploads: QuerySet[Upload], request_format: str) -> QuerySet[Upload]:
+    """``uploads`` of ``request_format`` (``UNKNOWN``: those without one; ``""``: all)."""
+    if request_format == UNKNOWN:
+        return uploads.filter(request_format="")
+    if request_format:
+        return uploads.filter(request_format=request_format)
+    return uploads
 
 
 class FilterForm(forms.Form):
@@ -53,31 +71,35 @@ class FilterForm(forms.Form):
         language_field.choices = [
             (code, _LANGUAGE_NAMES.get(code, "unknown")) for code in languages
         ]
-        for name in ("request_format", "root_format"):
-            format_field = self.fields[name]
-            assert isinstance(format_field, forms.ChoiceField)
-            formats = sorted(set(registered.values_list(name, flat=True)))
-            format_field.choices = [
-                ("", "all"),
-                *((value, format_label(value)) for value in formats),
-            ]
+        request_field = self.fields["request_format"]
+        assert isinstance(request_field, forms.ChoiceField)
+        request_field.choices = [
+            ("", "all"),
+            *((value, request_format_label(value)) for value, _ in request_formats(platform)),
+        ]
+        root_field = self.fields["root_format"]
+        assert isinstance(root_field, forms.ChoiceField)
+        roots = sorted(set(registered.values_list("root_format", flat=True)))
+        root_field.choices = [("", "all"), *((value, format_label(value)) for value in roots)]
 
 
 def root_formats(platform: Platform, request_format: str = "") -> list[tuple[str, int]]:
     """The root formats of the platform's counted uploads (of ``request_format``, if given) with
     how many have each, most common first (ties by name)."""
-    counted = platform.uploads.filter(registered_at__isnull=False)
-    if request_format:
-        counted = counted.filter(request_format=request_format)
+    counted = _of_request_format(
+        platform.uploads.filter(registered_at__isnull=False), request_format
+    )
     formats = Counter(counted.values_list("root_format", flat=True))
     return sorted(formats.items(), key=lambda pair: (-pair[1], pair[0]))
 
 
 def request_formats(platform: Platform) -> list[tuple[str, int]]:
     """The platform's request formats with how many counted uploads have each, most common first
-    (ties by name)."""
+    (ties by name); ``UNKNOWN`` for those without one."""
     counted = platform.uploads.filter(registered_at__isnull=False)
-    formats = Counter(counted.values_list("request_format", flat=True))
+    formats = Counter(
+        value or UNKNOWN for value in counted.values_list("request_format", flat=True)
+    )
     return sorted(formats.items(), key=lambda pair: (-pair[1], pair[0]))
 
 
@@ -120,8 +142,7 @@ class SchemaFilter:
             uploads = uploads.filter(requested_at__lte=self.requested_to)
         if self.languages:
             uploads = uploads.filter(language__in=self.languages)
-        if self.request_format:
-            uploads = uploads.filter(request_format=self.request_format)
+        uploads = _of_request_format(uploads, self.request_format)
         if self.root_format:
             uploads = uploads.filter(root_format=self.root_format)
         return uploads

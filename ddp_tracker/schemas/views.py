@@ -29,6 +29,7 @@ from ddp_tracker.schemas.filters import (
     FilterForm,
     SchemaFilter,
     format_label,
+    request_format_label,
     request_formats,
     root_formats,
 )
@@ -100,7 +101,7 @@ def platform_detail(request: HttpRequest, slug: str) -> HttpResponse:
     context |= {
         "filter_form": FilterForm(request.GET or None, platform=platform),
         "formats": [
-            (value, format_label(value), count, schema_filter.with_format(value))
+            (value, request_format_label(value), count, schema_filter.with_format(value))
             for value, count in request_formats(platform)
         ],
         # a second choice only where the request format's uploads have several root formats

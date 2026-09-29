@@ -5,7 +5,15 @@ from django.urls import reverse
 
 from ddp_tracker.core.tests.utils import parsed_file, parsed_upload
 from ddp_tracker.ddps.models import Platform
-from ddp_tracker.schemas.filters import FilterForm, SchemaFilter, format_label
+from ddp_tracker.schemas.filters import (
+    UNKNOWN,
+    FilterForm,
+    SchemaFilter,
+    format_label,
+    request_format_label,
+    request_formats,
+    root_formats,
+)
 
 
 class FilterTests(TestCase):
@@ -114,3 +122,49 @@ class FilterTests(TestCase):
             [format_label("zip"), format_label("json"), format_label("")],
             ["ZIP archive", "JSON file", "file"],
         )
+
+
+class UnknownRequestFormatTests(TestCase):
+    """Uploads whose request format wasn't given (it's optional) are a choice of their own, not
+    "all" (both are "" in the database and the filter otherwise)."""
+
+    def setUp(self):
+        self.platform = Platform.objects.create(name="TikTok", slug="tiktok")
+        parsed_upload(self.platform, {"known.json": b'{"k": 1}'}, register=True)
+        self.url = reverse("schemas:platform", args=["tiktok"])
+
+    def unknown(self, name="unknown.json"):
+        parsed_upload(self.platform, {name: b'{"u": 1}'}, request_format="", register=True)
+
+    def keys(self, response):
+        return [row.key for group in response.context["tree"].groups for row in group.lines()]
+
+    def test_a_choice_of_its_own(self):
+        self.unknown()
+        self.assertEqual(request_formats(self.platform), [("json", 1), (UNKNOWN, 1)])
+        response = self.client.get(self.url)
+        self.assertEqual(self.keys(response), ["/known.json/k"])  # the default: JSON
+        self.assertContains(response, "Format not provided")
+        self.assertContains(response, f"?request_format={UNKNOWN}")  # its selector's link
+        chosen = self.client.get(self.url, {"request_format": UNKNOWN})
+        self.assertEqual(chosen.context["filter"].request_format, UNKNOWN)  # kept, not the default
+        self.assertEqual(self.keys(chosen), ["/unknown.json/u"])
+        self.assertEqual(chosen.context["counts"]["uploads"], 1)
+        self.assertRegex(
+            chosen.content.decode(), r'class="nav-link active"\s+href="\?request_format=unknown"'
+        )
+
+    def test_as_the_default_it_filters_too(self):
+        self.unknown()
+        self.unknown("other.json")  # now the most common
+        response = self.client.get(self.url)
+        self.assertEqual(response.context["filter"].request_format, UNKNOWN)
+        self.assertEqual(response.context["counts"]["uploads"], 2)  # not the JSON one too
+        self.assertNotIn("/known.json/k", self.keys(response))
+        self.assertEqual(root_formats(self.platform, UNKNOWN), [("zip", 2)])
+
+    def test_labels_and_form(self):
+        self.unknown()
+        self.assertEqual(request_format_label(UNKNOWN), "Format not provided")
+        self.assertEqual(request_format_label("json"), "JSON file")
+        self.assertTrue(FilterForm({"request_format": UNKNOWN}, platform=self.platform).is_valid())
