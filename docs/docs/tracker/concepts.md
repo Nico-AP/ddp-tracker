@@ -72,7 +72,7 @@ alone** (`ddp_tracker/ddps/values.py`):
 - **How long.** Until `DDP_VALUES_RETENTION_DAYS` (default 3) are over, the uploader deletes
   them, or logs out (which deletes the key). `manage.py purge_upload_values` removes expired ones.
 - **Shown** on the upload's review page (rows, side panel, annotation dialog). In the side panel,
-  the uploader can **contribute values to the data point's examples** once it is annotated, as they are (not editable):
+  the uploader can **contribute values to the data point's examples** (annotated or not), as they are (not editable):
   only then do they become public.
 
 Each example records where it came from (`schemas/examples.py`): **extracted** (contributed from
@@ -146,8 +146,8 @@ look as follows:
 - The **side panel** is for annotating: why the data point is here (**new**: no earlier upload
   has the path; **likely moved/renamed**; **seen before**: earlier uploads had it, but it was
   never annotated), the suggestion as the main action, the values found in the file (uploader
-  only), and, **once it is annotated**, contributing those values to the examples and linking
-  representations. The technical details are collapsed.
+  only), its examples (contributing those values or typing some, annotated or not) and, for a
+  list's item that is an object, its representations.
 
 *Changed* rows say, per field, what earlier uploads had and what this one has.
 

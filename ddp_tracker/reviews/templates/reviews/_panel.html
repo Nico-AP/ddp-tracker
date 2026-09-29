@@ -1,4 +1,4 @@
-{# The review's side panel (reviews.views.review_location): what to annotate first, the values found in the file, what comes after annotating; the technical details collapsed. For a list, "row" covers the list and its item. Reloads itself after a change. #}
+{# The review's side panel (reviews.views.review_location): what to annotate first, the values found in the file, its examples and representations; the technical details collapsed. For a list, "row" covers the list and its item. Reloads itself after a change. #}
 {% load core_tags %}
 {% with target=row.primary|default:location %}
   <div class="review-panel"
@@ -145,25 +145,13 @@
         {% endif %}
       </section>
     {% endif %}
-    {% if target.annotation %}
-      <section class="review-panel__section">
-        <h3 class="review-panel__label">Example values</h3>
-        {% if own.readable and own_list %}
-          {% include "reviews/_own_values.html" with location=target %}
-        {% endif %}
-        {% include "schemas/_examples.html" with location=target %}
-      </section>
-    {% else %}
-      <section class="review-panel__section">
-        <h3 class="review-panel__label">Available after annotating</h3>
-        <dl class="review-panel__later">
-          <dt>Example values</dt>
-          <dd>
-            {% if own_list %}Add from your values{% else %}Add later{% endif %}
-          </dd>
-        </dl>
-      </section>
-    {% endif %}
+    <section class="review-panel__section">
+      <h3 class="review-panel__label">Example values</h3>
+      {% if own.readable and own_list %}
+        {% include "reviews/_own_values.html" with location=target %}
+      {% endif %}
+      {% include "schemas/_examples.html" with location=target %}
+    </section>
     <section class="review-panel__section">
       <h3 class="review-panel__label">Representations</h3>
       <div hx-get="{% url 'representations:location-section' target.pk %}"

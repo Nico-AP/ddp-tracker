@@ -17,7 +17,6 @@ from ddp_tracker.core.tests.utils import make_zip, parsed_upload
 from ddp_tracker.ddps.models import Platform, Upload, UploadValues
 from ddp_tracker.ddps.values import cookie_name, split_values
 from ddp_tracker.schemas.models import Location
-from ddp_tracker.schemas.services import create_annotation
 from ddp_tracker.users.models import User
 
 EARLIER = {"profile.json": b'{"name": "Anna", "mail": "anna@example.org", "joined": "2024-01-01"}'}
@@ -152,9 +151,7 @@ class OwnValuesTests(TestCase):
     def test_contribute_as_they_are(self):
         panel = self.get(self.panel)
         self.assertContains(panel, "Values in this file")
-        self.assertNotContains(panel, "Add to examples")  # only once it's annotated
-        create_annotation(self.name, "Display name", self.uploader)
-        panel = self.get(self.panel)
+        self.assertIsNone(self.name.annotation)  # not annotated: no matter
         self.assertContains(panel, "Add to examples")
         self.assertContains(panel, '<code class="own-value" title="Fritzli">Fritzli</code>')
         self.assertNotContains(panel, 'name="value"')  # not editable

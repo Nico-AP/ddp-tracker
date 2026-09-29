@@ -492,8 +492,7 @@ html.dialog-locked .review-panel-slot {
   font-size: $font-size-small;
 }
 
-.review-panel__annotations,
-.review-panel__later {
+.review-panel__annotations {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: ($spacing-unit * 0.5) ($spacing-unit * 2);
@@ -506,11 +505,6 @@ html.dialog-locked .review-panel-slot {
   dd {
     margin: 0;
   }
-}
-
-.review-panel__later dd {
-  color: $color-text-muted;
-  text-align: right;
 }
 
 .review-panel__foot p {

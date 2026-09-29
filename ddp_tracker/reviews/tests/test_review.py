@@ -179,7 +179,9 @@ class ReviewStatusTests(TestCase):
         self.assertRegex(panel.content.decode(), r"Use suggestion:\s+Display name")
         self.assertContains(panel, "data-primary-action")
         self.assertContains(panel, f"?upload={self.zipped.pk}")  # the dialog knows the upload
-        self.assertContains(panel, "Available after annotating")
+        # examples before annotating too
+        self.assertContains(panel, '<h3 class="review-panel__label">Example values</h3>', html=True)
+        self.assertContains(panel, reverse("schemas:examples", args=[name.pk]))
         self.assertContains(panel, "<summary>More details</summary>", html=True)
         self.assertContains(panel, f'data-copy="{name.path}"')
         missing = self.client.get(reverse("reviews:location", args=[self.zipped.pk, self.name.pk]))

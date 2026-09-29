@@ -1,4 +1,4 @@
-{# The uploader's own values of a data point, to contribute as they are to its public examples (marked "extracted"; reviews.views.review_add_examples). Only ever rendered for the uploader, once the data point is annotated. #}
+{# The uploader's own values of a data point, to contribute as they are to its public examples (marked "extracted"; reviews.views.review_add_examples). Only ever rendered for the uploader. #}
 {% load core_tags %}
 {% with mine=own|values_at:location.path %}
   <form class="own-values__form"

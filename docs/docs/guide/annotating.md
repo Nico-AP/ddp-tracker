@@ -40,8 +40,8 @@ another export version, or has another name in another language.
 ## Examples
 
 Examples show what a data point's values look like. If you uploaded the DDP, the side panel shows
-the values from **your** file (only to you). Once the data point is annotated, you can choose some
-of them to add to its public examples. They are added exactly as they are; nothing becomes public
+the values from **your** file (only to you). You can choose some of them to add to its public
+examples. They are added exactly as they are; nothing becomes public
 until you do this. Curators can also type examples by hand.
 
 ## Suggestions
