@@ -2,6 +2,7 @@ site_name: DDP Tracker
 site_description: What platforms' data download packages (DDPs) contain, what their data points mean, and how they change.
 theme:
   name: material
+  favicon: assets/favicon.png  # the app's icon (ddp_tracker/static/img/favicons/favicon-32x32.png)
 dev_addr: 'localhost:8001'
 markdown_extensions:
   - admonition

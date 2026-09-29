@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import SuspiciousFileOperation
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
 from django.shortcuts import redirect, render
+from django.templatetags.static import static
 from django.utils._os import safe_join
 from django.views.static import serve
 
@@ -29,6 +30,12 @@ def docs(request: HttpRequest, path: str) -> HttpResponseBase:
             return redirect(request.path + "/")
         path = posixpath.join(path, "index.html")
     return serve(request, path, document_root=str(settings.MKDOCS_ROOT))
+
+
+def favicon(request: HttpRequest) -> HttpResponseBase:
+    """Browsers ask for /favicon.ico where a page doesn't name its icon (e.g. the MkDocs docs).
+    Resolved per request: in production the static URL comes from collectstatic's manifest."""
+    return redirect(static("img/favicons/favicon.ico"), permanent=True)
 
 
 def health(request: HttpRequest) -> JsonResponse:

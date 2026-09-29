@@ -7,9 +7,17 @@
 }
 
 .site-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-unit;
   font-weight: 700;
   color: $color-text;
   text-decoration: none;
+}
+
+// the app's icon (static/img/favicons), left of the name
+.site-header__logo {
+  flex: none;
 }
 
 .site-nav {

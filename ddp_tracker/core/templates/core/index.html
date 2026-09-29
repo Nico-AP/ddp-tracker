@@ -1,20 +1,32 @@
 {% extends "base.html" %}
-{% load upload_tags proposal_tags %}
+{% load static upload_tags proposal_tags %}
 {% block content %}
-  <h1>{{ project_name }}</h1>
-  <p class="lead">
-    The DDP Tracker provides an overview of what data takeouts (DDPs) of
-    digital platforms contain, what their data points mean, how they compare
-    across platforms, and how they change over time. To do so, people can upload
-    DDPs and the DDP Tracker collects the <strong>structure</strong> of these
-    takeouts into a collective knowledge base.
-  </p>
-  <p class="muted">
-    Uploaded DDPs are parsed and deleted right away: only their structure is kept, file names are
-    stored anonymized, and the values found in your file are visible to you alone
-    unless you decide to share them with the community.
-    <a href="{% url 'docs' '' %}">How it works</a>
-  </p>
+  <div class="container">
+    <div class="row">
+      <div class="col-md-2">
+        <img src="{% static 'img/logo/ddp-tracker_icon.svg' %}"
+             alt="DDP Tracker Icon"
+             height="150">
+      </div>
+      <div class="col-md-8">
+        <h1>{{ project_name }}</h1>
+        <p class="text-black fs-5 mt-2">
+          The DDP Tracker provides an overview of what data takeouts/data download packages
+          (DDPs) of digital platforms contain, what their data points mean, how they compare
+          across platforms, and how they change over time. To do so, people can upload
+          DDPs and the DDP Tracker collects the <strong>structure</strong> of these
+          takeouts into a collective knowledge base.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="mb-5">
+    <p class="text-muted">
+      <i>Good to know:</i> Uploaded DDPs are parsed and deleted right away: only their structure is kept, file names are
+      stored anonymized, and the values found in your file are visible to you alone
+      unless you decide to share them with the community.
+    </p>
+  </div>
   <h2>What do you want to do?</h2>
   {% url 'schemas:platforms' as explore_url %}
   <section class="goal-group" aria-labelledby="goal-explore">
@@ -23,31 +35,33 @@
       <li class="card">
         <a class="card__title" href="{{ explore_url }}">See what a platform's DDP contains</a>
         <p>
-          A platform's explorer: every data point of its takeouts as a tree, with its type,
+          Every data point of its takeouts as a tree, with its type,
           examples and meaning. Filter by request date and account language.
         </p>
       </li>
       <li class="card">
-        <a class="card__title" href="{{ explore_url }}">Look up what a data point means</a>
+        <a class="card__title"
+           href="{{ explore_url }}">Platform annotations: Look up what a data point means</a>
         <p>
-          A platform's annotations: each data point with its description, where it is found and
+          Each data point with its description, where it is found and
           in which languages.
         </p>
       </li>
       <li class="card">
         <a class="card__title"
-           href="{% url 'representations:representations' %}">Compare platforms</a>
+           href="{% url 'representations:representations' %}">Representations: Compare meanings across platforms</a>
         <p>
-          Representations: shared concepts, like a watched video, linked to the data points that
+          Shared concepts, like a watched video, linked to the data points that
           hold them on each platform. The <a href="{% url 'representations:vocabulary' %}">vocabulary</a>
           lists the terms they use.
         </p>
       </li>
       <li class="card">
-        <a class="card__title" href="{% url 'docs' '' %}">Learn how it works</a>
+        <a class="card__title"
+           href="{% url 'docs' '' %}">Documentation: Learn how the DDP Tracker works</a>
         <p>
-          The documentation: what "new", "changed" and "missing" mean, how uploads are checked,
-          and how your privacy is protected.
+          What "new", "changed" and "missing" mean, how uploads are checked,
+          how your privacy is protected, etc.
         </p>
       </li>
     </ul>

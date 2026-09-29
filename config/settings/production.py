@@ -130,6 +130,7 @@ CONTENT_SECURITY_POLICY = {
         "script-src": [SELF, NONCE],
         "style-src": [SELF],
         "img-src": [SELF, "data:"],
+        "manifest-src": [SELF],  # the favicons' web manifest (templates/base.html)
         "font-src": [SELF],
         "connect-src": [SELF],
         "form-action": [SELF],
