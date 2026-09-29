@@ -1,0 +1,15 @@
+{# One node of an upload's structure (ddps/inspection.py), with the nodes below it; recursive. #}
+<li class="inspect-line inspect-line--{{ line.kind }}">
+  {% if line.children %}
+    <details {% if line.has_new or not line.path %}open{% endif %}>
+      <summary>{% include "ddps/_inspect_head.html" %}</summary>
+      <ul class="inspect-tree">
+        {% for child in line.children %}
+          {% include "ddps/_inspect_line.html" with line=child %}
+        {% endfor %}
+      </ul>
+    </details>
+  {% else %}
+    {% include "ddps/_inspect_head.html" %}
+  {% endif %}
+</li>

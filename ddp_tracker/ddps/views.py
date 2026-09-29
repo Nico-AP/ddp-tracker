@@ -14,6 +14,7 @@ from django.views.decorators.http import require_POST
 
 from ddp_tracker.ddps import checks, values
 from ddp_tracker.ddps.forms import UploadForm
+from ddp_tracker.ddps.inspection import inspect
 from ddp_tracker.ddps.models import Upload
 from ddp_tracker.ddps.names import anonymize_file_name
 from ddp_tracker.ddps.services import receive
@@ -55,8 +56,30 @@ def upload_detail(request: HttpRequest, pk: int) -> HttpResponse:
         "threshold": settings.DDP_SIMILARITY_THRESHOLD,
         "is_uploader": upload.uploaded_by_id == user.pk,
         "can_approve": checks.can_approve(upload, user),
+        "can_inspect": checks.can_inspect(upload, user),
     }
     return render(request, "ddps/upload_detail.html", context)
+
+
+@login_required
+def upload_inspect(request: HttpRequest, pk: int) -> HttpResponse:
+    """A held upload's structure, compared with the uploads that count (``ddps/inspection.py``):
+    for its uploader and staff, to decide on it. The uploader also sees their own values."""
+    upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
+    user = signed_in_user(request)
+    if not checks.can_inspect(upload, user):
+        raise PermissionDenied
+    context = {
+        "upload": upload,
+        "inspection": inspect(upload, checks.peers_of(upload)),
+        "own": values.own_values(request, upload),
+        "duplicates": upload.duplicates(),
+        "threshold": settings.DDP_SIMILARITY_THRESHOLD,
+        "is_uploader": upload.uploaded_by_id == user.pk,
+        "can_approve": checks.can_approve(upload, user),
+        "can_inspect": False,  # here already
+    }
+    return render(request, "ddps/upload_inspect.html", context)
 
 
 @login_required

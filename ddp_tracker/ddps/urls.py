@@ -10,6 +10,7 @@ urlpatterns = [
     path("approvals/", views.upload_approvals, name="approvals"),
     path("<int:pk>/", views.upload_detail, name="upload"),
     path("<int:pk>/status/", views.upload_status, name="upload-status"),
+    path("<int:pk>/inspect/", views.upload_inspect, name="upload-inspect"),
     path("<int:pk>/values/forget/", views.upload_forget_values, name="upload-forget-values"),
     re_path(
         r"^(?P<pk>[0-9]+)/(?P<action>confirm|discard|approve|reject)/$",

@@ -16,7 +16,8 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from ddp_parser import from_dict, is_data_point, merge_trees, suggest, walk
+from ddp_parser import from_dict
+from ddp_tracker.ddps.inspection import inspect
 from ddp_tracker.ddps.models import Upload
 from ddp_tracker.schemas.services import get_format_of, register_upload
 from ddp_tracker.users.models import User
@@ -25,7 +26,7 @@ Plausibility = Upload.Plausibility
 _WAITING = (Plausibility.PASSED, Plausibility.APPROVED, Plausibility.AWAITING)
 
 
-def _peers(upload: Upload) -> "list[Upload]":
+def peers_of(upload: Upload) -> "list[Upload]":
     """The uploads ``upload`` is compared with: same platform and format, counted."""
     root_format = upload.root_format
     if not root_format and upload.document is not None:
@@ -45,25 +46,12 @@ def _peers(upload: Upload) -> "list[Upload]":
 def similarity(upload: Upload, peers: "list[Upload] | None" = None) -> float | None:
     """The share of ``upload``'s data points its peers already know: at the same path, or
     through a ``moved``/``renamed`` suggestion (so moved or translated exports still match).
-    None without peers, or without data points to compare.
+    None without peers, or without data points to compare. The same figure the inspection
+    explains (``inspection.py``).
     """
     if upload.document is None:
         return None
-
-    roots = [from_dict(peer.document).root for peer in peers or _peers(upload) if peer.document]
-    if not roots:
-        return None
-
-    known = merge_trees(roots)
-    root = from_dict(upload.document).root
-    points = [node.path for node in walk(root) if is_data_point(node)]
-    if not points:
-        return None
-
-    known_paths = {node.path for node in walk(known)}
-    suggested = suggest(known, root)
-    recognised = sum(1 for path in points if path in known_paths or path in suggested)
-    return recognised / len(points)
+    return inspect(upload, peers or peers_of(upload)).share
 
 
 @transaction.atomic
@@ -73,7 +61,7 @@ def decide(upload: Upload) -> None:
     upload.root_format = get_format_of(from_dict(upload.document).root)
     if upload.duplicates().filter(plausibility__in=_WAITING).exists():
         upload.plausibility = Plausibility.DUPLICATE
-    elif not (peers := _peers(upload)):
+    elif not (peers := peers_of(upload)):
         upload.plausibility = Plausibility.AWAITING
         upload.plausibility_reason = Upload.Reason.FIRST
     else:
@@ -109,6 +97,14 @@ def discard(upload: Upload, user: User) -> None:
     if upload.plausibility != Plausibility.UNCONFIRMED or upload.uploaded_by_id != user.pk:
         raise NotAllowedError
     upload.delete()
+
+
+def can_inspect(upload: Upload, user: User) -> bool:
+    """The uploader and staff look into an upload that isn't registered (a registered one has
+    its review). It may not be a DDP at all, so nobody else sees its names and keys."""
+    if upload.document is None or upload.registered_at is not None:
+        return False
+    return user.is_staff or upload.uploaded_by_id == user.pk
 
 
 def can_approve(upload: Upload, user: User) -> bool:

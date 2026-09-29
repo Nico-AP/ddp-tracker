@@ -17,6 +17,9 @@
           <th>Why</th>
           <th>Known data points</th>
           <th>Requested</th>
+          <th>
+            <span class="visually-hidden">Inspect</span>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -37,6 +40,9 @@
               {% endif %}
             </td>
             <td>{{ upload.requested_at }}</td>
+            <td>
+              <a href="{% url 'ddps:upload-inspect' upload.pk %}">Inspect</a>
+            </td>
           </tr>
         {% endfor %}
       </tbody>

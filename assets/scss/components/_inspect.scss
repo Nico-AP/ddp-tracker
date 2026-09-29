@@ -1,0 +1,44 @@
+@use "../abstracts/variables" as *;
+
+// A held upload's structure (ddps/upload_inspect.html): nested lists, a <details> per node with
+// children, indented by a guide line.
+.inspect-tree {
+  list-style: none;
+  margin: 0;
+  padding-left: $spacing-unit * 2;
+  border-left: 1px solid $color-border;
+
+  > .inspect-line {
+    padding: $spacing-unit * 0.25 0;
+  }
+}
+
+// the outermost list: no guide line before the upload itself
+h2 + .inspect-tree,
+p + .inspect-tree {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.inspect-line summary {
+  cursor: pointer;
+}
+
+.inspect-line__name {
+  font-family: var(--bs-font-monospace);
+}
+
+.inspect-line--folder > details > summary .inspect-line__name,
+.inspect-line--container > details > summary .inspect-line__name,
+.inspect-line--file > details > summary .inspect-line__name {
+  font-weight: 600;
+}
+
+.inspect-line__values {
+  margin-left: $spacing-unit;
+}
+
+.inspect-missing {
+  columns: 2;
+  padding-left: $spacing-unit * 2;
+}

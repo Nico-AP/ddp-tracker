@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Inspect {{ upload.file_name }} · DDP Tracker{% endblock %}
+{% block content %}
+  <p class="breadcrumbs">
+    <a href="{% url 'ddps:uploads' %}">Uploads</a> / <a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a> / inspect
+  </p>
+  <h1>Inspect {{ upload.file_name }}</h1>
+  <p class="lead">
+    What this {{ upload.platform }} upload contains, compared with the {{ upload.platform }}
+    {{ upload.root_format|upper }} uploads that count. It isn't part of the collected schema:
+    only its uploader and staff can see this page.
+  </p>
+  {% include "ddps/_plausibility.html" %}
+  <h2>Summary</h2>
+  {% if not inspection.total %}
+    <p class="muted">No data points: nothing in it could be read as data (see the files below).</p>
+  {% elif not inspection.has_peers %}
+    <p>
+      {{ inspection.total }} data point{{ inspection.total|pluralize }}.
+      Nothing to compare with yet: this is the first counted upload of its platform and format, so
+      it defines what later ones are compared with.
+    </p>
+  {% else %}
+    <ul class="summary">
+      <li class="summary__item status--added">
+        <strong>{{ inspection.counts.known|default:0 }}</strong> known
+      </li>
+      <li class="summary__item status--moved_to">
+        <strong>{{ inspection.counts.matched|default:0 }}</strong> matched
+      </li>
+      <li class="summary__item status--changed">
+        <strong>{{ inspection.counts.new|default:0 }}</strong> new
+      </li>
+      <li class="summary__item status--removed">
+        <strong>{{ inspection.missing|length }}</strong> missing
+      </li>
+    </ul>
+    <p class="muted">
+      {% widthratio inspection.share 1 100 %} % of its {{ inspection.total }} data points are known
+      or matched (below {% widthratio threshold 1 100 %} %, an upload is checked by hand).
+      <strong>Known</strong>: at the same path as in the uploads that count.
+      <strong>Matched</strong>: moved or renamed from a known path (e.g. an export in another
+      language). <strong>New</strong>: neither. <strong>Missing</strong>: known data points this
+      upload doesn't have.
+    </p>
+  {% endif %}
+  <h2>Files and data points</h2>
+  {% if own %}<p class="muted">Your own values are shown next to the data points: only you see them.</p>{% endif %}
+  <ul class="inspect-tree">
+    {% include "ddps/_inspect_line.html" with line=inspection.root %}
+  </ul>
+  {% if inspection.missing %}
+    <h2>Missing</h2>
+    <details>
+      <summary>
+        {{ inspection.missing|length }} known data point{{ inspection.missing|length|pluralize }} this upload doesn't have
+      </summary>
+      <ul class="inspect-missing">
+        {% for path in inspection.missing %}
+          <li>
+            <code class="path">{{ path }}</code>
+          </li>
+        {% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+  {% if upload.warnings %}
+    <h2>Parser warnings</h2>
+    <ul class="warnings">
+      {% for warning in upload.warnings %}
+        <li>
+          <code>{{ warning.code }}</code>
+          {% if warning.path %}at <code>{{ warning.path }}</code>{% endif %}
+          {% if warning.message %}: {{ warning.message }}{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}

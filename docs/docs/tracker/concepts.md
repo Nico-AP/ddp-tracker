@@ -35,6 +35,15 @@ part of the explorer, reviews, "new" and "changed") once it passed these checks
 **Approval** is by staff (the *Approvals* page, or the upload's page), their own uploads
 included. Approved uploads count; rejected ones don't.
 
+**Inspecting a held upload.** An upload that doesn't count isn't registered, so it has no review.
+To decide on it, its uploader and staff (nobody else: it may not be a DDP at all) can
+**inspect** it (`ddp_tracker/ddps/inspection.py`): its files and data points, computed from its
+schema document, each data point compared with the counted uploads of the same platform and
+format as **known** (at the same path), **matched** (a *moved*/*renamed* suggestion links it to a
+known path) or **new**; and the **missing** known data points it has neither at their path nor
+matched. The share of known and matched data points is the similarity above. The uploader also
+sees their own values. Inspecting registers nothing.
+
 ## The uploader's values
 
 Everything public is derived from the structure only. To make annotating easier, each upload also

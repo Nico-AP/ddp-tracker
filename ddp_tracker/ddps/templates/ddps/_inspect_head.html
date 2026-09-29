@@ -1,0 +1,23 @@
+{# A node's own line in the inspection: name, type, status against the uploads that count, own values. #}
+{% load core_tags %}
+<span class="inspect-line__name">{{ line.name }}{% if line.kind == "folder" or line.kind == "container" %}/{% endif %}</span>
+{% if line.label %}<small class="muted">{{ line.label }}</small>{% endif %}
+{% if line.note %}<small class="muted">({{ line.note }})</small>{% endif %}
+{% if line.status == "known" %}
+  <span class="badge badge--done">known</span>
+{% elif line.status == "matched" %}
+  <span class="badge badge--moved_to"
+        title="{{ line.match.reason }} from {{ line.match.path }} ({{ line.match.score }})">matched</span>
+  <small class="muted">{{ line.match.reason }} from <code>{{ line.match.path }}</code></small>
+{% elif line.status == "new" %}
+  <span class="badge badge--changed">new</span>
+{% endif %}
+{% if own and line.is_data_point %}
+  {% with mine=own|values_at:line.path %}
+    {% if mine %}
+      <span class="inspect-line__values">
+        {% include "schemas/_own_values_inline.html" with values=mine %}
+      </span>
+    {% endif %}
+  {% endwith %}
+{% endif %}
