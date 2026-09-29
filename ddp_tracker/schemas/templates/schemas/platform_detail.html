@@ -57,37 +57,39 @@
   </p>
   <h2>Collected schema</h2>
   {% if counts.uploads %}
-    <div class="review-toolbar">
-      <form class="review-filters"
-            hx-get="{{ platform.get_absolute_url }}"
-            hx-trigger="input changed delay:250ms from:find [name=q], search from:find [name=q], change from:find .segmented"
-            hx-target="#review-groups"
-            hx-swap="outerHTML"
-            hx-push-url="true">
-        {% for name, value in filter.params %}
-          <input type="hidden" name="{{ name }}" value="{{ value }}">
-        {% endfor %}
-        <input type="search"
-               name="q"
-               value="{{ q }}"
-               class="form-control"
-               placeholder="Filter by field name or path"
-               aria-label="Filter by field name or path">
-        <fieldset class="segmented" aria-label="Show">
-          {% for value, label in show_choices %}
-            <input type="radio"
-                   class="segmented__input"
-                   name="show"
-                   id="show-{{ value }}"
-                   value="{{ value }}"
-                   {% if value == show %}checked{% endif %}>
-            <label class="segmented__label" for="show-{{ value }}">{{ label }}</label>
-          {% endfor %}
-        </fieldset>
-      </form>
-    </div>
     <div class="review-layout">
-      <div class="review-main" data-dialog-over>{% include "schemas/tree/_groups.html" %}</div>
+      <div class="review-main" data-dialog-over>
+        <div class="review-toolbar">
+          <form class="review-filters"
+                hx-get="{{ platform.get_absolute_url }}"
+                hx-trigger="input changed delay:250ms from:find [name=q], search from:find [name=q], change from:find .segmented"
+                hx-target="#review-groups"
+                hx-swap="outerHTML"
+                hx-push-url="true">
+            {% for name, value in filter.params %}
+              <input type="hidden" name="{{ name }}" value="{{ value }}">
+            {% endfor %}
+            <input type="search"
+                   name="q"
+                   value="{{ q }}"
+                   class="form-control fs-875"
+                   placeholder="Filter by field name or path"
+                   aria-label="Filter by field name or path">
+            <fieldset class="segmented" aria-label="Show">
+              {% for value, label in show_choices %}
+                <input type="radio"
+                       class="segmented__input"
+                       name="show"
+                       id="show-{{ value }}"
+                       value="{{ value }}"
+                       {% if value == show %}checked{% endif %}>
+                <label class="segmented__label" for="show-{{ value }}">{{ label }}</label>
+              {% endfor %}
+            </fieldset>
+          </form>
+        </div>
+        {% include "schemas/tree/_groups.html" %}
+      </div>
       <aside id="node-detail"
              class="review-panel review-panel-slot"
              aria-live="polite">
