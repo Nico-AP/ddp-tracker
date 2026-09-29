@@ -619,6 +619,28 @@ html.dialog-locked .review-panel-slot {
   }
 }
 
+// staff's queue: the suggestions about one location (or annotation) together
+.proposal-group {
+  display: grid;
+  gap: $spacing-unit;
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: $spacing-unit * 1.5;
+  background: $color-surface;
+}
+
+.proposal-group__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 $spacing-unit;
+  font-size: $font-size-small;
+}
+
+.proposal-group__target {
+  word-break: break-all;
+}
+
 .proposal--decided {
   background: $color-surface;
 }

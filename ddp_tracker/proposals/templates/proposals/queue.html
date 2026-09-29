@@ -29,12 +29,27 @@
       {% endfor %}
     </ul>
   {% endif %}
-  <p class="muted">
-    One at a time: <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>a</kbd> accept · <kbd>r</kbd> reject (with a reason).
+  <p class="review-hint muted">
+    <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>a</kbd> accept · <kbd>r</kbd> reject (with a reason)
   </p>
+  {# one group per location (or annotation): its suggestions next to each other (views._grouped) #}
   <div class="proposals" data-proposals>
-    {% for entry in entries %}
-      {% include "proposals/_entry.html" %}
+    {% for group in groups %}
+      <section class="proposal-group" data-proposal-group id="{{ group.id }}">
+        <header class="proposal-group__head">
+          {% if group.location %}
+            <code class="proposal-group__target">{{ group.location.path }}</code>
+            <span class="muted">now: {{ group.now }}</span>
+          {% else %}
+            <a class="proposal-group__target"
+               href="{{ group.annotation.get_absolute_url }}">{{ group.annotation }}</a>
+          {% endif %}
+          <span class="muted">· {{ group.entries|length }} suggestion{{ group.entries|length|pluralize }}</span>
+        </header>
+        {% for entry in group.entries %}
+          {% include "proposals/_entry.html" with hide_target=True in_queue=True %}
+        {% endfor %}
+      </section>
     {% empty %}
       <p class="muted">Nothing to decide.</p>
     {% endfor %}

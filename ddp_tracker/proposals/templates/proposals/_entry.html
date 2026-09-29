@@ -3,10 +3,11 @@
   <article class="proposal{% if not proposal.is_open %} proposal--decided{% endif %}"
            data-proposal
            tabindex="0"
-           id="proposal-{{ proposal.pk }}">
+           id="proposal-{{ proposal.pk }}"
+           {% if oob %}hx-swap-oob="outerHTML"{% endif %}>
     <header class="proposal__head">
       <span class="proposal__kind">{{ proposal.get_kind_display }}</span>
-      {% if proposal.location and not in_panel %}
+      {% if proposal.location and not hide_target %}
         <code class="proposal__target">{{ proposal.location.path }}</code>
       {% elif proposal.annotation %}
         <a class="proposal__target"
@@ -47,7 +48,8 @@
                 hx-target="closest [data-proposal]"
                 hx-swap="outerHTML">
             {% if entry.stale %}<input type="hidden" name="stale" value="1">{% endif %}
-            {% if in_panel %}<input type="hidden" name="in_panel" value="1">{% endif %}
+            {% if hide_target %}<input type="hidden" name="hide_target" value="1">{% endif %}
+            {% if in_queue %}<input type="hidden" name="in_queue" value="1">{% endif %}
             <button type="submit" class="btn btn-primary btn-sm" data-accept>
               {% if entry.stale %}
                 Accept anyway
@@ -60,7 +62,8 @@
                 hx-post="{% url 'proposals:decide' proposal.pk 'reject' %}"
                 hx-target="closest [data-proposal]"
                 hx-swap="outerHTML">
-            {% if in_panel %}<input type="hidden" name="in_panel" value="1">{% endif %}
+            {% if hide_target %}<input type="hidden" name="hide_target" value="1">{% endif %}
+            {% if in_queue %}<input type="hidden" name="in_queue" value="1">{% endif %}
             <input type="text"
                    name="reason"
                    class="form-control fs-875"
@@ -76,7 +79,8 @@
               hx-post="{% url 'proposals:withdraw' proposal.pk %}"
               hx-target="closest [data-proposal]"
               hx-swap="outerHTML">
-          {% if in_panel %}<input type="hidden" name="in_panel" value="1">{% endif %}
+          {% if hide_target %}<input type="hidden" name="hide_target" value="1">{% endif %}
+          {% if in_queue %}<input type="hidden" name="in_queue" value="1">{% endif %}
           <button type="submit" class="link-button">Withdraw</button>
         </form>
       {% endif %}

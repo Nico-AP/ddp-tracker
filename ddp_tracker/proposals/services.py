@@ -8,11 +8,12 @@ for the same target; ``reject`` records why.
 
 import copy
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.forms.models import model_to_dict
 from django.utils import timezone
 
@@ -284,7 +285,7 @@ def accept(proposal: Proposal, staff: User, *, stale_ok: bool = False) -> None:
             decided_at=now,
             reason="Another suggestion for the same was accepted.",
         )
-        _decide(proposal, staff, Status.ACCEPTED)
+        _decide(proposal, staff, Status.ACCEPTED, now)  # the same moment: superseded_by
 
 
 def reject(proposal: Proposal, staff: User, reason: str) -> None:
@@ -303,10 +304,10 @@ def withdraw(proposal: Proposal, user: User) -> None:
     proposal.save(update_fields=["status"])
 
 
-def _decide(proposal: Proposal, staff: User, status: str) -> None:
+def _decide(proposal: Proposal, staff: User, status: str, now: datetime | None = None) -> None:
     proposal.status = status
     proposal.decided_by = staff
-    proposal.decided_at = timezone.now()
+    proposal.decided_at = now or timezone.now()
     proposal.save()
 
 
@@ -441,6 +442,30 @@ def _metadata_row(row: dict[str, Any]) -> str:
     location = Location.objects.filter(pk=row.get("location") or 0).first()
     where = location.path if location else "(deleted)"
     return f"{where}: {role or '(deleted)'} of the {row.get('subject', '')}"
+
+
+def superseded_by(proposal: Proposal) -> QuerySet[Proposal]:
+    """The suggestions accepting ``proposal`` superseded (``accept``: same target, same moment)."""
+    if proposal.status != Status.ACCEPTED:
+        return Proposal.objects.none()
+    return Proposal.objects.filter(
+        _same_target(proposal), status=Status.SUPERSEDED, decided_at=proposal.decided_at
+    ).exclude(pk=proposal.pk)
+
+
+def group_key(proposal: Proposal) -> tuple[str, int]:
+    """What a suggestion is about, for staff's queues to show them together: its location (an
+    annotation suggestion's; a representation's list item), or the annotation it edits."""
+    if proposal.kind == Kind.EDIT_ANNOTATION:
+        return ("annotation", proposal.annotation_id or 0)
+    if proposal.location_id is None and proposal.representation is not None:
+        return ("location", proposal.representation.location_id)
+    return ("location", proposal.location_id or 0)
+
+
+def assignment_of(location: Location) -> str:
+    """A location's annotation now, in words ("none", "not a data point", its name)."""
+    return _assignment({"annotation": location.annotation_id, "ignored": location.ignored})
 
 
 def _assignment(base: dict[str, Any]) -> str:

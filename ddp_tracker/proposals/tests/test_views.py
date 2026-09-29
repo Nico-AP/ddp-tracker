@@ -171,7 +171,7 @@ class SuggestingTests(TestCase):
         self.assertContains(own, "Withdraw")
         # in the panel, the path is clear from the context; elsewhere it says which data point
         self.assertNotContains(own, 'class="proposal__target"')
-        self.assertContains(own, 'name="in_panel" value="1"')  # kept after withdrawing
+        self.assertContains(own, 'name="hide_target" value="1"')  # kept after withdrawing
         mine = self.client.get(reverse("proposals:mine"))
         self.assertContains(
             mine, f'<code class="proposal__target">{self.name.path}</code>', html=True
@@ -203,7 +203,7 @@ class SuggestingTests(TestCase):
         proposal = Proposal.objects.get(kind=Kind.NEW_ANNOTATION)
         decided = self.client.post(
             reverse("proposals:decide", args=[proposal.pk, "reject"]),
-            {"reason": "Not now.", "in_panel": "1"},
+            {"reason": "Not now.", "hide_target": "1"},
         )
         self.assertContains(decided, f"Rejected by #{self.staff.pk}")
         self.assertNotContains(decided, 'class="proposal__target"')
@@ -280,13 +280,77 @@ class DecidingTests(TestCase):
         self.client.force_login(self.staff)
         queue = self.client.get(reverse("proposals:annotations"))
         self.assertEqual(queue.context["platform"], self.platform)  # the most first
-        self.assertEqual(queue.context["entries"][0]["proposal"], tiktok)
+        (first, second) = queue.context["groups"]  # a group per location, by path
+        self.assertEqual(
+            [first.location.path, second.location.path], ["/a.json/email", "/a.json/name"]
+        )
+        self.assertEqual([e["proposal"] for e in second.entries], [tiktok])
         self.assertContains(queue, "?platform=youtube")
         other = self.client.get(reverse("proposals:annotations"), {"platform": "youtube"})
-        self.assertEqual([e["proposal"] for e in other.context["entries"]], [youtube])
+        (group,) = other.context["groups"]
+        self.assertEqual([e["proposal"] for e in group.entries], [youtube])
         self.assertContains(
             self.client.get(reverse("schemas:platform", args=["tiktok"])), "Suggestions (3)"
         )
+
+    def test_suggestions_for_one_location_are_reviewed_together(self):
+        other_user = User.objects.create_user("second@example.test")
+        mine = self.propose(kind=Kind.LINK, location=self.name, annotation=self.shown)
+        theirs = submit(
+            other_user, Kind.NEW_ANNOTATION, location=self.name, values={"name": "Name"}
+        )
+        assert theirs is not None
+        self.propose(kind=Kind.IGNORE, location=self.email)
+        self.client.force_login(self.staff)
+        queue = self.client.get(reverse("proposals:annotations"))
+        groups = queue.context["groups"]
+        self.assertEqual(
+            [(g.location.path, [e["proposal"] for e in g.entries]) for g in groups],
+            [
+                ("/a.json/email", [groups[0].entries[0]["proposal"]]),
+                ("/a.json/name", [mine, theirs]),
+            ],
+        )
+        self.assertEqual(groups[1].now, "none")
+        # the path once, in the group's header; the cards leave it out
+        self.assertContains(
+            queue, '<code class="proposal-group__target">/a.json/name</code>', html=True
+        )
+        self.assertNotContains(queue, '<code class="proposal__target">')
+        self.assertContains(queue, '<p class="review-hint muted">', html=False)
+        # accepting one in the queue updates the one it superseded, next to it
+        response = self.client.post(
+            reverse("proposals:decide", args=[mine.pk, "accept"]),
+            {"hide_target": "1", "in_queue": "1"},
+        )
+        self.assertContains(response, f'id="proposal-{theirs.pk}"')
+        self.assertContains(response, 'hx-swap-oob="outerHTML"', count=1)
+        self.assertContains(response, "Superseded")
+        # without the queue (a panel), just the decided one
+        self.assertNotContains(
+            self.client.post(
+                reverse("proposals:decide", args=[theirs.pk, "accept"]), {"hide_target": "1"}
+            ),
+            "hx-swap-oob",
+        )
+
+    def test_representation_queue_groups_by_list_item(self):
+        video = ObjectType.objects.get(slug="video")
+        item = Location.objects.get(platform=self.platform, path="/a.json/videos/[]")
+        clip = Representation.objects.create(
+            location=item, pattern=Pattern.OBJECT, name="Clip", object=video
+        )
+        new = self.propose(
+            kind=Kind.NEW_REPRESENTATION,
+            location=item,
+            values={"pattern": Pattern.OBJECT, "name": "Video", "object": video.pk},
+        )
+        delete = self.propose(kind=Kind.DELETE_REPRESENTATION, representation=clip)
+        self.client.force_login(self.staff)
+        (group,) = self.client.get(reverse("proposals:representations")).context["groups"]
+        self.assertEqual(group.location, item)
+        self.assertEqual(group.now, "Clip")
+        self.assertEqual([e["proposal"] for e in group.entries], [new, delete])
 
     def test_accept_and_reject_one_at_a_time(self):
         accepted = self.propose(kind=Kind.LINK, location=self.name, annotation=self.shown)

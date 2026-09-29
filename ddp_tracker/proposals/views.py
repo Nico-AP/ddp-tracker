@@ -1,6 +1,7 @@
 """Staff's queues of open suggestions (annotations by platform, representations), a user's own
 suggestions, deciding one at a time, and the lists of open suggestions in the panels."""
 
+from dataclasses import dataclass, field
 from typing import Any
 
 from django.contrib.admin.views.decorators import staff_member_required
@@ -8,8 +9,10 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
+from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 
+from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform
 from ddp_tracker.proposals.models import Proposal
 from ddp_tracker.proposals.services import (
@@ -18,12 +21,16 @@ from ddp_tracker.proposals.services import (
     ProposalError,
     StaleError,
     accept,
+    assignment_of,
     changes,
+    group_key,
     is_stale,
     open_for,
     reject,
+    superseded_by,
     withdraw,
 )
+from ddp_tracker.schemas.models import Location
 from ddp_tracker.users.auth import signed_in_user
 
 Status = Proposal.Status
@@ -32,9 +39,58 @@ Status = Proposal.Status
 def _entries(proposals: QuerySet[Proposal]) -> list[dict[str, Any]]:
     """Proposals with what they change, for the templates."""
     proposals = proposals.select_related(
-        "proposed_by", "decided_by", "location", "annotation", "representation"
+        "proposed_by",
+        "decided_by",
+        "location",
+        "annotation",
+        "representation__location",
     )
     return [{"proposal": p, "changes": changes(p), "stale": is_stale(p)} for p in proposals]
+
+
+@dataclass
+class ProposalGroup:
+    """Suggestions about the same thing (``services.group_key``), shown together in a queue: a
+    location (with its annotation, or its representations, now) or an annotation."""
+
+    key: tuple[str, int]
+    location: Location | None = None
+    annotation: Annotation | None = None
+    now: str = ""
+    entries: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def id(self) -> str:
+        return f"group-{self.key[0]}-{self.key[1]}"
+
+    @property
+    def sort_key(self) -> str:
+        return self.location.path if self.location else str(self.annotation)
+
+
+def _grouped(
+    proposals: QuerySet[Proposal], *, representations: bool = False
+) -> list[ProposalGroup]:
+    """Staff's queue, one group per location or annotation (by path or name); oldest first
+    within a group."""
+    groups: dict[tuple[str, int], ProposalGroup] = {}
+    for entry in _entries(proposals.order_by("created_at")):
+        proposal = entry["proposal"]
+        key = group_key(proposal)
+        if key not in groups:
+            if key[0] == "annotation":
+                annotation = proposal.annotation
+                groups[key] = ProposalGroup(key, annotation=annotation)
+            else:
+                location = Location.objects.select_related("annotation").get(pk=key[1])
+                now = (
+                    ", ".join(str(r) for r in location.representations.all()) or "none"
+                    if representations
+                    else assignment_of(location)
+                )
+                groups[key] = ProposalGroup(key, location=location, now=now)
+        groups[key].entries.append(entry)
+    return sorted(groups.values(), key=lambda group: group.sort_key.casefold())
 
 
 def _open(kinds: tuple[str, ...]) -> QuerySet[Proposal]:
@@ -61,7 +117,7 @@ def annotation_queue(request: HttpRequest) -> HttpResponse:
         "queue": "annotations",
         "platforms": platforms,
         "platform": platform,
-        "entries": _entries(proposals),
+        "groups": _grouped(proposals),
     }
     return render(request, "proposals/queue.html", context)
 
@@ -71,7 +127,7 @@ def representation_queue(request: HttpRequest) -> HttpResponse:
     context = {
         "title": "Representation suggestions",
         "queue": "representations",
-        "entries": _entries(_open(REPRESENTATION_KINDS)),
+        "groups": _grouped(_open(REPRESENTATION_KINDS), representations=True),
     }
     return render(request, "proposals/queue.html", context)
 
@@ -86,12 +142,20 @@ def mine(request: HttpRequest) -> HttpResponse:
 def _decided(request: HttpRequest, proposal: Proposal, error: str = "") -> HttpResponse:
     """HTMX: the proposal's entry after a decision; the target's row and panels reload."""
     proposal.refresh_from_db()
+    # decided in a side panel or a queue's group: still without the path, which they show
+    hide_target = request.POST.get("hide_target") == "1"
     context = {
         "entry": {"proposal": proposal, "changes": changes(proposal), "stale": is_stale(proposal)},
         "error": error,
-        "in_panel": request.POST.get("in_panel") == "1",  # decided in a side panel: still no path
+        "hide_target": hide_target,
+        "in_queue": request.POST.get("in_queue") == "1",
     }
-    response = render(request, "proposals/_entry.html", context)
+    html = render_to_string("proposals/_entry.html", context, request)
+    if context["in_queue"]:  # the ones it superseded, next to it in the queue, update too
+        for entry in _entries(superseded_by(proposal)):
+            sibling = {"entry": entry, "hide_target": hide_target, "in_queue": True, "oob": True}
+            html += render_to_string("proposals/_entry.html", sibling, request)
+    response = HttpResponse(html)
     targets = []
     if proposal.location_id:
         targets.append(f"triaged-{proposal.location_id}")
@@ -148,6 +212,6 @@ def for_target(request: HttpRequest, target: str, pk: int) -> HttpResponse:
     context = {
         "entries": _entries(proposals),
         # in a location's side panel the location is clear from the context: no path
-        "in_panel": target in PANEL_TARGETS,
+        "hide_target": target in PANEL_TARGETS,
     }
     return render(request, "proposals/_for_target.html", context)
