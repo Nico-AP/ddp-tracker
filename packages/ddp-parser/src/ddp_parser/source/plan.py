@@ -13,6 +13,7 @@ from fnmatch import fnmatchcase
 
 from ddp_parser.model.paths import join
 from ddp_parser.options import Options
+from ddp_parser.privacy.path_redact import join_redacted
 from ddp_parser.source.entry import Entry
 from ddp_parser.source.grouping import group_names, mask_name, pattern_of
 
@@ -71,8 +72,9 @@ def _finish(folder: PlannedFolder, path: str, options: Options) -> None:
     if folder.folders and _should_collapse(folder, options):
         folder.folders = {COLLAPSED: _collapse(list(folder.folders.values()))}
     for segment, child in folder.folders.items():
-        _finish(child, join(path, segment), options)
-    folder.files = _group(folder.path, folder.loose)
+        child_path = join_redacted(path, segment) if options.redact_paths else join(path, segment)
+        _finish(child, child_path, options)
+    folder.files = _group(folder.path, folder.loose, options)
 
 
 def _should_collapse(folder: PlannedFolder, options: Options) -> bool:
@@ -136,7 +138,7 @@ def _matches(path: str, rules: tuple[str, ...]) -> bool:
     return False
 
 
-def _group(folder_path: str, entries: list[Entry]) -> list[PlannedFile]:
+def _group(folder_path: str, entries: list[Entry], options: Options) -> list[PlannedFile]:
     patterns = group_names({entry.name for entry in entries})
     planned: dict[str, PlannedFile] = {}
     for entry in entries:
@@ -144,5 +146,10 @@ def _group(folder_path: str, entries: list[Entry]) -> list[PlannedFile]:
         if name in planned:
             planned[name].entries.append(entry)
         else:
-            planned[name] = PlannedFile(name=name, path=join(folder_path, name), entries=[entry])
+            file_path = (
+                join_redacted(folder_path, name)
+                if options.redact_paths
+                else join(folder_path, name)
+            )
+            planned[name] = PlannedFile(name=name, path=file_path, entries=[entry])
     return list(planned.values())

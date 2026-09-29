@@ -8,6 +8,7 @@
     "sha256": "a5b8b88090b64465fa41d6a1f49226a89b1fccf1e905dda95a4a23d8209b47aa"
   },
   "options": {
+    "redact_paths": true,
     "samples": false,
     "max_samples": 3,
     "masked_shapes": [

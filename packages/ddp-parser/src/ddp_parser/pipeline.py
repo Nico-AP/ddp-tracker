@@ -27,6 +27,7 @@ from ddp_parser.model import (
     UnmatchedNode,
     UnmatchedReason,
 )
+from ddp_parser.model.paths import split
 from ddp_parser.options import Options
 from ddp_parser.parsers import Parsed, Parser, parser_for
 from ddp_parser.schematize import NodeBuilder, data_fields
@@ -130,7 +131,7 @@ class _Run:
 
     def folder(self, folder: PlannedFolder, depth: int) -> FolderNode:
         return FolderNode(
-            name=folder.name,
+            name=self._folder_name(folder),
             path=folder.path,
             modified=folder.modified,
             folders=folder.collapsed,
@@ -190,7 +191,12 @@ class _Run:
 
     def parsed(self, planned: PlannedFile, parser: Parser) -> FilesystemNode:
         """Parse every member into one builder; failed members are left out of the group."""
-        builder = NodeBuilder(planned.name, planned.path, max_samples=self._max_samples)
+        builder = NodeBuilder(
+            planned.name,
+            planned.path,
+            max_samples=self._max_samples,
+            redact_paths=self.options.redact_paths,
+        )
         first: tuple[Parsed, bytes] | None = None
         failures: list[tuple[UnmatchedReason, str]] = []
         for entry in planned.entries:
@@ -262,6 +268,17 @@ class _Run:
     @property
     def _max_samples(self) -> int:
         return self.options.max_samples if self.options.samples else 0
+
+    def _folder_name(self, folder: PlannedFolder) -> str | None:
+        if folder.name is None:
+            return None
+        if folder.collapsed is not None:
+            return folder.name
+        if self.options.redact_paths and folder.path:
+            parts = split(folder.path)
+            if parts:
+                return parts[-1]
+        return folder.name
 
 
 def _files(planned: PlannedFile) -> int | None:

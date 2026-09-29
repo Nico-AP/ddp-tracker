@@ -153,6 +153,16 @@ class GroupTests(TestCase):
         assert isinstance(group, MediaNode)
         self.assertEqual(group.files, 2)
 
+    def test_path_redact_single_thread_folder(self):
+        members = {
+            "messages/inbox/alice_123456789012345/message_1.json": b'{"text": "hi"}',
+        }
+        root = parse(make_zip(members), name="x.zip").root
+        inbox = children(children(root)["messages"])["inbox"]
+        thread = next(iter(children(inbox).values()))
+        self.assertNotIn("alice_123456789012345", thread.path)
+        self.assertTrue(thread.path.startswith("/messages/inbox/u"))
+
     def test_collapsed_folders(self):
         members = {
             "messages/inbox/johndoe_1234/message_1.json": b'{"text": "hi"}',

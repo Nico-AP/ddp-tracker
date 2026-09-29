@@ -29,6 +29,8 @@ from ddp_parser.model import (
 )
 from ddp_parser.options import Options
 from ddp_parser.pipeline import parse
+from ddp_parser.privacy.document import redact_document_paths
+from ddp_parser.privacy.path_redact import redact_path
 from ddp_parser.schematize.samples import mask
 
 __version__ = version("ddp-parser")
@@ -57,6 +59,8 @@ __all__ = [
     "node_from_dict",
     "node_to_dict",
     "parse",
+    "redact_document_paths",
+    "redact_path",
     "suggest",
     "to_dict",
     "to_json",

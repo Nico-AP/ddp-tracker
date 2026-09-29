@@ -59,6 +59,14 @@ schema tree the node sits. It is a string in
   its name pattern, e.g. `/message_{n}.json`.
 - Collapsed look-alike folders (see [Collapsed folders](#35-collapsed-folders))
   appear as `/{*}`, e.g. `/messages/inbox/{*}/message_{n}.json`.
+- With `options.redact_paths` (default **true**), identifying **segments** in
+  paths are replaced before they are stored: emails → `{email}`, UUIDs →
+  `{uuid}`, long numeric or hex ids → `{numeric_id}` / `{hex_id}`, phone-like
+  strings → `{phone}`, and Facebook message-thread folder names under a
+  `messages` ancestor → deterministic pseudonyms (same rules as
+  `ddp_tooling/ddp2json`). Reserved segments (`[]`, `{*}`, `{n}` in names) are
+  left unchanged. Folder collapse still runs on raw zip names; redaction applies
+  to the paths that are emitted.
 
 Folder entries and object keys need no separate markers: a folder or zip only
 ever contains entries, and a parsed file or object only ever contains keys, so
@@ -505,7 +513,8 @@ timestamp,action,device
     "max_total_size": 4294967296,
     "keep_ignored": false,
     "collapse_folders": [],
-    "keep_folders": []
+    "keep_folders": [],
+    "redact_paths": true
   },
   "warnings": [],
   "root": {
