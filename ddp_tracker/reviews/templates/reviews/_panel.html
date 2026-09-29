@@ -101,6 +101,12 @@
                 {% endif %}
               {% endif %}
             </button>
+            {% if open == row.primary and row.item.candidate %}
+              {# a similar path without an annotation to reuse: the dialog compares them #}
+              <p class="review-panel__note muted">
+                Similar to <code>{{ row.item.candidate.path|last_part }}</code> (not annotated): compare them in the dialog.
+              </p>
+            {% endif %}
           {% endif %}
         {% endwith %}
       {% endif %}

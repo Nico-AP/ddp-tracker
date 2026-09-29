@@ -209,17 +209,11 @@ def _row_context(request: HttpRequest, location: Location) -> dict[str, Any]:
     """Context of a triage row and its modal. ``upload`` (query or form) is the upload being
     reviewed; it's absent when triaging from the explorer.
     """
-    upload_id = request.POST.get("upload") or request.GET.get("upload") or None
-    observation = (
-        Observation.objects.filter(location=location, upload_id=upload_id)
-        .select_related("location", "location__annotation", "upload")
-        .first()
-        if upload_id
-        else None
-    )
+    observation = _reviewed(request, location)
     found = choices(observation) if observation else []
     is_new = observation is not None and location.pk in new_in(observation.upload)
     upload = observation.upload if observation else None
+    this, similar = _compared(location, observation)
     return {
         "location": location,
         "observation": observation,
@@ -227,9 +221,54 @@ def _row_context(request: HttpRequest, location: Location) -> dict[str, Any]:
         "own": own_values(request, upload),
         "is_new": is_new,
         "choices": found,
+        "this": this,
+        "similar": similar,
         "annotations": location.platform.annotations.all(),
         **_list_context(location),
     }
+
+
+def _reviewed(request: HttpRequest, location: Location) -> Observation | None:
+    """The location's observation in the upload being reviewed (``upload``, query or form)."""
+    upload_id = request.POST.get("upload") or request.GET.get("upload") or None
+    if not upload_id:
+        return None
+    return (
+        Observation.objects.filter(location=location, upload_id=upload_id)
+        .select_related("location", "location__annotation", "upload")
+        .first()
+    )
+
+
+def _compared(
+    location: Location, observation: Observation | None
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    """This data point and the paths it looks moved or renamed from (the reviewed observation's
+    suggestions, best first), each with what the counted uploads say about it, to compare them in
+    the dialog; an unannotated one can be annotated together with this one (``also``)."""
+    suggestions = observation.suggestions if observation else []
+    if not suggestions:
+        return None, []
+    found = {
+        other.path: other
+        for other in Location.objects.filter(
+            platform=location.platform_id, path__in=[s["path"] for s in suggestions]
+        ).select_related("annotation")
+    }
+    ids = [location.pk, *(other.pk for other in found.values())]
+    counted = profiles(ids, Observation.objects.filter(upload__registered_at__isnull=False))
+    similar = [
+        {
+            "location": found[s["path"]],
+            "profile": counted[found[s["path"]].pk],
+            "reason": s["reason"],
+            "score": s["score"],
+            "can_join": found[s["path"]].annotation_id is None and not found[s["path"]].ignored,
+        }
+        for s in suggestions
+        if s["path"] in found
+    ]
+    return {"location": location, "profile": counted[location.pk]}, similar
 
 
 def _list_context(location: Location) -> dict[str, Any]:
@@ -264,6 +303,14 @@ def triage(request: HttpRequest, pk: int) -> HttpResponse:
         targets["values"] = {
             field: request.POST.get(field, "").strip() for field in ("name", "description", "note")
         } | {"pii": request.POST.get("pii") == "on"}
+        # similar paths to annotate together with it: only those the dialog offered
+        _, similar = _compared(location, _reviewed(request, location))
+        offered = {entry["location"].pk for entry in similar if entry["can_join"]}
+        also = [int(pk) for pk in request.POST.getlist("also") if pk.isdigit()]
+        if also:
+            if not set(also) <= offered:
+                return HttpResponse(status=400)
+            targets["values"]["also"] = also
     kind = TRIAGE_KINDS.get(action)
     if kind is None:
         return HttpResponse(status=400)

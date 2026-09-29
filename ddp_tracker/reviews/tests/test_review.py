@@ -52,6 +52,53 @@ class ReviewStatusTests(TestCase):
             ("moved", "/Comment/Comments/App/[]/date", []),
         )
 
+    def test_similar_paths_compared_and_annotated_together(self):
+        """A moved path whose earlier path isn't annotated: the dialog compares the two, and one
+        new annotation can be for both."""
+        new_date = Location.objects.get(path="/user_data_tiktok.json/Comment/Comments/App/[]/date")
+        old_date = Location.objects.get(path="/Comment/Comments/App/[]/date")
+        self.client.force_login(self.user)
+        # the panel says why there is no one-click suggestion
+        panel = self.client.get(reverse("reviews:location", args=[self.zipped.pk, new_date.pk]))
+        self.assertContains(panel, "compare them in the dialog")
+        dialog_url = reverse("schemas:triage", args=[new_date.pk])
+        dialog = self.client.get(dialog_url, {"upload": self.zipped.pk})
+        self.assertContains(dialog, "Similar paths")
+        self.assertContains(dialog, f"<code>{old_date.path}</code>", html=True)
+        self.assertContains(dialog, '<th scope="row">Format</th>', html=True)
+        self.assertContains(dialog, "%Y-%m-%d", count=2)  # both sides' format
+        self.assertContains(
+            dialog,
+            f'<input type="checkbox" class="form-check-input" id="also-{old_date.pk}" name="also"'
+            f' value="{old_date.pk}" form="new-annotation">',
+            html=True,
+        )
+        # only paths the dialog offered: the annotated one isn't
+        refused = self.client.post(
+            dialog_url,
+            {"action": "new", "name": "Date", "upload": self.zipped.pk, "also": [self.name.pk]},
+        )
+        self.assertEqual(refused.status_code, 400)
+        self.client.post(
+            dialog_url,
+            {"action": "new", "name": "Date", "upload": self.zipped.pk, "also": [old_date.pk]},
+        )
+        new_date.refresh_from_db()
+        old_date.refresh_from_db()
+        self.assertIsNotNone(new_date.annotation)
+        self.assertEqual(old_date.annotation, new_date.annotation)  # the same data point
+
+    def test_an_annotated_similar_path_is_offered_as_is(self):
+        new_name = Location.objects.get(path="/user_data_tiktok.json/Profile/name")
+        self.client.force_login(self.user)
+        dialog = self.client.get(
+            reverse("schemas:triage", args=[new_name.pk]), {"upload": self.zipped.pk}
+        )
+        self.assertContains(dialog, "Link to Display name")
+        self.assertNotContains(dialog, 'name="also"')  # annotated already: nothing to join
+        panel = self.client.get(reverse("reviews:location", args=[self.zipped.pk, new_name.pk]))
+        self.assertNotContains(panel, "compare them in the dialog")
+
     def test_new_and_seen_before(self):
         later = parsed_upload(
             self.platform,

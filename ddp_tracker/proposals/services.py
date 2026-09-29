@@ -112,6 +112,19 @@ def _check_location(proposal: Proposal, user: User) -> None:
             raise ProposalError(msg)
     elif proposal.kind == Kind.NEW_ANNOTATION:
         _valid(AnnotationForm(data=proposal.values))
+        _also(proposal, location)
+
+
+def _also(proposal: Proposal, location: Location) -> list[Location]:
+    """The other locations a new annotation is also for (``values["also"]``: similar paths, the
+    same data point), on the platform. Those decided in the meantime (annotated, not a data
+    point) are left as they are."""
+    wanted = set(proposal.values.get("also") or []) - {location.pk}
+    found = list(Location.objects.filter(pk__in=wanted, platform=location.platform_id))
+    if len(found) != len(wanted):
+        msg = "A path to annotate together with it isn't a data point of this platform."
+        raise ProposalError(msg)
+    return [other for other in found if other.annotation_id is None and not other.ignored]
 
 
 def _check_annotation(proposal: Proposal, user: User) -> None:
@@ -328,15 +341,20 @@ def _link(proposal: Proposal, author: User, actor: User) -> None:
 
 
 def _new_annotation(proposal: Proposal, author: User, actor: User) -> None:
+    """The annotation, for the location and the similar paths it is also for (``also``)."""
     values = proposal.values
-    create_annotation(
-        _need(proposal.location, "a data point"),
+    location = _need(proposal.location, "a data point")
+    also = _also(proposal, location)  # still undecided ones only
+    annotation = create_annotation(
+        location,
         values.get("name", ""),
         author,
         description=values.get("description", ""),
         note=values.get("note", ""),
         pii=bool(values.get("pii")),
     )
+    for other in also:
+        link(other, annotation)
 
 
 def _ignore(proposal: Proposal, author: User, actor: User) -> None:
@@ -414,6 +432,8 @@ def changes(proposal: Proposal) -> list[tuple[str, str, str]]:
             rows += [
                 (field.capitalize(), "", values.get(field, "")) for field in ("description", "note")
             ]
+            also = Location.objects.filter(pk__in=values.get("also") or []).order_by("path")
+            rows += [("Also for", "", other.path) for other in also]
             if values.get("pii"):
                 rows.append(("PII", "", "yes"))
         return [row for row in rows if row[1] or row[2]]

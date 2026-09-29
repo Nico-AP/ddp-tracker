@@ -46,27 +46,124 @@
       </form>
     </section>
   {% endif %}
-  {% if choices %}
+  {% if similar %}
+    {# the paths this one looks moved or renamed from (views._compared), next to it to decide #}
     <section>
-      <h3>Likely matches</h3>
-      {% for choice in choices %}
-        <form hx-post="{% url 'schemas:triage' location.pk %}"
-              hx-target="#modal"
-              hx-swap="innerHTML">
-          <input type="hidden" name="action" value="link">
-          <input type="hidden" name="annotation" value="{{ choice.annotation.pk }}">
-          <input type="hidden"
-                 name="upload"
-                 value="{{ observation.upload_id|default:'' }}">
-          <button type="submit" class="btn btn-primary btn-sm">{{ choice.annotation }}</button>
-          <small class="muted">{{ choice.reason }} from <code>{{ choice.via }}</code> ({{ choice.score }})</small>
-        </form>
+      <h3>Similar paths</h3>
+      {% for other in similar %}
+        <div class="similar mb-3">
+          <p class="mb-1 muted">Likely {{ other.reason }} ({{ other.score }})</p>
+          <table class="table table-sm similar__table">
+            <thead>
+              <tr>
+                <th scope="col"></th>
+                <th scope="col">This one</th>
+                <th scope="col">Similar</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Path</th>
+                <td class="text-break">
+                  <code>{{ this.location.path }}</code>
+                </td>
+                <td class="text-break">
+                  <code>{{ other.location.path }}</code>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Type</th>
+                <td>{{ this.profile.label|default:"–" }}</td>
+                <td>{{ other.profile.label|default:"–" }}</td>
+              </tr>
+              <tr>
+                <th scope="row">Format</th>
+                <td>{{ this.profile.main_format|default:"–" }}</td>
+                <td>{{ other.profile.main_format|default:"–" }}</td>
+              </tr>
+              <tr>
+                <th scope="row">Seen</th>
+                <td>
+                  {{ this.profile.uploads }}× · {{ this.profile.first_seen|default:"–" }} – {{ this.profile.last_seen|default:"–" }}
+                </td>
+                <td>
+                  {{ other.profile.uploads }}× · {{ other.profile.first_seen|default:"–" }} – {{ other.profile.last_seen|default:"–" }}
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Examples</th>
+                <td class="text-break">
+                  {% for example in this.location.example_values %}
+                    {% include "schemas/_example.html" %}
+                    {% if not forloop.last %}<br>{% endif %}
+                  {% empty %}
+                    –
+                  {% endfor %}
+                </td>
+                <td class="text-break">
+                  {% for example in other.location.example_values %}
+                    {% include "schemas/_example.html" %}
+                    {% if not forloop.last %}<br>{% endif %}
+                  {% empty %}
+                    –
+                  {% endfor %}
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Annotation</th>
+                <td>{{ location.annotation|default:"none" }}</td>
+                <td>
+                  {% if other.location.annotation %}
+                    <a href="{{ other.location.annotation.get_absolute_url }}">{{ other.location.annotation }}</a>
+                  {% elif other.location.ignored %}
+                    not a data point
+                  {% else %}
+                    none
+                  {% endif %}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          {% if other.location.annotation %}
+            <form hx-post="{% url 'schemas:triage' location.pk %}"
+                  hx-target="#modal"
+                  hx-swap="innerHTML">
+              <input type="hidden" name="action" value="link">
+              <input type="hidden"
+                     name="annotation"
+                     value="{{ other.location.annotation.pk }}">
+              <input type="hidden"
+                     name="upload"
+                     value="{{ observation.upload_id|default:'' }}">
+              <button type="submit" class="btn btn-primary btn-sm">
+                {% if user.is_staff %}
+                  Link to {{ other.location.annotation }}
+                {% else %}
+                  Suggest {{ other.location.annotation }}
+                {% endif %}
+              </button>
+            </form>
+          {% elif other.can_join %}
+            <div class="form-check">
+              <input type="checkbox"
+                     class="form-check-input"
+                     id="also-{{ other.location.pk }}"
+                     name="also"
+                     value="{{ other.location.pk }}"
+                     form="new-annotation">
+              <label class="form-check-label" for="also-{{ other.location.pk }}">
+                Same data point: annotate it too (with the new annotation below)
+              </label>
+            </div>
+          {% endif %}
+        </div>
       {% endfor %}
     </section>
   {% endif %}
   <section>
     <h3>New annotation</h3>
     <form class="dialog__form"
+          id="new-annotation"
           hx-post="{% url 'schemas:triage' location.pk %}"
           hx-target="#modal"
           hx-swap="innerHTML">

@@ -28,8 +28,10 @@ the list, whose name is suggested for you ("List of Watched video").
 The dialog opens next to the side panel, so you can keep reading while you annotate. For a data
 point it offers:
 
-- **Likely matches**: if the data point was probably moved or renamed, the earlier field's
-  annotation, one click away;
+- **Similar paths**: if the data point was probably moved or renamed, the earlier field next to
+  it (type, format, when seen, examples, annotation) to compare. If that field is annotated, its
+  annotation is one click away; if not, tick "annotate it too" and the new annotation below is
+  for both;
 - **New annotation**: name, description, note, PII;
 - **Existing annotations** of the platform, searchable, to link to;
 - **Not a data point**, for things that don't need a description.

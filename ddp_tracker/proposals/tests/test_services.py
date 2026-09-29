@@ -164,6 +164,47 @@ class DecideTests(ProposalTestCase):
                 self.email.refresh_from_db()
                 self.assertEqual((self.email.annotation, self.email.ignored), expected)
 
+    def test_a_new_annotation_for_similar_paths_too(self):
+        when = Location.objects.get(path="/a.json/videos/[]/when")
+        other = Platform.objects.create(name="YouTube", slug="youtube")
+        elsewhere = Location.objects.create(platform=other, path="/x")
+        with self.assertRaisesMessage(ProposalError, "isn't a data point of this platform"):
+            submit(
+                self.curator,
+                Kind.NEW_ANNOTATION,
+                location=self.name,
+                values={"name": "Name", "also": [elsewhere.pk]},
+            )
+        proposal = submit(
+            self.curator,
+            Kind.NEW_ANNOTATION,
+            location=self.name,
+            values={"name": "Name", "also": [when.pk]},
+        )
+        assert proposal is not None
+        self.assertIn(("Also for", "", when.path), changes(proposal))
+        accept(proposal, self.staff)
+        self.name.refresh_from_db()
+        when.refresh_from_db()
+        self.assertEqual(when.annotation, self.name.annotation)
+
+    def test_similar_paths_decided_in_the_meantime_are_left_alone(self):
+        when = Location.objects.get(path="/a.json/videos/[]/when")
+        proposal = submit(
+            self.curator,
+            Kind.NEW_ANNOTATION,
+            location=self.name,
+            values={"name": "Name", "also": [when.pk]},
+        )
+        assert proposal is not None
+        meanwhile = create_annotation(when, "When", self.staff)
+        accept(proposal, self.staff)
+        when.refresh_from_db()
+        self.assertEqual(when.annotation, meanwhile)  # kept
+        self.name.refresh_from_db()
+        assert self.name.annotation is not None
+        self.assertEqual(self.name.annotation.name, "Name")
+
     def test_edit_annotation(self):
         values = {"name": "E-mail", "description": "The address", "note": "", "pii": True}
         proposal = submit(self.curator, Kind.EDIT_ANNOTATION, annotation=self.shown, values=values)
