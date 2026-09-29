@@ -411,7 +411,9 @@ class VocabularyTests(ViewTestCase):
         self.assertEqual((term.approved, term.created_by), (False, self.curator))
         for name in ("livestream", "Video", "…"):
             with self.subTest(name=name):
-                self.assertContains(self.client.post(url, data | {"name": name}), "form__error")
+                self.assertContains(
+                    self.client.post(url, data | {"name": name}), "invalid-feedback"
+                )
 
     def test_pending_terms_are_offered_to_their_suggester_only(self):
         livestream = suggest_term(ObjectType, "Livestream", "A live broadcast.", self.curator)

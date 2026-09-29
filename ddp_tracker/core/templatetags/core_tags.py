@@ -3,6 +3,7 @@ from collections import Counter
 from typing import Any
 
 from django import template
+from django.forms import BoundField
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
@@ -10,6 +11,25 @@ from ddp_tracker.ddps.values import OwnValues, Value
 from ddp_tracker.schemas import labels
 
 register = template.Library()
+
+# Bootstrap's class for a widget (BoundField.widget_type); anything else is a form-control
+_WIDGET_CLASSES = {
+    "select": "form-select",
+    "selectmultiple": "form-select",
+    "checkbox": "form-check-input",
+}
+
+
+@register.filter
+def bootstrap(field: BoundField) -> str:
+    """The field's widget with Bootstrap's class (``form-control``, ``form-select`` …) added to
+    its own, and ``is-invalid`` when the field has errors (includes/form.html)."""
+    classes = [
+        *field.field.widget.attrs.get("class", "").split(),
+        _WIDGET_CLASSES.get(field.widget_type, "form-control"),
+        *(["is-invalid"] if field.errors else []),
+    ]
+    return field.as_widget(attrs={"class": " ".join(dict.fromkeys(classes))})
 
 
 @register.filter

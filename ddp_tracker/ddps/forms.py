@@ -74,6 +74,9 @@ class UploadForm(forms.ModelForm):
             "requested_at": forms.DateInput(attrs={"type": "date"}),
             "file_format": forms.RadioSelect,
         }
+        help_texts = {
+            "request_format": "The format in which you requested the DDP on the platform."
+        }
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

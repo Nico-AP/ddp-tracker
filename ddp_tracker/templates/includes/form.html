@@ -1,17 +1,38 @@
-{# Renders a form's fields; the caller provides the <form> element and the submit button. #}
-{% if form.non_field_errors %}<div class="form__errors">{{ form.non_field_errors }}</div>{% endif %}
-{% for field in form %}
-  <div class="form__field form__field--{{ field.name }}{% if field.errors %} form__field--error{% endif %}">
+{# Renders a form's fields with Bootstrap's form classes (core_tags.bootstrap adds the widgets'); the caller provides the <form> element and the submit button. #}
+{% load core_tags %}
+{% for error in form.non_field_errors %}<div class="alert alert-danger py-2">{{ error }}</div>{% endfor %}
+{% for field in form.hidden_fields %}{{ field }}{% endfor %}
+{% for field in form.visible_fields %}
+  <div class="mb-3 form__field--{{ field.name }}">
     {% if field.widget_type == "checkbox" %}
       <div class="form-check">
-        {{ field }}
+        {{ field|bootstrap }}
         <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
       </div>
+    {% elif field.widget_type == "radioselect" or field.widget_type == "checkboxselectmultiple" %}
+      <fieldset>
+        <legend class="form-label fs-6">{{ field.label }}</legend>
+        {% for choice in field %}
+          <div class="form-check">
+            <input class="form-check-input{% if field.errors %} is-invalid{% endif %}"
+                   type="{% if field.widget_type == 'radioselect' %}radio{% else %}checkbox{% endif %}"
+                   name="{{ choice.data.name }}"
+                   id="{{ choice.id_for_label }}"
+                   value="{{ choice.data.value }}"
+                   {% if choice.data.selected %}checked{% endif %}
+                   {% if choice.data.attrs.required %}required{% endif %}>
+            <label class="form-check-label"
+                   for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+          </div>
+        {% endfor %}
+      </fieldset>
     {% else %}
-      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-      {{ field }}
+      <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field|bootstrap }}
     {% endif %}
-    {% if field.help_text %}<small class="form__help">{{ field.help_text }}</small>{% endif %}
-    {% for error in field.errors %}<small class="form__error">{{ error }}</small>{% endfor %}
+    {% if field.help_text %}
+      <div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>
+    {% endif %}
+    {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
   </div>
 {% endfor %}

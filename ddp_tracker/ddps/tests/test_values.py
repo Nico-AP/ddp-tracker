@@ -180,7 +180,12 @@ class OwnValuesTests(TestCase):
         edit = reverse("schemas:examples", args=[self.name.pk])
         form = self.get(edit)
         self.assertContains(form, "Extracted from uploads")
-        self.assertContains(form, 'value="Fritzli" id="id_extracted_0" checked')
+        self.assertContains(
+            form,
+            '<input class="form-check-input" type="checkbox" name="extracted" id="id_extracted_0"'
+            ' value="Fritzli" checked>',
+            html=True,
+        )
         forged = self.client.post(edit, {"extracted": ["Forged"], "example_values": ""})
         self.assertContains(forged, "Select a valid choice")  # can't be made up as "extracted"
         self.client.post(edit, {"extracted": ["Fritzli"], "example_values": "Jane"})

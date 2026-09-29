@@ -5,35 +5,11 @@
   max-width: 560px;
 }
 
-.form__field {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-unit * 0.5;
-  margin-bottom: $spacing-unit * 2;
-
-  input,
-  select,
-  textarea {
-    border: 1px solid $color-border;
-    border-radius: $radius-base;
-    padding: $spacing-unit;
-    font: inherit;
-
-    @include focus-ring;
-  }
-
-  ul {
-    list-style: none;
-    padding: 0;
-  }
-}
-
 .form__help {
   color: $color-text-muted;
 }
 
-.form__error,
-.form__errors {
+.form__error {
   color: $color-danger;
 }
 
@@ -96,34 +72,5 @@ a.btn {
   legend {
     color: $color-text-muted;
     font-size: $font-size-small;
-  }
-}
-
-// A representation's slots depend on its pattern: hide the ones it doesn't use (no JavaScript;
-// the server clears their values too).
-.representation-form {
-  &:has(input[name="pattern"][value="object"]:checked) {
-    .form__field--actor,
-    .form__field--activity,
-    .form__field--target {
-      display: none;
-    }
-  }
-
-  // a new representation linked from an annotation: role and subject only when it describes it
-  &:has(input[name="relation"][value="represents"]:checked) {
-    .form__field--role,
-    .form__field--subject {
-      display: none;
-    }
-  }
-
-  &:has(input[name="pattern"][value="unmapped"]:checked) {
-    .form__field--actor,
-    .form__field--activity,
-    .form__field--object,
-    .form__field--target {
-      display: none;
-    }
   }
 }

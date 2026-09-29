@@ -41,6 +41,13 @@ class Upload(models.Model):
         JSON = "json", "JSON file"
         CSV = "csv", "CSV file"
 
+    class RequestFormat(models.TextChoices):
+        """The format the DDP was requested in on the platform (not the container: a ZIP archive
+        is a ``FileFormat``)."""
+
+        JSON = "json", "JSON"
+        CSV = "csv", "CSV"
+
     class Plausibility(models.TextChoices):
         """Whether the upload counts towards the public schema (docs/tracker/concepts.md)."""
 
@@ -78,7 +85,7 @@ class Upload(models.Model):
     request_format = models.CharField(
         max_length=64,
         blank=True,
-        choices=FileFormat.choices,
+        choices=RequestFormat.choices,
     )
     file_format = models.CharField(max_length=16, choices=FileFormat.choices, blank=True)
     file_name = models.CharField(max_length=255)

@@ -85,7 +85,7 @@ class AnnotationTests(TestCase):
         response = self.client.post(
             reverse("annotations:edit", args=[self.annotation.pk]), {"name": ""}
         )
-        self.assertContains(response, "form__error")
+        self.assertContains(response, "invalid-feedback")
 
     def test_unlink(self):
         self.client.force_login(self.user)

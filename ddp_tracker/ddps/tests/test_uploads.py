@@ -27,7 +27,7 @@ class UploadFlowTests(TestCase):
         settings.enable()
         self.addCleanup(settings.disable)
 
-    def post(self, data: bytes, name: str = "export.zip", file_format: str = "zip"):
+    def post(self, data: bytes, name: str = "export.zip", file_format: str = "zip", **extra):
         self.client.force_login(self.user)
         with self.captureOnCommitCallbacks(execute=True):
             return self.client.post(
@@ -38,8 +38,21 @@ class UploadFlowTests(TestCase):
                     "language": "de",
                     "file_format": file_format,
                     "file": SimpleUploadedFile(name, data),
+                    **extra,
                 },
             )
+
+    def test_the_request_format_is_json_or_csv_not_the_container(self):
+        select = str(UploadForm()["request_format"])
+        for value in ('value=""', 'value="json"', 'value="csv"'):
+            self.assertIn(value, select)
+        self.assertNotIn('value="zip"', select)
+        response = self.post(make_zip(PROFILE), request_format="zip")
+        self.assertEqual(response.status_code, 200)  # the form again, with the error
+        self.assertIn("request_format", response.context["form"].errors)
+        self.assertFalse(Upload.objects.exists())
+        self.post(make_zip(PROFILE), request_format="json")  # a ZIP of JSON files
+        self.assertEqual(Upload.objects.get().request_format, "json")
 
     def test_login_required(self):
         response = self.client.get(reverse("ddps:upload-create"))

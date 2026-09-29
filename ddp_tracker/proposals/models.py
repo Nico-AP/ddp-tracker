@@ -3,8 +3,6 @@ representations. Only staff decide (``services.accept`` applies it, ``reject`` r
 curated models only ever hold approved data. See docs/docs/tracker/concepts.md, "Suggestions
 and approval"."""
 
-from typing import Any
-
 from django.conf import settings
 from django.db import models
 
@@ -83,7 +81,3 @@ class Proposal(models.Model):
     @property
     def is_open(self) -> bool:
         return self.status == self.Status.OPEN
-
-    @property
-    def target(self) -> Any:  # noqa: ANN401 - a location, an annotation or a representation
-        return self.location or self.annotation or self.representation
