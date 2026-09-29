@@ -1,4 +1,4 @@
-"""The review's "To assign" list as a tree (``schemas/tree.py``): an upload's data points, each
+"""The review's New and Known tabs as a tree (``schemas/tree.py``): an upload's data points, each
 row with its suggestions and status (``TriageItem``) and the uploader's own values."""
 
 from dataclasses import dataclass
@@ -16,10 +16,16 @@ from ddp_tracker.schemas.tree import PREVIEW, Row, Tree, TreeBuilder, places, ro
 @dataclass
 class ReviewRow(Row):
     item: TriageItem | None = None  # of ``primary``: its suggestions and status
+    in_scope: bool = True  # False: another tab's, shown only to head the rows of its fields
 
     @property
     def primary(self) -> Location:
         return self.item.location if self.item else self.locations[-1]
+
+    @property
+    def is_open(self) -> bool:
+        """Still to assign in this tab: another tab's row counts there, not here."""
+        return self.in_scope and super().is_open
 
 
 class _Builder(TreeBuilder):
@@ -77,15 +83,23 @@ def build(
     q: str = "",
     *,
     annotated: bool = False,
+    scope: set[int] | None = None,
 ) -> Tree:
     """The tree of ``items`` (the untriaged data points, in file order). A list is on its row
     even when it is decided itself, as long as fields of its items aren't. With ``annotated``,
-    the decided data points are rows too. ``q`` keeps only rows whose name, path or (for the
-    uploader) own values contain it, with the rows below them."""
+    the decided data points are rows too. ``scope`` (location ids: a tab's) keeps only those
+    data points; a list outside it still heads the rows of its items' fields. ``q`` keeps only
+    rows whose name, path or (for the uploader) own values contain it, with the rows below
+    them."""
     builder = _Builder(upload, own, {item.location.path: item for item in items})
     everything = in_file_order(list(builder.points.values())) if annotated else items
     for entry in everything:
-        builder.row(row_key(entry.location.path))
+        if scope is None or entry.location.pk in scope:
+            builder.row(row_key(entry.location.path))
+    if scope is not None:
+        for row in builder.rows.values():
+            if isinstance(row, ReviewRow):
+                row.in_scope = any(location.pk in scope for location in row.locations)
 
     def matches(row: Row, query: str) -> bool:
         values = [

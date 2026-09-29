@@ -156,7 +156,7 @@ class SuggestingTests(TestCase):
         review = self.client.get(reverse("reviews:review", args=[self.upload.pk]))
         self.assertContains(review, "1 suggestion")
         self.assertContains(review, "status-dot--pending")
-        self.assertContains(review, 'id="open-count" class="badge rounded-pill">')
+        self.assertContains(review, '<span id="open-count">')
         explorer = self.client.get(reverse("schemas:platform", args=["tiktok"]))
         self.assertContains(explorer, "1 suggestion")
         panel = self.client.get(

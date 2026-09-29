@@ -1,5 +1,5 @@
-"""Reviewing an upload: its untriaged data points, what changed, what is missing
-(definitions: docs/docs/tracker/concepts.md)."""
+"""Reviewing an upload: its data points that are new and those known already, what changed, what
+is missing, and which of them are still to assign (definitions: docs/docs/tracker/concepts.md)."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -9,6 +9,7 @@ from ddp_tracker.schemas.models import ITEM, Location, Observation
 from ddp_tracker.schemas.profiles import Profile, profiles
 from ddp_tracker.schemas.services import Choice, choices
 from ddp_tracker.schemas.timeline import FieldChange, change_details, new_in
+from ddp_tracker.schemas.tree import row_key
 
 
 @dataclass(frozen=True)
@@ -90,6 +91,26 @@ def _untriaged(upload: Upload) -> list[Observation]:
             )
         )
     )
+
+
+NEW, KNOWN = "new", "known"
+
+
+def scopes(upload: Upload) -> dict[str, set[int]]:
+    """The location ids of the upload's data points per tab: **new** (no earlier-requested
+    upload has the path) and **known** (earlier ones had it, and nothing changed). Changed data
+    points are the Changed tab's only."""
+    points = set(
+        upload.observations.filter(is_data_point=True).values_list("location_id", flat=True)
+    )
+    new = new_in(upload) & points
+    return {NEW: new, KNOWN: points - new - set(change_details(upload))}
+
+
+def row_count(upload: Upload, scope: set[int]) -> int:
+    """The rows ``scope`` makes in the tree: a list and its item share one."""
+    paths = Location.objects.filter(pk__in=scope).values_list("path", flat=True)
+    return len({row_key(path) for path in paths})
 
 
 def triage_items(upload: Upload) -> list[TriageItem]:

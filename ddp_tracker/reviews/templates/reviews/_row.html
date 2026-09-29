@@ -1,8 +1,8 @@
 {# One line of the tree (reviews/tree.py): name, type, suggestion or annotation, a preview, the status. No buttons: the actions are in the side panel. Reloads itself after a change to any of its locations; then (oob) the counts too. #}
-<div class="review-row review-row--depth-{{ row.depth|default:0 }}{% if row.decided %} review-row--decided{% endif %}"
+<div class="review-row review-row--depth-{{ row.depth|default:0 }}{% if row.decided %} review-row--decided{% endif %}{% if not row.in_scope %} review-row--context{% endif %}"
      role="listitem"
      data-panel-row
-     hx-get="{% url 'reviews:row' upload.pk row.location.pk %}"
+     hx-get="{% url 'reviews:row' upload.pk row.location.pk %}?tab={{ tab }}"
      hx-trigger="{{ row.triggers }}"
      hx-swap="outerHTML">
   <button type="button"
@@ -47,5 +47,5 @@
   {% include "schemas/tree/_group_count.html" %}
   {% include "schemas/tree/_root_count.html" %}
   {% include "reviews/_progress.html" %}
-  <span id="open-count" class="badge rounded-pill" hx-swap-oob="true">{{ open_count }}</span>
+  <span id="open-count" hx-swap-oob="true">{{ open_count }}</span>
 {% endif %}

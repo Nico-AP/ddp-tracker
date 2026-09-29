@@ -9,7 +9,7 @@ from django.urls import reverse
 
 from ddp_tracker.core.tests.utils import parsed_file, parsed_upload
 from ddp_tracker.ddps.models import Platform
-from ddp_tracker.reviews.services import review
+from ddp_tracker.reviews.services import KNOWN, NEW, review, scopes
 from ddp_tracker.schemas.models import Location
 from ddp_tracker.schemas.services import create_annotation
 from ddp_tracker.users.models import User
@@ -77,8 +77,14 @@ class ReviewStatusTests(TestCase):
         self.client.force_login(self.user)
         url = reverse("reviews:review", args=[self.zipped.pk])
         page = self.client.get(url)
-        # the list and its item are one row: App[], its fields date and comment, and name
-        self.assertContains(page, 'id="open-count" class="badge rounded-pill">4<')
+        # the list and its item are one row: App[], its fields date and comment, and name; all
+        # new here (the earlier upload was a single file: every path moved), none known
+        self.assertContains(page, 'New <span class="badge rounded-pill">4</span>')
+        self.assertContains(page, 'Known <span class="badge rounded-pill">0</span>')
+        self.assertContains(page, '<span id="open-count">4</span> to assign')
+        self.assertContains(page, "Only missing annotations")
+        known = self.client.get(url, {"tab": "known"})
+        self.assertContains(known, "No known data points")
         self.assertContains(page, "Missing <span")
         self.assertContains(page, "not in this upload")
         self.assertContains(page, "Compared with earlier TikTok uploads")
@@ -128,7 +134,7 @@ class ReviewStatusTests(TestCase):
         page = self.client.get(url, {"hide": "1"})
         self.assertContains(page, "checked")
         # the counts are the open rows either way
-        self.assertContains(page, 'id="open-count" class="badge rounded-pill">3<')
+        self.assertContains(page, '<span id="open-count">3</span> to assign')
 
     def test_the_filter_returns_the_groups_only(self):
         self.client.force_login(self.user)
@@ -151,7 +157,9 @@ class ReviewStatusTests(TestCase):
             {"action": "link", "annotation": chosen.annotation.pk, "upload": self.zipped.pk},
         )
         self.assertEqual(response["HX-Trigger"], f"triaged-{name.pk}")
-        row = self.client.get(reverse("reviews:row", args=[self.zipped.pk, name.pk]))
+        row = self.client.get(
+            reverse("reviews:row", args=[self.zipped.pk, name.pk]), {"tab": "new"}
+        )
         self.assertContains(row, "review-row--decided")
         self.assertContains(row, "status-dot--decided")
         self.assertContains(row, "Display name")
@@ -159,7 +167,8 @@ class ReviewStatusTests(TestCase):
         # out of band: the group is done, one row less to assign, one more data point decided
         self.assertContains(row, 'hx-swap-oob="true"', count=4)  # group, root, tab, progress
         self.assertContains(row, "done")
-        self.assertContains(row, 'id="open-count" class="badge rounded-pill" hx-swap-oob="true">3<')
+        self.assertContains(row, '<span id="open-count" hx-swap-oob="true">3</span>', html=True)
+        self.assertContains(row, "?tab=new")  # it reloads in its tab again
         self.assertContains(row, "1 of 5 annotated")
 
     def test_the_panel_leads_with_the_suggestion(self):
@@ -252,3 +261,86 @@ class ChangedTests(TestCase):
         self.assertContains(page, "kind:")
         self.assertContains(page, "<code>unreadable file</code>", html=True)  # plain words
         self.assertNotContains(page, "(now )")
+
+
+class TabTests(TestCase):
+    """New, Known and Changed split the upload's data points; "Only to assign" narrows New and
+    Known."""
+
+    def setUp(self):
+        self.user = User.objects.create_user("curator", is_staff=True)
+        self.platform = Platform.objects.create(name="TikTok", slug="tiktok")
+        parsed_upload(
+            self.platform,
+            {"a.json": b'{"kept": "x", "typed": "2024-01-01"}'},
+            requested_at=date(2026, 1, 1),
+            register=True,
+        )
+        self.later = parsed_upload(
+            self.platform,
+            {"a.json": b'{"kept": "y", "typed": 5}', "b.json": b'{"added": 1}'},
+            requested_at=date(2026, 6, 1),
+            register=True,
+        )
+        self.url = reverse("reviews:review", args=[self.later.pk])
+        self.client.force_login(self.user)
+
+    def paths(self, tab):
+        found = scopes(self.later)[tab]
+        return set(Location.objects.filter(pk__in=found).values_list("path", flat=True))
+
+    def test_each_data_point_is_in_one_tab(self):
+        self.assertEqual(self.paths(NEW), {"/b.json/added"})
+        self.assertEqual(self.paths(KNOWN), {"/a.json/kept"})
+        changed = [item.observation.location.path for item in review(self.later).changed]
+        self.assertEqual(changed, ["/a.json/typed"])  # its type is new: Changed only
+        new = self.client.get(self.url)  # New is the first tab
+        self.assertContains(new, "added")
+        self.assertNotContains(new, "kept")
+        known = self.client.get(self.url, {"tab": "known"})
+        self.assertContains(known, "kept")
+        self.assertNotContains(known, "added")
+        self.assertContains(known, 'name="tab" value="known"')  # the filters stay in the tab
+
+    def test_only_to_assign_in_known(self):
+        kept = Location.objects.get(path="/a.json/kept")
+        create_annotation(kept, "Kept", self.user)
+        shown = self.client.get(self.url, {"tab": "known"})
+        self.assertContains(shown, "status-dot--decided")
+        self.assertContains(shown, '<span id="open-count">0</span> to assign')
+        only = self.client.get(self.url, {"tab": "known", "hide": "1"})
+        self.assertContains(only, "Everything here is annotated")
+        # a row reloaded in Known counts what is left in Known
+        row = self.client.get(
+            reverse("reviews:row", args=[self.later.pk, kept.pk]), {"tab": "known"}
+        )
+        self.assertContains(row, '<span id="open-count" hx-swap-oob="true">0</span>', html=True)
+        other = self.client.get(
+            reverse("reviews:row", args=[self.later.pk, kept.pk]), {"tab": "new"}
+        )
+        self.assertContains(other, '<span id="open-count" hx-swap-oob="true">1</span>', html=True)
+
+    def test_another_tabs_list_heads_its_new_fields_without_counting(self):
+        platform = Platform.objects.create(name="YouTube", slug="youtube")
+        parsed_upload(
+            platform,
+            {"v.json": b'{"Videos": [{"Date": "2024-01-01"}]}'},
+            requested_at=date(2026, 1, 1),
+            register=True,
+        )
+        later = parsed_upload(
+            platform,
+            {"v.json": b'{"Videos": [{"Date": "2024-01-01", "Likes": 3}]}'},
+            requested_at=date(2026, 6, 1),
+            register=True,
+        )
+        self.assertEqual(
+            set(Location.objects.filter(pk__in=scopes(later)[NEW]).values_list("path", flat=True)),
+            {"/v.json/Videos/[]/Likes"},
+        )
+        page = self.client.get(reverse("reviews:review", args=[later.pk]))
+        # the known list heads its new field, dimmed, and isn't counted as to assign in New
+        self.assertContains(page, "Videos[]")
+        self.assertContains(page, "review-row--context", count=1)
+        self.assertContains(page, 'New <span class="badge rounded-pill">1</span>')
+        self.assertContains(page, '<span id="open-count">1</span> to assign')

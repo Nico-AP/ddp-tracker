@@ -97,9 +97,12 @@ class OwnValuesTests(TestCase):
         self.assertIn(cookie_name(self.upload), self.client.cookies)
 
     def test_the_uploader_sees_them_with_addresses_masked(self):
-        page = self.get(self.review)
+        # name and mail were in the earlier upload (Known), bio wasn't (New)
+        page = self.get(self.review, tab="known")
         self.assertContains(page, '<span class="review-row__values">Fritzli</span>', html=True)
         self.assertContains(page, "fxxxx@xxxxxxx.xxx")  # a whole address
+        self.assertNotContains(page, "fritz@example.com")
+        page = self.get(self.review, tab="new")
         self.assertContains(page, "Write me: fxxxx@xxxxxxx.xxx")  # an address inside a text
         self.assertNotContains(page, "fritz@example.com")
         panel = self.get(self.panel)

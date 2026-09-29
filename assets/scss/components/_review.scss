@@ -527,6 +527,11 @@
   }
 }
 
+// another tab's data point (e.g. a known list in New), shown to head the rows of its new fields
+.review-row--context {
+  opacity: 0.6;
+}
+
 .review-panel__entry {
   margin: $spacing-unit 0 ($spacing-unit * 0.5);
   color: $color-text-muted;

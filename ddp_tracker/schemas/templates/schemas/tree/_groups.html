@@ -46,6 +46,8 @@
         Everything here is annotated.
       {% elif show == "representations" %}
         Every annotated data point here has a representation.
+      {% elif empty %}
+        {{ empty }}
       {% else %}
         Nothing to show.
       {% endif %}

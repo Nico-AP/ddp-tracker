@@ -15,8 +15,8 @@ from django.views.decorators.http import require_POST
 
 from ddp_tracker.ddps.models import Upload
 from ddp_tracker.ddps.values import OwnValues, own_values
-from ddp_tracker.reviews.services import Review, review, triage_items
-from ddp_tracker.reviews.tree import build, build_row
+from ddp_tracker.reviews.services import KNOWN, NEW, Review, review, row_count, scopes, triage_items
+from ddp_tracker.reviews.tree import ReviewRow, build, build_row
 from ddp_tracker.schemas.examples import EXTRACTED, add_examples, as_text
 from ddp_tracker.schemas.filters import SchemaFilter
 from ddp_tracker.schemas.models import Location, Observation
@@ -24,7 +24,9 @@ from ddp_tracker.schemas.timeline import change_details
 from ddp_tracker.schemas.tree import sections
 from ddp_tracker.schemas.views import panel_context
 
-TABS = ("assign", "changed", "missing")
+# New and Known are trees of data points ("Only to assign" narrows them); Changed and Missing lists
+TREE_TABS = (NEW, KNOWN)
+TABS = (*TREE_TABS, "changed", "missing")
 
 
 @dataclass(frozen=True)
@@ -47,33 +49,43 @@ def progress_of(upload: Upload) -> Progress:
 def upload_review(request: HttpRequest, pk: int) -> HttpResponse:
     """The review page. With htmx (the filter box), only the tree's groups."""
     upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
-    tab = request.GET.get("tab", "assign")
-    tab = tab if tab in TABS else "assign"
+    tab = _tab(request)
     context: dict[str, Any] = {"upload": upload, "tab": tab, "review": None}
     if upload.registered_at:
         context |= _review_context(request, upload, tab)
-    if request.headers.get("HX-Request") and tab == "assign":
+    if request.headers.get("HX-Request") and tab in TREE_TABS:
         return render(request, "schemas/tree/_groups.html", context)
     return render(request, "reviews/base.html", context)
+
+
+def _tab(request: HttpRequest) -> str:
+    tab = request.GET.get("tab", NEW)
+    return tab if tab in TABS else NEW
 
 
 def _review_context(request: HttpRequest, upload: Upload, tab: str) -> dict[str, Any]:
     result: Review = review(upload)
     own = own_values(request, upload)
     q = request.GET.get("q", "").strip()
-    hide = request.GET.get("hide") == "1"  # the annotated ones
-    tree = build(upload, result.triage, own, q, annotated=not hide)
-    everything = build(upload, result.triage, own) if q else tree
+    hide = request.GET.get("hide") == "1"  # "Only to assign": the annotated ones hidden
+    found = scopes(upload)
+    context: dict[str, Any] = {}
+    if tab in TREE_TABS:
+        tree = build(upload, result.triage, own, q, annotated=not hide, scope=found[tab])
+        everything = build(upload, result.triage, own, scope=found[tab]) if q else tree
+        context = {"tree": tree, "open_count": everything.open_count}
     platform = upload.platform_id
-    return {
+    return context | {
         "row_template": "reviews/_row.html",
         "annotating": True,  # counts of what is still to assign, Enter to annotate
         "review": result,
         "own": own,
         "q": q,
         "hide": hide,
-        "tree": tree,
-        "open_count": everything.open_count,
+        "counts": {name: row_count(upload, scope) for name, scope in found.items()},
+        "empty": "No new data points: every one was in an earlier upload."
+        if tab == NEW
+        else "No known data points: none was in an earlier upload unchanged.",
         "progress": progress_of(upload),
         "changed": sections(
             platform, [(c.observation.location, c) for c in result.changed], upload.file_name
@@ -88,18 +100,23 @@ def _review_context(request: HttpRequest, upload: Upload, tab: str) -> dict[str,
 
 
 def review_row(request: HttpRequest, pk: int, location_pk: int) -> HttpResponse:
-    """HTMX: one row of the "To assign" tree, reloaded after a change; out of band, its group's
-    and root's counts, the tab's count and the progress."""
+    """HTMX: one row of the New or Known tree (``?tab=``), reloaded after a change; out of band,
+    its group's and root's counts, what is left to assign in the tab, and the progress."""
     upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
     location = get_object_or_404(Location, pk=location_pk, platform=upload.platform)
     get_object_or_404(Observation, upload=upload, location=location)
     own = own_values(request, upload)
+    tab = _tab(request)
     row, group_path, root_path = build_row(upload, location, own)
-    tree = build(upload, triage_items(upload), own)
+    scope = scopes(upload).get(tab)
+    if scope is not None and isinstance(row, ReviewRow):
+        row.in_scope = any(loc.pk in scope for loc in row.locations)
+    tree = build(upload, triage_items(upload), own, scope=scope)
     group = next((g for g in tree.groups if g.path == group_path), None)
     root = next((r for r in tree.roots if r.path == root_path), None)
     context = {
         "upload": upload,
+        "tab": tab,
         "row": row,
         "own": own,
         "group_id": group.id if group else "",
