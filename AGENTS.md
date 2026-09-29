@@ -94,6 +94,9 @@ package — deliberately kept out of `pyproject.toml` and `uv`'s dependency tree
   `btn btn-outline-secondary btn-sm`, never a bare `btn`. Button sizes are Sass variables in
   `vendors/_bootstrap.scss`; never set `--bs-btn-*` on `.btn` itself (it would win over every
   variant and size class), only on a variant (our colors: `.btn-primary`).
+  Tables are plain Bootstrap (`table`, `table-sm` …): no padding or borders on `.table` cells in
+  our Sass (it would disable `table-sm` and the like); `text-break` on cells with long values
+  such as paths.
   The shared dialog is a native `<dialog class="dialog">`, not Bootstrap's `.modal`.
   Bootstrap's own Sass still uses `@import`; `--quiet-deps` silences its deprecation warnings.
 - Output: `static/css/main.css` — a build artifact, gitignored, never hand-edited or committed.

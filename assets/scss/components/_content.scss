@@ -1,28 +1,6 @@
 @use "sass:color";
 @use "../abstracts/variables" as *;
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-
-  th,
-  td {
-    border-bottom: 1px solid $color-border;
-    padding: $spacing-unit;
-    text-align: left;
-    word-wrap: break-word;
-  }
-}
-
-.table-fixed {
-  table-layout: fixed;
-}
-
-.table-auto {
-  table-layout: auto !important;
-}
-
 .facts {
   display: grid;
   grid-template-columns: max-content 1fr;

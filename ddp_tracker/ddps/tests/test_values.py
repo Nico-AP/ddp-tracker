@@ -152,8 +152,14 @@ class OwnValuesTests(TestCase):
         panel = self.get(self.panel)
         self.assertContains(panel, "Values in this file")
         self.assertIsNone(self.name.annotation)  # not annotated: no matter
-        self.assertContains(panel, "Add to examples")
-        self.assertContains(panel, '<code class="own-value" title="Fritzli">Fritzli</code>')
+        self.assertContains(panel, "Add selected to examples")
+        # each value a checkbox to select it, shown as it is
+        self.assertContains(
+            panel,
+            '<label class="own-values__row"><input type="checkbox" name="use" value="0">'
+            '<code class="chip chip--value" title="Fritzli">Fritzli</code></label>',
+            html=True,
+        )
         self.assertNotContains(panel, 'name="value"')  # not editable
         url = reverse("reviews:add-examples", args=[self.upload.pk, self.name.pk])
         # only positions count: a posted text can't pass for an extracted value

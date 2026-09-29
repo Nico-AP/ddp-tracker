@@ -59,7 +59,9 @@ class PublicPagesTests(ViewTestCase):
         listing = self.client.get(reverse("representations:representations"))
         self.assertContains(listing, "user · viewed · video")
         self.assertContains(listing, "<td>TikTok</td>", html=True)
-        self.assertContains(listing, f"<td><code>{self.item.path}</code></td>", html=True)
+        self.assertContains(
+            listing, f'<td class="text-break"><code>{self.item.path}</code></td>', html=True
+        )
         self.assertContains(listing, "<td>2</td>", html=True)
         detail = self.client.get(self.watched.get_absolute_url())
         self.assertContains(detail, self.item.path)

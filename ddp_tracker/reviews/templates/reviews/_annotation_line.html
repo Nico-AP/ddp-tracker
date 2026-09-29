@@ -11,16 +11,18 @@
   <span class="muted">none yet</span>
 {% endif %}
 {% if user.is_authenticated %}
-  ·
-  <button type="button"
-          class="link-button"
-          hx-get="{% url 'schemas:triage' loc.pk %}{% if observation %}?upload={{ upload.pk }}{% endif %}"
-          hx-target="#modal"
-          hx-swap="innerHTML">
-    {% if user.is_staff %}
-      Change
-    {% else %}
-      Suggest a change
-    {% endif %}
-  </button>
+  {% if loc.annotation or loc.ignored %}
+    ·
+    <button type="button"
+            class="link-button"
+            hx-get="{% url 'schemas:triage' loc.pk %}{% if observation %}?upload={{ upload.pk }}{% endif %}"
+            hx-target="#modal"
+            hx-swap="innerHTML">
+      {% if user.is_staff %}
+        Change
+      {% else %}
+        Suggest a change
+      {% endif %}
+    </button>
+  {% endif %}
 {% endif %}

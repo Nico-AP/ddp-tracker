@@ -45,18 +45,22 @@
     {% include "ddps/_plausibility.html" %}
     <h2>Review</h2>
     {% if upload.registered_at %}
-      <p>
+      <p class="mb-0">
         <a class="btn btn-primary"
            href="{% url 'reviews:review' upload.pk %}">Review this upload</a>
-        <span class="muted">against everything collected for {{ upload.platform }}: new data points to assign, changes, missing data points.</span>
+      </p>
+      <p class="muted">
+        Reviews it against everything collected for {{ upload.platform }}: new data points to assign, changes, missing data points.
       </p>
     {% else %}
       <p class="muted">Not part of the collected schema{% if not upload.counts %} (see above){% endif %}.</p>
       {% if can_inspect %}
-        <p>
+        <p class="mb-0">
           <a class="btn btn-primary"
              href="{% url 'ddps:upload-inspect' upload.pk %}">Inspect this upload</a>
-          <span class="muted">its files and data points, and how they compare with the {{ upload.platform }} uploads that count.</span>
+        </p>
+        <p class="muted">
+          Inspect its files and data points, and how they compare with the {{ upload.platform }} uploads that count.
         </p>
       {% endif %}
     {% endif %}

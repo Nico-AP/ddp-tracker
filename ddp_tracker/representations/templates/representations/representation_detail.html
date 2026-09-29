@@ -45,7 +45,7 @@
               <tr>
                 <td>{{ subject }}</td>
                 <td>{{ link.role }}</td>
-                <td>
+                <td class="text-break">
                   <code>{{ link.relative_path }}</code>
                   {% if link.location.annotation %}
                     (<a href="{{ link.location.annotation.get_absolute_url }}">{{ link.location.annotation }}</a>)

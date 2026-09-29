@@ -102,7 +102,6 @@ html.dialog-locked {
 
   .table {
     margin: 0;
-    table-layout: auto;
   }
 
   thead th {
@@ -169,7 +168,6 @@ html.dialog-locked {
   }
 
   td {
-    padding: ($spacing-unit * 0.5);
     vertical-align: top;
   }
 

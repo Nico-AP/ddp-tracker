@@ -441,6 +441,7 @@ html.dialog-locked .review-panel-slot {
   background: $color-surface;
   color: $color-text;
   font-size: $font-size-small;
+  min-height: 25px;
 }
 
 .chip--new {
@@ -584,8 +585,8 @@ html.dialog-locked .review-panel-slot {
 }
 
 .segmented__input:checked + .segmented__label {
-  background: $color-primary;
-  color: #fff;
+  background: #f2f3f5;
+  color: #222937;
 }
 
 .segmented__input:focus-visible + .segmented__label {

@@ -1,17 +1,17 @@
 <div class="examples" id="examples">
   <h3>Example values</h3>
   {% if location.example_values %}
-    <table class="table table-auto">
+    <table class="table table-sm">
       <thead>
         <tr>
-          <th scope="col">Value</th>
-          <th scope="col">Origin</th>
+          <th scope="col"><small>Value</small></th>
+          <th scope="col"><small>Origin</small></th>
         </tr>
       </thead>
       <tbody>
         {% for example in location.example_values %}
           <tr>
-            <td><code>{{ example.value }}</code></td>
+            <td class="text-break"><code>{{ example.value }}</code></td>
             <td><small class="muted">{% if example.source == "extracted" %}extracted{% else %}user input{% endif %}</small></td>
           </tr>
         {% endfor %}

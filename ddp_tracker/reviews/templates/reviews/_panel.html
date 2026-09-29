@@ -100,7 +100,7 @@
         {% endwith %}
       {% endif %}
       {% if row.is_list or not row or row.decided %}
-        <dl class="review-panel__annotations">
+        <dl class="review-panel__annotations pt-2">
           {% for loc in row.locations|default:"" %}
             <dt>{% if loc == row.primary and row.is_list %}Each item{% elif row.is_list %}The list{% else %}Annotation{% endif %}</dt>
             <dd>
@@ -135,21 +135,17 @@
             Only readable in the browser you uploaded this DDP from (logging out deletes the key).
           </p>
         {% elif own_list %}
-          <p class="review-panel__chips">
-            {% for value in own_list %}<code class="chip chip--value"
-      title="{{ value }}">{{ value }}</code>{% endfor %}
-          </p>
           <p class="muted review-panel__note">Only you can see these. They are deleted on {{ own.expires_at|date }}.</p>
         {% else %}
           <p class="muted">None for this data point.</p>
+        {% endif %}
+        {% if own.readable and own_list %}
+          <div class="pt-2">{% include "reviews/_own_values.html" with location=target %}</div>
         {% endif %}
       </section>
     {% endif %}
     <section class="review-panel__section">
       <h3 class="review-panel__label">Example values</h3>
-      {% if own.readable and own_list %}
-        {% include "reviews/_own_values.html" with location=target %}
-      {% endif %}
       {% include "schemas/_examples.html" with location=target %}
     </section>
     <section class="review-panel__section">
@@ -167,13 +163,13 @@
       <details class="review-panel__details">
         <summary>More details</summary>
         {% include "schemas/_facts.html" %}
-        {% if json_path %}
-          {% include "schemas/_json_path.html" %}
-        {% endif %}
         {% if history %}
           {% include "schemas/_history.html" %}
         {% endif %}
       </details>
+      {% if json_path %}
+        {% include "schemas/_json_path.html" %}
+      {% endif %}
     </footer>
   </div>
 {% endwith %}

@@ -42,7 +42,7 @@
             </td>
             <td>{{ representation.statement|default:"–" }}</td>
             {% if not platform %}<td>{{ representation.location.platform }}</td>{% endif %}
-            <td>
+            <td class="text-break">
               <code>{{ representation.location.path }}</code>
             </td>
             <td>{{ representation.links }}</td>

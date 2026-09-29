@@ -1,5 +1,5 @@
 {# A location's kind, type, shape, format and how often it was seen (its profile). #}
-<dl class="facts">
+<dl class="facts pt-2">
   <dt>Kind</dt>
   <dd>
     {% include "schemas/_values.html" with counter=profile.kinds %}
@@ -24,6 +24,6 @@
   {% endif %}
   <dt>Seen</dt>
   <dd>
-    in {{ profile.uploads }} upload{{ profile.uploads|pluralize }}, requested {{ profile.first_seen }} – {{ profile.last_seen }}
+    <small>in {{ profile.uploads }} upload{{ profile.uploads|pluralize }}, requested {{ profile.first_seen }} – {{ profile.last_seen }}</small>
   </dd>
 </dl>
