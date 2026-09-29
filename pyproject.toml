@@ -186,6 +186,8 @@ lint.per-file-ignores."**/tests/**/*.py" = [
 ]  # assert, loose typing, magic numbers, private access all fine in tests
 lint.per-file-ignores."conftest.py" = [ "ANN", "S101" ]
 lint.per-file-ignores."manage.py" = [ "ANN", "EM101", "PLC0415", "T20", "TRY003" ]  # Django's own manage.py boilerplate
+# no __init__.py on purpose: a second top-level "tests" package clashes with packages/ddp-parser/tests
+lint.per-file-ignores."tests/*.py" = [ "INP001" ]
 lint.flake8-annotations.allow-star-arg-any = true
 lint.flake8-annotations.suppress-none-returning = true  # don't force `-> None` on every view/handler
 # msgspec resolves Struct annotations at runtime, so their imports can't move under TYPE_CHECKING

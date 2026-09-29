@@ -16,3 +16,8 @@ DEBUG = False
 SECRET_KEY = "django-insecure-cicd-key-not-for-production"  # noqa: S105
 
 ALLOWED_HOSTS = ["*"]
+
+# WhiteNoise looks for the collected static files (STATIC_ROOT) at startup unless it serves them
+# from the finders; CI never runs collectstatic, and a missing directory is a warning (an error
+# under pytest's filterwarnings). As in local development, serve from the finders.
+WHITENOISE_AUTOREFRESH = True
