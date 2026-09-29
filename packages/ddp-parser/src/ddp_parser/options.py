@@ -12,6 +12,7 @@ _MIB = 1024 * 1024
 
 
 class Options(msgspec.Struct, frozen=True, kw_only=True):
+    redact_paths: bool = True
     samples: bool = False
     max_samples: int = 3
     # shapes whose sample strings are masked (samples.py); the default covers identifying ones

@@ -17,6 +17,7 @@ import msgspec
 from ddp_parser.model import DataNode, JsonType, MinMax, ParseWarning, Shape, Stats
 from ddp_parser.model.paths import ITEMS, join
 from ddp_parser.options import Options
+from ddp_parser.privacy.path_redact import join_redacted
 from ddp_parser.schematize.date_formats import resolve_format
 from ddp_parser.schematize.samples import build_samples
 from ddp_parser.schematize.shapes import classify_number, classify_string, is_id_key
@@ -25,10 +26,18 @@ type Scalar = str | int | float | bool
 
 
 class NodeBuilder:
-    def __init__(self, name: str | None, path: str, *, max_samples: int = 0) -> None:
+    def __init__(
+        self,
+        name: str | None,
+        path: str,
+        *,
+        max_samples: int = 0,
+        redact_paths: bool = True,
+    ) -> None:
         self.name = name
         self.path = path
         self._max_samples = max_samples
+        self._redact_paths = redact_paths
         self._id_key = is_id_key(name)
 
         self._present = 0  # values observed here, nulls included
@@ -76,7 +85,10 @@ class NodeBuilder:
         for item in items:
             if self._items is None:
                 self._items = NodeBuilder(
-                    None, join(self.path, ITEMS), max_samples=self._max_samples
+                    None,
+                    self._child_path(ITEMS),
+                    max_samples=self._max_samples,
+                    redact_paths=self._redact_paths,
                 )
             self._items.observe(item)
             size += 1
@@ -88,9 +100,19 @@ class NodeBuilder:
         for key, child_value in value.items():
             child = self._properties.get(key)
             if child is None:
-                child = NodeBuilder(key, join(self.path, key), max_samples=self._max_samples)
+                child = NodeBuilder(
+                    key,
+                    self._child_path(key),
+                    max_samples=self._max_samples,
+                    redact_paths=self._redact_paths,
+                )
                 self._properties[key] = child
             child.observe(child_value)
+
+    def _child_path(self, segment: str) -> str:
+        if self._redact_paths:
+            return join_redacted(self.path, segment)
+        return join(self.path, segment)
 
     def _observe_number(self, value: float) -> None:
         self._types.add(JsonType.INTEGER if isinstance(value, int) else JsonType.NUMBER)

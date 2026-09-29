@@ -31,7 +31,13 @@ LOGINS = [
 
 
 def schematize(value, *, name="file.json", options=None, observe_as_array=False):
-    builder = NodeBuilder(name, "/" + name, max_samples=(options or Options()).max_samples)
+    opts = options or Options()
+    builder = NodeBuilder(
+        name,
+        "/" + name,
+        max_samples=opts.max_samples,
+        redact_paths=opts.redact_paths,
+    )
     if observe_as_array:
         builder.observe_array(value)
     else:
@@ -226,6 +232,7 @@ class OptionsTests(TestCase):
         self.assertEqual(
             set(recorded),
             {
+                "redact_paths",
                 "samples",
                 "max_samples",
                 "masked_shapes",

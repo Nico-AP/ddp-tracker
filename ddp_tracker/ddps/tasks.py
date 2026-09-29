@@ -11,6 +11,7 @@ from django_tasks import task
 from ddp_parser import ParseError, parse, to_dict
 from ddp_tracker.ddps.checks import decide
 from ddp_tracker.ddps.models import Upload
+from ddp_tracker.ddps.parse_options import default_parse_options
 from ddp_tracker.ddps.values import keep, parse_options, split_values
 from ddp_tracker.schemas.services import get_format_of
 
@@ -29,7 +30,7 @@ def parse_upload(upload_id: int, path: str, public_key: str = "") -> None:
         upload.status = Upload.Status.PARSING
         upload.save(update_fields=["status"])
         try:
-            options = parse_options() if public_key else None
+            options = parse_options() if public_key else default_parse_options()
             document = parse(Path(path), options, name=upload.file_name)
         except (ParseError, OSError) as exc:
             _fail(upload, str(exc))

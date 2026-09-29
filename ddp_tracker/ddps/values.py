@@ -28,6 +28,7 @@ from nacl.public import PrivateKey, PublicKey, SealedBox
 
 from ddp_parser import Options, mask
 from ddp_tracker.ddps.models import Upload, UploadValues
+from ddp_tracker.ddps.parse_options import default_parse_options
 
 COOKIE_PREFIX = "ddp_values_"
 COOKIE_SALT = "ddp_tracker.ddps.values"
@@ -39,7 +40,7 @@ type Values = dict[str, list[Value]]
 
 
 def parse_options() -> Options:
-    return Options(
+    return default_parse_options(
         samples=True, max_samples=settings.DDP_VALUES_PER_POINT, masked_shapes=MASKED_SHAPES
     )
 
