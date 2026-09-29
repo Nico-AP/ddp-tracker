@@ -12,9 +12,11 @@
     {{ retention_days }} days, when you log out, or when you delete them. Nothing of it becomes public
     unless you add it to the examples yourself.
   </p>
+  <hr />
   <form method="post" enctype="multipart/form-data" class="form form--narrow">
     {% csrf_token %}
     {% include "includes/form.html" %}
+    <hr />
     <button type="submit" class="btn btn-primary">Upload</button>
   </form>
 {% endblock %}

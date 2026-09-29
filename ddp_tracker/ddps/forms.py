@@ -69,13 +69,20 @@ class UploadForm(forms.ModelForm):
             "language",
             "file_format",
         ]
-        labels = {"file_format": "What are you uploading?"}
+        labels = {
+            "file_format": "What are you uploading?",
+            "language": "Account language",
+        }
         widgets = {
             "requested_at": forms.DateInput(attrs={"type": "date"}),
             "file_format": forms.RadioSelect,
         }
         help_texts = {
-            "request_format": "The format in which you requested the DDP on the platform."
+            "request_format": "The format in which you requested the DDP on the platform.",
+            "file_format": "Used to prevent accidental upload of wrong files.",
+            "language": (
+                "If known, the language the account was set to when the DDP was requested."
+            ),
         }
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
