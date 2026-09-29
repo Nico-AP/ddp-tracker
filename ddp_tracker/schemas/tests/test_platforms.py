@@ -22,7 +22,13 @@ class PlatformListTests(TestCase):
         self.assertContains(response, "No uploads yet")  # Spotify
         self.assertContains(response, platform.get_absolute_url())
         self.assertContains(response, reverse("annotations:annotations", args=["instagram"]))
-        self.assertContains(response, reverse("representations:representations"))
+        self.assertContains(response, reverse("representations:platform", args=["instagram"]))
+        self.assertContains(response, reverse("representations:representations"))  # the intro
+
+    def test_representations_are_not_in_the_navigation(self):
+        page = self.client.get(reverse("schemas:platforms"))
+        nav = page.content.decode().split('<nav class="site-nav">')[1].split("</nav>")[0]
+        self.assertNotIn("Representations", nav)
 
     def test_no_platforms_yet(self):
         self.assertContains(self.client.get(reverse("schemas:platforms")), "No platforms yet")

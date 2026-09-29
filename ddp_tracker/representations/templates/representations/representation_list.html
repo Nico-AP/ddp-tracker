@@ -1,14 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Representations · DDP Tracker{% endblock %}
+{% block title %}
+  Representations{% if platform %} · {{ platform }}{% endif %} · DDP Tracker
+{% endblock %}
 {% block content %}
   <div class="page-header">
-    <h1>Representations</h1>
+    <h1>
+      Representations
+      {% if platform %}· {{ platform }}{% endif %}
+    </h1>
   </div>
   <p class="lead">
     What the entries of platforms' lists mean, e.g. “user views video”, and which data points describe them.
     Their terms are defined in the <a href="{% url 'representations:vocabulary' %}">vocabulary</a>.
     Add one from a list's item in a platform's explorer.
   </p>
+  {% if platform %}
+    <p>
+      Only {{ platform }}'s; see <a href="{% url 'representations:representations' %}">all platforms</a>.
+    </p>
+  {% endif %}
   {% if representations %}
     <table class="table">
       <thead>
@@ -16,7 +26,7 @@
           <th>Representation</th>
           <th>Pattern</th>
           <th>Statement</th>
-          <th>Platform</th>
+          {% if not platform %}<th>Platform</th>{% endif %}
           <th>Of</th>
           <th>Metadata links</th>
         </tr>
@@ -31,7 +41,7 @@
               <span class="badge badge--{{ representation.pattern }}">{{ representation.pattern }}</span>
             </td>
             <td>{{ representation.statement|default:"–" }}</td>
-            <td>{{ representation.location.platform }}</td>
+            {% if not platform %}<td>{{ representation.location.platform }}</td>{% endif %}
             <td>
               <code>{{ representation.location.path }}</code>
             </td>
@@ -40,6 +50,8 @@
         {% endfor %}
       </tbody>
     </table>
+  {% elif platform %}
+    <p class="muted">No representations for {{ platform }} yet.</p>
   {% else %}
     <p class="muted">No representations yet.</p>
   {% endif %}

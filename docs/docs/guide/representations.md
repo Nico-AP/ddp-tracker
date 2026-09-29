@@ -8,8 +8,9 @@ A representation belongs to a **list's item whose entries are objects** (an entr
 such as a date and a link), including files that are such a list (a JSON array, a CSV's rows).
 One list can have several representations. The item doesn't need an annotation first.
 
-**Representations** in the top menu lists them all, with their platform and the list they
-belong to. A representation's page shows which data points describe it.
+On the **Explore** page, a platform's **Representations** link lists its representations, with
+the list each belongs to; from there you can also see those of all platforms. A
+representation's page shows which data points describe it.
 
 ## Kinds of representations
 

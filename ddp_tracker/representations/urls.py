@@ -6,6 +6,7 @@ app_name = "representations"
 
 urlpatterns = [
     path("", views.representation_list, name="representations"),
+    path("platform/<slug:slug>/", views.representation_list, name="platform"),
     path("vocabulary/", views.vocabulary, name="vocabulary"),
     path("vocabulary/suggest/", views.vocabulary_suggest, name="suggest"),
     path("<int:pk>/", views.representation_detail, name="representation"),

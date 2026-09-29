@@ -6,7 +6,8 @@ Everything on this page is open to everyone, without an account.
 
 **Explore** in the top menu lists every platform with a few figures: how many data points and
 annotations are known, how many uploads count towards it, and when it was last updated. Choose a
-platform to open its **explorer**, or its **annotations** to read what its data points mean.
+platform to open its **explorer**, its **annotations** to read what its data points mean, or its
+**representations** to see what its lists' entries represent.
 
 ## The explorer
 

@@ -1,4 +1,4 @@
-{# A location's representations in the side panels (views.location_section): each with its metadata links (read-only; "Edit" opens the dialog), or why it has none. Reloads after a change. #}
+{# A location's representations in the side panels (views.location_section): each with its statement (read-only; "Edit" opens the dialog), or why it has none. Reloads after a change. #}
 <section class="location-representations"
          hx-get="{% url 'representations:location-section' location.pk %}"
          hx-trigger="representations-changed-{{ location.pk }} from:body"

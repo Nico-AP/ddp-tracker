@@ -76,6 +76,30 @@ class PublicPagesTests(ViewTestCase):
             [("activity", ["when"]), ("object", ["name"])],
         )
 
+    def test_one_platforms_list(self):
+        youtube = Platform.objects.create(name="YouTube", slug="youtube")
+        other = WatchHistory()
+        other.add_watch_history(youtube)
+        Representation.objects.create(
+            location=other.item, pattern=Pattern.UNMAPPED, name="YouTube history"
+        )
+        everything = self.client.get(reverse("representations:representations"))
+        self.assertContains(everything, "YouTube history")
+        self.assertContains(everything, "<th>Platform</th>", html=True)
+        tiktok = self.client.get(reverse("representations:platform", args=["tiktok"]))
+        self.assertContains(tiktok, "Watched video")
+        self.assertNotContains(tiktok, "YouTube history")
+        self.assertNotContains(tiktok, "<th>Platform</th>", html=True)  # all the same
+        self.assertContains(tiktok, "Representations · TikTok")
+        self.assertContains(tiktok, reverse("representations:representations"))  # all platforms
+        Representation.objects.filter(location__platform__slug="tiktok").delete()
+        self.assertContains(
+            self.client.get(reverse("representations:platform", args=["tiktok"])),
+            "No representations for TikTok yet.",
+        )
+        unknown = reverse("representations:platform", args=["myspace"])
+        self.assertEqual(self.client.get(unknown).status_code, 404)
+
     def test_empty_pages(self):
         self.assertContains(self.client.get(self.watched.get_absolute_url()), "None yet")
         Representation.objects.all().delete()
@@ -89,7 +113,7 @@ class PublicPagesTests(ViewTestCase):
         describe(self.watched, self.date, self.when, Subject.ACTIVITY)
         response = self.section(self.item)
         self.assertContains(response, self.watched.get_absolute_url())
-        self.assertContains(response, "<code>Date</code>: <em>when</em> of the activity", html=True)
+        self.assertContains(response, "user · viewed · video")
         for text in ("Add representation", "Edit", "Suggest a change", "hx-post"):
             self.assertNotContains(response, text)
 

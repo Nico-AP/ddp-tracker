@@ -106,32 +106,48 @@
     </p>
   {% endif %}
   {% if uploads is not None %}
-    <h2>Recent uploads</h2>
-    {% if uploads %}
-      <table class="table">
-        <thead>
-          <tr>
-            <th scope="col">File</th>
-            <th scope="col">Request Date</th>
-            <th scope="col">Language</th>
-            <th scope="col">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for upload in uploads %}
-            <tr>
-              <td><a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a></td>
-              <td>{{ upload.requested_at }}</td>
-              <td>{% if upload.language %}{{ upload.get_language_display }}{% else %}-{% endif %}</td>
-              <td><span class="badge badge--{{ upload.status }}">{{ upload.get_status_display }}</span></td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p class="muted">
-        None yet. <a href="{% url 'ddps:upload-create' %}?platform={{ platform.pk }}">Upload a DDP</a>.
-      </p>
-    {% endif %}
+    <div class="accordion mt-4" id="uploadsAccordion">
+      <div class="accordion-item">
+        <h2 class="accordion-header mt-0">
+          <button class="accordion-button collapsed"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#collapseOne"
+                  aria-controls="collapseOne">Recent uploads</button>
+        </h2>
+        <div id="collapseOne"
+             class="accordion-collapse collapse"
+             data-bs-parent="#uploadsAccordion">
+          <div class="accordion-body">
+            {% if uploads %}
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">File</th>
+                    <th scope="col">Request Date</th>
+                    <th scope="col">Language</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for upload in uploads %}
+                    <tr>
+                      <td><a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a></td>
+                      <td>{{ upload.requested_at }}</td>
+                      <td>{% if upload.language %}{{ upload.get_language_display }}{% else %}-{% endif %}</td>
+                      <td><span class="badge badge--{{ upload.status }}">{{ upload.get_status_display }}</span></td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% else %}
+              <p class="muted">
+                None yet. <a href="{% url 'ddps:upload-create' %}?platform={{ platform.pk }}">Upload a DDP</a>.
+              </p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
   {% endif %}
 {% endblock %}

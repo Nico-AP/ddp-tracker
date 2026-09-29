@@ -24,9 +24,14 @@
               No uploads yet
             {% endif %}
           </p>
+          <p class="card__links pt-2 border-top border-light-subtle">
+            <a href="{{ platform.get_absolute_url }}">Explore Structure</a>
+          </p>
           <p class="card__links">
-            <a href="{{ platform.get_absolute_url }}">Explore</a>
             <a href="{% url 'annotations:annotations' platform.slug %}">Annotations</a>
+          </p>
+          <p class="card__links">
+            <a href="{% url 'representations:platform' platform.slug %}">Representations</a>
           </p>
         </li>
       {% endfor %}

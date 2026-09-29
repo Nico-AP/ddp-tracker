@@ -41,7 +41,6 @@
       </a>
       <nav class="site-nav">
         <a href="{% url 'schemas:platforms' %}">Explore</a>
-        <a href="{% url 'representations:representations' %}">Representations</a>
         {% if user.is_authenticated %}
           <a href="{% url 'ddps:uploads' %}">Uploads</a>
           {% approvals_waiting as waiting %}

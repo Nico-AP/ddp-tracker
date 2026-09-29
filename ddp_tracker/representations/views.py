@@ -2,13 +2,14 @@ from collections import defaultdict
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Prefetch, QuerySet
+from django.db.models import Count, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import escape
 from django.views.decorators.http import require_POST
 
+from ddp_tracker.ddps.models import Platform
 from ddp_tracker.proposals.models import Proposal
 from ddp_tracker.proposals.services import REPRESENTATION_FIELDS, ProposalError, submit
 from ddp_tracker.representations.eligibility import is_eligible
@@ -35,19 +36,18 @@ def _representations() -> QuerySet[Representation]:
     )
 
 
-def _links() -> Prefetch:
-    """A representation's metadata links, in the order its pages show them."""
-    links = RepresentationMetadata.objects.select_related("role", "location__annotation")
-    return Prefetch("metadata_links", queryset=links.order_by("location__path", "role__name"))
-
-
-def representation_list(request: HttpRequest) -> HttpResponse:
+def representation_list(request: HttpRequest, slug: str | None = None) -> HttpResponse:
+    """All representations, or one platform's (``slug``)."""
     representations = _representations().annotate(links=Count("metadata_links"))
-    return render(
-        request,
-        "representations/representation_list.html",
-        {"representations": representations.order_by("name", "location__platform__name")},
-    )
+    platform = None
+    if slug is not None:
+        platform = get_object_or_404(Platform, slug=slug)
+        representations = representations.filter(location__platform=platform)
+    context = {
+        "platform": platform,
+        "representations": representations.order_by("name", "location__platform__name"),
+    }
+    return render(request, "representations/representation_list.html", context)
 
 
 def representation_detail(request: HttpRequest, pk: int) -> HttpResponse:
@@ -91,7 +91,7 @@ def location_section(request: HttpRequest, pk: int) -> HttpResponse:
     context = {
         "location": location,
         "eligible": is_eligible(location),
-        "representations": _representations().filter(location=location).prefetch_related(_links()),
+        "representations": _representations().filter(location=location),
     }
     return render(request, "representations/_location_representations.html", context)
 
