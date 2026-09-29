@@ -24,6 +24,7 @@ input (path | bytes | IO)
   │               · unsafe paths, duplicates, entry limit → warnings; OS junk dropped
   │               · ReadBudget: per-entry / total size → unmatched(too_large)
   │               · nested *.zip → read_zip() again (depth ≤ max_depth)
+  │               · a single top-level folder named like the zip → dropped (unwrap)
   ▼ 2. PLAN       central directory is known up front, so:
   │               · build folder skeleton (implicit dirs included)
   │               · collapse look-alike folders  johndoe_1234/ … → {*}/  (rules, heuristic)
@@ -92,6 +93,7 @@ packages/ddp-parser/
       __init__.py      #   open_input(): path / bytes / stream → name, size, sha256
       entry.py         #   Entry; ReadBudget (size limits on what is read)
       zip.py           #   read_zip(): names, unsafe paths, OS junk, duplicates, entry limit
+      unwrap.py        #   drop a top-level folder named like its zip (re-zipped exports)
       plan.py          #   folder tree of a container's entries; folders collapsed, files grouped
       grouping.py      #   numbered-sibling detection → group pattern; folder-name masks
       mime.py          #   MIME (magic → extension), media check, nested-zip check

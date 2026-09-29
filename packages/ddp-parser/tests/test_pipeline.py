@@ -183,6 +183,21 @@ class ContainerTests(TestCase):
         )
         self.assertEqual(children(nested)["a.json"].path, "/inner.zip/a.json")
 
+    def test_wrapper_folder_named_like_the_zip_is_dropped(self):
+        data = make_zip({"export-johndoe/": b"", "export-johndoe/ads/a.json": b"{}"})
+        document = parse(data, name="export-johndoe (1).zip")
+        self.assertEqual(children(children(document.root)["ads"])["a.json"].path, "/ads/a.json")
+        self.assertEqual([(w.code, w.path) for w in document.warnings], [("wrapper_folder", None)])
+
+    def test_wrapper_folder_in_a_nested_zip(self):
+        inner = make_zip({"inner/a.json": b"{}"})
+        document = parse(make_zip({"inner.zip": inner}), name="outer.zip")
+        nested = children(document.root)["inner.zip"]
+        self.assertEqual(children(nested)["a.json"].path, "/inner.zip/a.json")
+        self.assertEqual(
+            [(w.code, w.path) for w in document.warnings], [("wrapper_folder", "/inner.zip")]
+        )
+
     def test_max_depth(self):
         innermost = make_zip({"a.json": b"{}"})
         data = make_zip({"one.zip": make_zip({"two.zip": innermost})})

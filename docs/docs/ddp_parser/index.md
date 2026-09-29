@@ -403,6 +403,15 @@ schema fields of their parsed content (as in [§3.1](#31-fields)):
   listed as `unmatched` with `reason: ignored` instead.
 - **Folders** are created for every path, whether or not the zip has an
   explicit entry for them; `modified` is only known when it has one.
+- **Wrapper folder named like the zip**: unzipping an export and zipping it
+  again puts everything below one folder named after the original zip
+  (`instagram-johndoe-2026-09-29-AbCd1234/ads_information/…`). That name is
+  personal and differs per export. If all entries (OS junk aside) lie below a
+  single top-level folder whose name matches the zip's name without its
+  extension (ignoring case and copy suffixes such as ` (1)`, ` 2` or
+  ` - Copy`), the folder is dropped and its contents start at the container's
+  root, with a `wrapper_folder` warning. This applies to nested zips too.
+  A top-level folder named differently (`Takeout/`) stays.
 
 ---
 

@@ -12,6 +12,7 @@ from ddp_parser.options import Options
 from ddp_parser.source import Entry, ReadBudget, open_input, plan, read_zip
 from ddp_parser.source.grouping import group_names, mask_name
 from ddp_parser.source.mime import detect_mime, is_media, is_zip
+from ddp_parser.source.unwrap import same_name, unwrap
 from ddp_parser.source.zip import decode_name, is_junk
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 32
@@ -364,3 +365,58 @@ class CollapseTests(TestCase):
         collapsed = plan(entries, Options()).folders["{*}"]
         self.assertIsNone(collapsed.modified)
         self.assertEqual(collapsed.folders["sub"].modified, stamp)
+
+
+def junk(*parts: str) -> Entry:
+    return Entry(parts=parts, size=0, modified=None, ignored=True, open=io.BytesIO)
+
+
+class UnwrapTests(TestCase):
+    ZIP = "instagram-johndoe-2026-09-29-AbCd1234.zip"
+    TOP = "instagram-johndoe-2026-09-29-AbCd1234"
+
+    def test_folder_named_like_the_zip_is_dropped(self):
+        entries = [entry(self.TOP, is_dir=True), entry(self.TOP, "ads", "a.json")]
+        unwrapped, dropped = unwrap(entries, self.ZIP)
+        self.assertTrue(dropped)
+        self.assertEqual([e.parts for e in unwrapped], [("ads", "a.json")])
+
+    def test_names_match_ignoring_case_and_copy_suffixes(self):
+        for folder, container in [
+            (self.TOP, "Instagram-JohnDoe-2026-09-29-AbCd1234 (1).zip"),
+            (self.TOP + " 2", self.ZIP),
+            (self.TOP + " - Copy", self.ZIP),
+            ("Kana\u0308le", "Kan\u00e4le.zip"),
+        ]:
+            with self.subTest(folder=folder, container=container):
+                self.assertTrue(same_name(folder, container))
+        self.assertFalse(same_name("Takeout", self.ZIP))
+
+    def test_other_names_are_kept(self):
+        entries = [entry("Takeout", "a.json")]
+        self.assertEqual(unwrap(entries, "takeout-20260929.zip"), (entries, False))
+
+    def test_several_top_level_entries_are_kept(self):
+        entries = [entry(self.TOP, "a.json"), entry("b.json")]
+        self.assertEqual(unwrap(entries, self.ZIP), (entries, False))
+
+    def test_folder_without_files_is_kept(self):
+        entries = [entry(self.TOP, is_dir=True), entry(self.TOP, "ads", is_dir=True)]
+        self.assertEqual(unwrap(entries, self.ZIP), (entries, False))
+
+    def test_unnamed_container_is_kept(self):
+        entries = [entry(self.TOP, "a.json")]
+        self.assertEqual(unwrap(entries, None), (entries, False))
+
+    def test_os_junk_is_not_counted_and_only_moved_inside(self):
+        entries = [
+            entry(self.TOP, "a.json"),
+            junk("__MACOSX", self.TOP, "._a.json"),
+            junk(self.TOP, ".DS_Store"),
+        ]
+        unwrapped, dropped = unwrap(entries, self.ZIP)
+        self.assertTrue(dropped)
+        self.assertEqual(
+            [e.parts for e in unwrapped],
+            [("a.json",), ("__MACOSX", self.TOP, "._a.json"), (".DS_Store",)],
+        )

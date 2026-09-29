@@ -12,6 +12,7 @@ from typing import IO
 
 from ddp_parser.source.entry import Entry, ReadBudget
 from ddp_parser.source.plan import PlannedFile, PlannedFolder, plan
+from ddp_parser.source.unwrap import same_name, unwrap
 from ddp_parser.source.zip import read_zip
 
 type InputData = str | Path | bytes | IO[bytes]
@@ -94,4 +95,6 @@ __all__ = [
     "open_input",
     "plan",
     "read_zip",
+    "same_name",
+    "unwrap",
 ]

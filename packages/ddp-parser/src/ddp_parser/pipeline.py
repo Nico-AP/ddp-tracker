@@ -39,6 +39,7 @@ from ddp_parser.source import (
     open_input,
     plan,
     read_zip,
+    unwrap,
 )
 from ddp_parser.source.mime import detect_mime, is_media, is_zip
 
@@ -115,7 +116,15 @@ class _Run:
         depth: int,
         entry: Entry | None = None,
     ) -> ContainerNode:
-        entries = read_zip(archive, self.options, self.warnings, path=path)
+        entries, unwrapped = unwrap(read_zip(archive, self.options, self.warnings, path=path), name)
+        if unwrapped:
+            self.warnings.append(
+                ParseWarning(
+                    code="wrapper_folder",
+                    message="removed the top-level folder named like the zip",
+                    path=path or None,
+                )
+            )
         tree = plan(entries, self.options, name=name, path=path)
         return ContainerNode(
             name=name,
