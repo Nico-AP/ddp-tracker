@@ -5,185 +5,187 @@
 {% else %}
   {% include "includes/modal_header.html" with title="Suggest an annotation" %}
 {% endif %}
-<p>
-  <code class="path">{{ location.path }}</code>
-</p>
-{% if error %}<p class="message message--error">{{ error }}</p>{% endif %}
-{% if not user.is_staff %}
-  <p class="muted">Your choice goes to staff as a suggestion; it applies once they approve it.</p>
-{% endif %}
-{% with mine=own|values_at:location.path %}
-  {% if mine %}
-    <p class="own-values__inline">
-      Your values: {% include "schemas/_own_values_inline.html" with values=mine %}
-    </p>
+<div class="dialog__body">
+  <p>
+    <code class="path">{{ location.path }}</code>
+  </p>
+  {% if error %}<p class="message message--error">{{ error }}</p>{% endif %}
+  {% if not user.is_staff %}
+    <p class="muted">Your choice goes to staff as a suggestion; it applies once they approve it.</p>
   {% endif %}
-{% endwith %}
-{% if location.annotation or location.ignored %}
-  <section>
-    <p>
-      {% if location.annotation %}
-        Assigned to <a href="{{ location.annotation.get_absolute_url }}">{{ location.annotation }}</a>.
-      {% else %}
-        Marked as not a data point.
-      {% endif %}
-    </p>
-    <form hx-post="{% url 'schemas:triage' location.pk %}"
-          hx-target="#modal"
-          hx-swap="innerHTML">
-      <input type="hidden" name="action" value="reset">
-      <input type="hidden"
-             name="upload"
-             value="{{ observation.upload_id|default:'' }}">
-      <button type="submit" class="btn btn--small">
-        {% if user.is_staff %}
-          Remove assignment
+  {% with mine=own|values_at:location.path %}
+    {% if mine %}
+      <p class="own-values__inline">
+        Your values: {% include "schemas/_own_values_inline.html" with values=mine %}
+      </p>
+    {% endif %}
+  {% endwith %}
+  {% if location.annotation or location.ignored %}
+    <section>
+      <p>
+        {% if location.annotation %}
+          Assigned to <a href="{{ location.annotation.get_absolute_url }}">{{ location.annotation }}</a>.
         {% else %}
-          Suggest removing it
+          Marked as not a data point.
         {% endif %}
-      </button>
-    </form>
-  </section>
-{% endif %}
-{% if choices %}
-  <section>
-    <h3>Likely matches</h3>
-    {% for choice in choices %}
+      </p>
       <form hx-post="{% url 'schemas:triage' location.pk %}"
             hx-target="#modal"
             hx-swap="innerHTML">
-        <input type="hidden" name="action" value="link">
-        <input type="hidden" name="annotation" value="{{ choice.annotation.pk }}">
+        <input type="hidden" name="action" value="reset">
         <input type="hidden"
                name="upload"
                value="{{ observation.upload_id|default:'' }}">
-        <button type="submit" class="btn btn--small">{{ choice.annotation }}</button>
-        <small class="muted">{{ choice.reason }} from <code>{{ choice.via }}</code> ({{ choice.score }})</small>
+        <button type="submit" class="btn btn--small">
+          {% if user.is_staff %}
+            Remove assignment
+          {% else %}
+            Suggest removing it
+          {% endif %}
+        </button>
       </form>
-    {% endfor %}
-  </section>
-{% endif %}
-<section>
-  <h3>New annotation</h3>
-  <form class="dialog__form"
-        hx-post="{% url 'schemas:triage' location.pk %}"
-        hx-target="#modal"
-        hx-swap="innerHTML">
-    <input type="hidden" name="action" value="new">
-    <input type="hidden"
-           name="upload"
-           value="{{ observation.upload_id|default:'' }}">
-    <label for="new-annotation-name" class="form-label">Name</label>
-    <input type="text"
-           id="new-annotation-name"
-           name="name"
-           class="form-control"
-           value="{{ list_suggestion|default:location.default_name }}"
-           required>
-    <label for="new-annotation-description" class="form-label">Description</label>
-    <textarea id="new-annotation-description"
-              name="description"
-              class="form-control"
-              rows="3"
-              placeholder="What this data point is"></textarea>
-    <label for="new-annotation-note" class="form-label">Note</label>
-    <textarea id="new-annotation-note"
-              name="note"
-              class="form-control"
-              rows="2"
-              placeholder="Anything curators should know (optional)"></textarea>
-    <div class="form-check">
-      <input type="checkbox"
-             id="new-annotation-pii"
-             name="pii"
-             class="form-check-input">
-      <label for="new-annotation-pii"
-             class="form-check-label">Personally identifiable information (PII)</label>
-    </div>
-    {% if not user.is_staff %}
-      <label for="new-annotation-comment"
-             class="form-label">Why? (for the reviewer, optional)</label>
-      <textarea id="new-annotation-comment"
-                name="comment"
-                class="form-control"
-                rows="2"></textarea>
-    {% endif %}
-    <div>
-      <button type="submit" class="btn btn--small">
-        {% if user.is_staff %}
-          Create
-        {% else %}
-          Suggest
-        {% endif %}
-      </button>
-    </div>
-  </form>
-</section>
-{% if annotations %}
+    </section>
+  {% endif %}
+  {% if choices %}
+    <section>
+      <h3>Likely matches</h3>
+      {% for choice in choices %}
+        <form hx-post="{% url 'schemas:triage' location.pk %}"
+              hx-target="#modal"
+              hx-swap="innerHTML">
+          <input type="hidden" name="action" value="link">
+          <input type="hidden" name="annotation" value="{{ choice.annotation.pk }}">
+          <input type="hidden"
+                 name="upload"
+                 value="{{ observation.upload_id|default:'' }}">
+          <button type="submit" class="btn btn--small">{{ choice.annotation }}</button>
+          <small class="muted">{{ choice.reason }} from <code>{{ choice.via }}</code> ({{ choice.score }})</small>
+        </form>
+      {% endfor %}
+    </section>
+  {% endif %}
   <section>
-    <h3>Existing annotations</h3>
-    <input type="search"
-           class="form-control dialog__search"
-           placeholder="Search by name or description"
-           aria-label="Search the existing annotations"
-           data-filter-table="#existing-annotations">
-    <div class="dialog__table">
-      <table class="table" id="existing-annotations">
-        <thead>
-          <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Description</th>
-            <th scope="col">
-              <span class="visually-hidden">Link</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for annotation in annotations %}
-            <tr data-filter-text="{{ annotation.name|lower }} {{ annotation.description|lower }}">
-              <td>{{ annotation.name }}</td>
-              <td class="muted">{{ annotation.description|truncatechars:120|default:"–" }}</td>
-              <td>
-                <form hx-post="{% url 'schemas:triage' location.pk %}"
-                      hx-target="#modal"
-                      hx-swap="innerHTML">
-                  <input type="hidden" name="action" value="link">
-                  <input type="hidden" name="annotation" value="{{ annotation.pk }}">
-                  <input type="hidden"
-                         name="upload"
-                         value="{{ observation.upload_id|default:'' }}">
-                  <button type="submit" class="btn btn--small">
-                    {% if user.is_staff %}
-                      Link
-                    {% else %}
-                      Suggest
-                    {% endif %}
-                  </button>
-                </form>
-              </td>
-            </tr>
-          {% endfor %}
-          <tr data-filter-empty hidden>
-            <td colspan="3" class="muted">No annotation matches.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-{% endif %}
-{% if not location.ignored %}
-  <section>
-    <form hx-post="{% url 'schemas:triage' location.pk %}"
+    <h3>New annotation</h3>
+    <form class="dialog__form"
+          hx-post="{% url 'schemas:triage' location.pk %}"
           hx-target="#modal"
           hx-swap="innerHTML">
-      <input type="hidden" name="action" value="ignore">
+      <input type="hidden" name="action" value="new">
       <input type="hidden"
              name="upload"
              value="{{ observation.upload_id|default:'' }}">
-      <button type="submit" class="link-button">
-        {% if not user.is_staff %}Suggest:{% endif %}
-        Not a data point
-      </button>
+      <label for="new-annotation-name" class="form-label">Name</label>
+      <input type="text"
+             id="new-annotation-name"
+             name="name"
+             class="form-control"
+             value="{{ list_suggestion|default:location.default_name }}"
+             required>
+      <label for="new-annotation-description" class="form-label">Description</label>
+      <textarea id="new-annotation-description"
+                name="description"
+                class="form-control"
+                rows="3"
+                placeholder="What this data point is"></textarea>
+      <label for="new-annotation-note" class="form-label">Note</label>
+      <textarea id="new-annotation-note"
+                name="note"
+                class="form-control"
+                rows="2"
+                placeholder="Anything curators should know (optional)"></textarea>
+      <div class="form-check">
+        <input type="checkbox"
+               id="new-annotation-pii"
+               name="pii"
+               class="form-check-input">
+        <label for="new-annotation-pii"
+               class="form-check-label">Personally identifiable information (PII)</label>
+      </div>
+      {% if not user.is_staff %}
+        <label for="new-annotation-comment"
+               class="form-label">Why? (for the reviewer, optional)</label>
+        <textarea id="new-annotation-comment"
+                  name="comment"
+                  class="form-control"
+                  rows="2"></textarea>
+      {% endif %}
+      <div>
+        <button type="submit" class="btn btn--small">
+          {% if user.is_staff %}
+            Create
+          {% else %}
+            Suggest
+          {% endif %}
+        </button>
+      </div>
     </form>
   </section>
-{% endif %}
+  {% if annotations %}
+    <section>
+      <h3>Existing annotations</h3>
+      <input type="search"
+             class="form-control dialog__search"
+             placeholder="Search by name or description"
+             aria-label="Search the existing annotations"
+             data-filter-table="#existing-annotations">
+      <div class="dialog__table">
+        <table class="table" id="existing-annotations">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Description</th>
+              <th scope="col">
+                <span class="visually-hidden">Link</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for annotation in annotations %}
+              <tr data-filter-text="{{ annotation.name|lower }} {{ annotation.description|lower }}">
+                <td>{{ annotation.name }}</td>
+                <td class="muted">{{ annotation.description|truncatechars:120|default:"–" }}</td>
+                <td>
+                  <form hx-post="{% url 'schemas:triage' location.pk %}"
+                        hx-target="#modal"
+                        hx-swap="innerHTML">
+                    <input type="hidden" name="action" value="link">
+                    <input type="hidden" name="annotation" value="{{ annotation.pk }}">
+                    <input type="hidden"
+                           name="upload"
+                           value="{{ observation.upload_id|default:'' }}">
+                    <button type="submit" class="btn btn--small">
+                      {% if user.is_staff %}
+                        Link
+                      {% else %}
+                        Suggest
+                      {% endif %}
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+            <tr data-filter-empty hidden>
+              <td colspan="3" class="muted">No annotation matches.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+  {% if not location.ignored %}
+    <section>
+      <form hx-post="{% url 'schemas:triage' location.pk %}"
+            hx-target="#modal"
+            hx-swap="innerHTML">
+        <input type="hidden" name="action" value="ignore">
+        <input type="hidden"
+               name="upload"
+               value="{{ observation.upload_id|default:'' }}">
+        <button type="submit" class="link-button">
+          {% if not user.is_staff %}Suggest:{% endif %}
+          Not a data point
+        </button>
+      </form>
+    </section>
+  {% endif %}
+</div>

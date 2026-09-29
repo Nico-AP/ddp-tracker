@@ -204,6 +204,11 @@ class CurationTests(ViewTestCase):
         )
         represent(video, self.item)
         modal = self.client.get(reverse("representations:add", args=[self.item.pk]))
+        # a fixed header with a small close button; the rest is the scrolling body
+        self.assertContains(
+            modal, '<button type="submit" class="btn-close" aria-label="Close"></button>', html=True
+        )
+        self.assertContains(modal, '<div class="dialog__body">')
         for text in ("Select existing", "Add new", "Something happened", "Something exists"):
             self.assertContains(modal, text)
         # the switch's two tables: activities and objects

@@ -1,4 +1,6 @@
 {# An annotation in the shared modal (e.g. from the explorer's side panel). #}
 {% include "includes/modal_header.html" with title=annotation.name %}
-<p class="muted">{{ annotation.platform }}</p>
-{% include "annotations/_annotation_body.html" %}
+<div class="dialog__body">
+  <p class="muted">{{ annotation.platform }}</p>
+  {% include "annotations/_annotation_body.html" %}
+</div>

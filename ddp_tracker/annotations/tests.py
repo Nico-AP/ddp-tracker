@@ -140,3 +140,8 @@ class AnnotationInPanelTests(TestCase):
         self.assertContains(modal, "Representations")
         self.assertNotContains(modal, "Open the annotation")
         self.assertNotContains(modal, "<html")  # a fragment, not a page
+        # a fixed header with a small close button; the rest is the scrolling body
+        self.assertContains(
+            modal, '<button type="submit" class="btn-close" aria-label="Close"></button>', html=True
+        )
+        self.assertContains(modal, '<div class="dialog__body">')

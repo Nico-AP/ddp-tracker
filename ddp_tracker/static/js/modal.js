@@ -2,9 +2,13 @@
 // that swaps in nothing (a successful save) closes it. Close buttons are <form method="dialog">.
 //
 // On pages with a [data-dialog-over] element (the review's and the explorer's left column), it
-// opens non-modal, over that element, so the side panel next to it stays visible and usable;
-// elsewhere it is a centred modal (Esc, backdrop and focus from the native <dialog>).
+// opens non-modal, over that element, its top level with the side panel (#node-detail) beside
+// it, so the panel stays visible and usable; elsewhere it is a centred modal (Esc, backdrop and
+// focus from the native <dialog>). While it is open the page doesn't scroll (html.dialog-locked):
+// only the dialog's body and the side panel do.
 const overlay = () => document.querySelector("[data-dialog-over]");
+const root = document.documentElement;
+const MARGIN = 16; // px: the dialog's distance from the window's edges when not aligned
 
 // Place the dialog over the element (inline styles through the CSSOM, which the CSP allows).
 function place(dialog, over) {
@@ -13,15 +17,28 @@ function place(dialog, over) {
   dialog.style.width = `${box.width}px`;
 }
 
+// The dialog's top: the side panel's, when the panel is beside the column (not below it, on a
+// narrow screen). CSS reads it as --dialog-top, for the dialog and the panel's height.
+function align(over) {
+  const panel = document.getElementById("node-detail");
+  const column = over.getBoundingClientRect();
+  const box = panel?.getBoundingClientRect();
+  const beside = box && box.left >= column.right && box.top < window.innerHeight - MARGIN * 4;
+  const top = beside ? Math.max(box.top, MARGIN) : MARGIN;
+  root.style.setProperty("--dialog-top", `${Math.round(top)}px`);
+}
+
 function open(dialog) {
   const over = overlay();
   if (over) {
     dialog.classList.add("dialog--over");
     place(dialog, over);
+    align(over);
     dialog.show();
   } else {
     dialog.showModal();
   }
+  root.classList.add("dialog-locked");
   dialog.querySelector("input:not([type=hidden]), textarea, select")?.focus();
 }
 
@@ -40,13 +57,18 @@ document.addEventListener("DOMContentLoaded", () => {
   dialog?.addEventListener("close", () => {
     dialog.replaceChildren();
     dialog.classList.remove("dialog--over");
+    root.classList.remove("dialog-locked");
+    root.style.removeProperty("--dialog-top");
   });
 });
 
 window.addEventListener("resize", () => {
   const dialog = document.getElementById("modal");
   const over = overlay();
-  if (dialog?.open && over && dialog.classList.contains("dialog--over")) place(dialog, over);
+  if (dialog?.open && over && dialog.classList.contains("dialog--over")) {
+    place(dialog, over);
+    align(over);
+  }
 });
 
 // A non-modal dialog doesn't close on Esc by itself.

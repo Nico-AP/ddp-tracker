@@ -319,6 +319,11 @@ class ViewTests(TestCase):
         self.client.force_login(self.user)
         modal = self.client.get(url, {"upload": self.upload.pk})
         self.assertContains(modal, "New annotation")
+        # a fixed header with a small close button; the rest is the scrolling body
+        self.assertContains(
+            modal, '<button type="submit" class="btn-close" aria-label="Close"></button>', html=True
+        )
+        self.assertContains(modal, '<div class="dialog__body">')
         self.assertContains(modal, 'value="name"')  # the default name
         for field in ("name", "description", "note", "pii"):
             self.assertContains(modal, f'name="{field}"')

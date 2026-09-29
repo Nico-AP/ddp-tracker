@@ -1,14 +1,20 @@
 @use "../abstracts/variables" as *;
 
 // The shared <dialog id="modal"> (templates/base.html, static/js/modal.js). Not Bootstrap's
-// `.modal` (its JS-driven overlay, hidden by default): a native <dialog>.
+// `.modal` (its JS-driven overlay, hidden by default): a native <dialog>. Its header stays put;
+// only its body (.dialog__body) scrolls, so a long dialog's title and close button stay visible.
 .dialog {
   width: min(960px, calc(100vw - #{$spacing-unit * 4}));
   max-height: calc(100vh - #{$spacing-unit * 8});
-  overflow-y: auto; // long dialogs scroll inside, their bottom stays reachable
+  overflow: hidden;
   border: 1px solid $color-border;
   border-radius: $radius-base;
-  padding: $spacing-unit * 3;
+  padding: 0;
+
+  &[open] {
+    display: flex;
+    flex-direction: column;
+  }
 
   &::backdrop {
     background: rgb(17 24 39 / 40%);
@@ -23,29 +29,54 @@
 
 .dialog__header {
   display: flex;
+  flex: none;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: $spacing-unit * 2;
-  margin-bottom: $spacing-unit * 2;
+  border-bottom: 1px solid $color-border;
+  padding: ($spacing-unit * 2) ($spacing-unit * 3);
 
   h2 {
     margin: 0;
   }
+
+  form {
+    display: flex;
+    margin: 0;
+  }
+}
+
+.dialog__body {
+  flex: 1 1 auto;
+  min-height: 0; // lets it shrink below its content in the flex column, and scroll
+  overflow-y: auto;
+  padding: ($spacing-unit * 2) ($spacing-unit * 3) ($spacing-unit * 3);
+}
+
+// While the dialog is open the page doesn't scroll (static/js/modal.js): only the dialog's body
+// and, beside it, the side panel do. The stable gutter keeps the layout from shifting when the
+// page's scrollbar goes away.
+html {
+  scrollbar-gutter: stable;
+}
+
+html.dialog-locked {
+  overflow: hidden;
 }
 
 // Over the page's left column ([data-dialog-over], static/js/modal.js), non-modal: the side
-// panel next to it stays usable. Left and width come from modal.js.
+// panel next to it stays usable. Left and width come from modal.js, and the top from the side
+// panel's top (--dialog-top), so the two start at the same height.
 .dialog--over {
   position: fixed;
-  inset: ($spacing-unit * 2) auto ($spacing-unit * 2) auto;
+  inset: var(--dialog-top, #{$spacing-unit * 2}) auto ($spacing-unit * 2) auto;
   z-index: 1050;
   max-width: none;
   // between its top and bottom offsets (the browser's own dialog style is height: fit-content,
-  // which lets a long one run off the screen), scrolling inside
+  // which lets a long one run off the screen); its body scrolls
   height: auto;
   max-height: none;
   margin: 0;
-  overflow-y: auto;
   box-shadow: 0 12px 40px rgb(17 24 39 / 25%);
 }
 

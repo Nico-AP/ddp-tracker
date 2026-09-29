@@ -360,6 +360,12 @@
   overflow-y: auto;
 }
 
+// with the dialog open beside it the page doesn't scroll: the panel ends where the dialog does
+// and scrolls on its own
+html.dialog-locked .review-panel-slot {
+  max-height: calc(100vh - var(--dialog-top, #{$spacing-unit * 2}) - #{$spacing-unit * 2});
+}
+
 .review-panel {
   border: 1px solid $color-border;
   border-radius: $radius-base;
