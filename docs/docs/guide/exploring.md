@@ -51,7 +51,7 @@ Types are shown in plain words:
 | unreadable file                   | a file the DDP Tracker couldn't read                              |
 
 The search field keeps the rows whose name or path contain what you type. A selector shows all
-data points, only those **missing an annotation**, or only annotated ones **missing a
+data points, only those **missing an annotation**, or only lists of objects **missing a
 representation**: handy for finding what still needs work.
 
 ### The side panel
@@ -66,5 +66,5 @@ bottom.
 A platform's **annotations** page lists every described data point: its name, its description,
 whether it is personal information (**PII**), in how many places it was found and when it was
 last seen. An annotation's own page shows all the places it was found (a field can move or be
-named differently in another language), with example values, and the
-[representations](representations.md) it belongs to.
+named differently in another language), with example values. A list's
+[representations](representations.md) are in its side panel.

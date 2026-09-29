@@ -1,0 +1,46 @@
+{# A location's representations in the side panels (views.location_section): each with its metadata links (read-only; "Edit" opens the dialog), or why it has none. Reloads after a change. #}
+<section class="location-representations"
+         hx-get="{% url 'representations:location-section' location.pk %}"
+         hx-trigger="representations-changed-{{ location.pk }} from:body"
+         hx-swap="outerHTML">
+  {% for representation in representations %}
+    <article class="location-representation mb-3 row border-bottom border-light-subtle">
+      <div class="col mb-1">
+        <a href="{{ representation.get_absolute_url }}">{{ representation }}</a>
+        <span class="badge badge--{{ representation.pattern }}">{{ representation.pattern }}</span>
+        {% if representation.statement %}
+          <br>
+          <span class="muted">{{ representation.statement }}</span>
+        {% endif %}
+      </div>
+      <div class="col-auto">
+        {% if user.is_authenticated %}
+          <button type="button"
+                  class="btn btn-primary btn-sm"
+                  hx-get="{% url 'representations:edit' representation.pk %}"
+                  hx-target="#modal"
+                  hx-swap="innerHTML">
+            {% if user.is_staff %}
+              Edit
+            {% else %}
+              Suggest a change
+            {% endif %}
+          </button>
+        {% endif %}
+      </div>
+    </article>
+  {% empty %}
+    {% if eligible %}
+      <p class="muted">No representation yet.</p>
+    {% else %}
+      <p class="muted">Representations are for the items of lists of objects.</p>
+    {% endif %}
+  {% endfor %}
+  {% if eligible and user.is_authenticated %}
+    <button type="button"
+            class="btn btn-primary btn-sm"
+            hx-get="{% url 'representations:add' location.pk %}"
+            hx-target="#modal"
+            hx-swap="innerHTML">Add representation</button>
+  {% endif %}
+</section>

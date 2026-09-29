@@ -1,9 +1,15 @@
 @use "../abstracts/variables" as *;
 @use "../abstracts/mixins" as *;
 
-// Bootstrap's `.btn`, colored through its own variables so that every state (hover, focus,
-// active, disabled) gets our colors, not only the ones we'd override one by one.
 .btn {
+  @include focus-ring;
+}
+
+// Our primary button, colored through Bootstrap's own variables so that every state (hover,
+// focus, active, disabled) gets our colors. Only on the variant: set on `.btn` itself, these
+// would win over every other variant (`.btn-outline-secondary` …) and size (`.btn-sm`), which
+// set the same variables with the same specificity, earlier. Sizes: vendors/_bootstrap.scss.
+.btn-primary {
   --bs-btn-bg: #{$bg-button-primary};
   --bs-btn-color: #fff;
   --bs-btn-border-color: transparent;
@@ -16,10 +22,21 @@
   --bs-btn-disabled-bg: #{$bg-button-primary};
   --bs-btn-disabled-color: #fff;
   --bs-btn-disabled-border-color: transparent;
-  --bs-btn-padding-x: #{$spacing-unit * 2};
-  --bs-btn-padding-y: #{$spacing-unit};
-  --bs-btn-font-size: 1rem;
-  --bs-btn-border-radius: #{$radius-base};
+}
 
-  @include focus-ring;
+// The secondary button: a light grey fill with dark grey text, a bit darker on hover and when
+// pressed (its own tokens; $secondary, for outlines and text, stays as it is).
+.btn-secondary {
+  --bs-btn-bg: #{$bg-button-secondary};
+  --bs-btn-color: #{$color-button-secondary};
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-bg: #{$bg-button-secondary-hover};
+  --bs-btn-hover-color: #{$color-button-secondary};
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-bg: #{$bg-button-secondary-hover};
+  --bs-btn-active-color: #{$color-button-secondary};
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-bg: #{$bg-button-secondary};
+  --bs-btn-disabled-color: #{$color-button-secondary};
+  --bs-btn-disabled-border-color: transparent;
 }

@@ -15,7 +15,7 @@
         <form method="post"
               action="{% url 'ddps:upload-decide' upload.pk 'confirm' %}">
           {% csrf_token %}
-          <button type="submit" class="btn btn--small">Yes, ask for approval</button>
+          <button type="submit" class="btn btn-primary btn-sm">Yes, ask for approval</button>
         </form>
         <form method="post"
               action="{% url 'ddps:upload-decide' upload.pk 'discard' %}">
@@ -36,7 +36,7 @@
         <form method="post"
               action="{% url 'ddps:upload-decide' upload.pk 'approve' %}">
           {% csrf_token %}
-          <button type="submit" class="btn btn--small">Approve</button>
+          <button type="submit" class="btn btn-primary btn-sm">Approve</button>
         </form>
         <form method="post"
               action="{% url 'ddps:upload-decide' upload.pk 'reject' %}">

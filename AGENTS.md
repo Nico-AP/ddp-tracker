@@ -44,7 +44,7 @@ apps/
   reviews/           # the review of an upload: data points to assign, changed, missing (no models)
   proposals/         # suggestions: non-staff changes to annotations/representations, staff decide
   annotations/       # Annotation: a data point and what is known about it (examples live on Location)
-  representations/   # Representation: cross-platform concept (ontology) linking annotations
+  representations/   # Representation: what a list's items mean (ontology), on a Location, with metadata below it
     every app has the same shape: models.py, views.py, urls.py, tests.py, templates/<app>/
 packages/
   ddp-parser/        # Django-free DDP schematizer (uv workspace member, import name `ddp_parser`)
@@ -90,7 +90,11 @@ package — deliberately kept out of `pyproject.toml` and `uv`'s dependency tree
   `abstracts/_variables.scss`; its JS bundle is copied to `static/vendor/` (same origin, CSP-safe).
   Prefer Bootstrap's components and utilities for new UI, and customise through its variables
   (Sass, or `--bs-*` custom properties as in `components/_buttons.scss`) rather than overriding
-  its rules. The shared dialog is a native `<dialog class="dialog">`, not Bootstrap's `.modal`.
+  its rules. Buttons always name a variant and, if not the default, a size: `btn btn-primary`,
+  `btn btn-outline-secondary btn-sm`, never a bare `btn`. Button sizes are Sass variables in
+  `vendors/_bootstrap.scss`; never set `--bs-btn-*` on `.btn` itself (it would win over every
+  variant and size class), only on a variant (our colors: `.btn-primary`).
+  The shared dialog is a native `<dialog class="dialog">`, not Bootstrap's `.modal`.
   Bootstrap's own Sass still uses `@import`; `--quiet-deps` silences its deprecation warnings.
 - Output: `static/css/main.css` — a build artifact, gitignored, never hand-edited or committed.
 - `templates/base.html` links it with the plain `{% static 'css/main.css' %}` tag.

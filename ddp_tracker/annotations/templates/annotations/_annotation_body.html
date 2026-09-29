@@ -1,7 +1,5 @@
 {# The annotation page's content: shared by the page and the modal (_annotation_modal.html). #}
-{% load representation_tags %}
 {% include "annotations/_details.html" %}
-{% annotation_representations annotation %}
 <h2>Locations</h2>
 <p class="muted">Where this data point has been found, over time and across languages.</p>
 {% if locations %}

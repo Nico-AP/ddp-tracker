@@ -21,7 +21,7 @@ See [Privacy](guide/privacy.md).
 3. The structure is compared with what is already known about the platform: what is
    [new, known, changed or missing](guide/reviewing.md).
 4. Curators [describe what each data point means](guide/annotating.md) and
-   [link it to concepts shared across platforms](guide/representations.md).
+   [what lists' entries represent, in terms shared across platforms](guide/representations.md).
 5. Everyone can [explore the result](guide/exploring.md), platform by platform.
 
 ## Where to go

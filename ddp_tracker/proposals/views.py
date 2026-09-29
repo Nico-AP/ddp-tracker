@@ -31,7 +31,7 @@ Status = Proposal.Status
 def _entries(proposals: QuerySet[Proposal]) -> list[dict[str, Any]]:
     """Proposals with what they change, for the templates."""
     proposals = proposals.select_related(
-        "proposed_by", "decided_by", "location", "annotation", "representation", "role"
+        "proposed_by", "decided_by", "location", "annotation", "representation"
     )
     return [{"proposal": p, "changes": changes(p), "stale": is_stale(p)} for p in proposals]
 
@@ -93,8 +93,8 @@ def _decided(request: HttpRequest, proposal: Proposal, error: str = "") -> HttpR
     targets = []
     if proposal.location_id:
         targets.append(f"triaged-{proposal.location_id}")
-    if proposal.annotation_id:
-        targets.append(f"representations-changed-{proposal.annotation_id}")
+    if proposal.kind in REPRESENTATION_KINDS and (represented := _represented(proposal)):
+        targets.append(f"representations-changed-{represented}")
     if targets:
         response["HX-Trigger"] = ", ".join(targets)
     return response
@@ -116,6 +116,14 @@ def decide(request: HttpRequest, pk: int, action: str) -> HttpResponse:
     except ProposalError as error:
         return _decided(request, proposal, str(error))
     return _decided(request, proposal)
+
+
+def _represented(proposal: Proposal) -> int | None:
+    """The location whose representations the proposal is about: the representation's (the new
+    one's is ``location``; a deleted one's is gone, and so is the event's panel)."""
+    if proposal.representation is not None:
+        return proposal.representation.location_id
+    return proposal.location_id
 
 
 @login_required

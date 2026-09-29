@@ -1,5 +1,5 @@
-"""Cross-platform representations of data points: the ontology on top of the platform-specific
-annotations.
+"""Representations of data points: what a list's items mean (e.g. "user views video"), in the
+terms of a shared vocabulary, so platforms can be compared.
 """
 
 from collections import Counter
@@ -13,7 +13,7 @@ from django.db.models import Q, QuerySet
 from django.urls import reverse
 from django.utils.text import slugify
 
-from ddp_tracker.annotations.models import Annotation
+from ddp_tracker.schemas.models import Location
 
 
 class Vocabulary(models.Model):
@@ -88,28 +88,24 @@ class Pattern(models.TextChoices):
 
 
 class Representation(models.Model):
-    """A cross-platform concept, e.g. "user views video" or "profile".
+    """What a location's entries mean, e.g. "user views video" for each item of a watch history.
 
-    Annotations relate to it in two ways:
+    It belongs to one ``location`` (``eligibility.can_have_representation``: for now a list's item
+    that is an object); a location can have several. Its ``metadata_links``
+    (``RepresentationMetadata``) are locations in that location's subtree that *describe* it,
+    each with a role and a subject, one of the slots the representation fills (``Date`` is *when*
+    of the activity, ``Link`` the *identifier* of the object, a username the *name* of the actor).
+    Unmapped representations fill no slot, so they have no metadata links.
 
-    - ``annotations``: the data points that *are* the concept, i.e. the entity node itself: by
-      default a list's item (``<item>``, e.g. one watched video), on any number of platforms;
-    - ``metadata`` (through ``RepresentationMetadata``): data points that *describe* it, each with
-      a role and a subject, one of the slots the representation fills (``Date`` is *when* of the
-      activity, ``Link`` the *identifier* of the object, a username the *name* of the actor).
-      Unmapped representations fill no slot, so they have no metadata links.
-
-    ``annotations`` can be empty: plain objects (``profile``) are no data points, so a "Profile"
-    representation only has metadata links (name, email …). A link's platform is its annotation's.
+    Annotations play no part: a location can be represented before (or without) being annotated.
     """
 
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="representations")
     pattern = models.CharField(max_length=20, choices=Pattern)
 
-    name = models.CharField(max_length=200, unique=True)
+    name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     note = models.TextField(blank=True)
-
-    annotations = models.ManyToManyField(Annotation, related_name="representations", blank=True)
 
     # activity: actor · activity · object (· target); object: object only
     actor = models.ForeignKey(
@@ -186,14 +182,20 @@ class Representation(models.Model):
         slots = (self.actor, self.activity, self.object, self.target)
         return " · ".join(str(term) for term in slots if term is not None)
 
+    # the subjects of the metadata links an edit is about to replace the saved ones with (not a
+    # field): validation then checks those instead
+    described: list[str] | None = None
+
     def clean(self) -> None:
         """Keep slots that metadata links describe: emptying one would orphan them."""
-        if self.pk is None:
+        if self.described is not None:
+            used = Counter(self.described)
+        elif self.pk is not None:
+            used = Counter(self.metadata_links.values_list("subject", flat=True))
+        else:
             return
-        used = Counter(self.metadata_links.values_list("subject", flat=True))
         errors = {
-            subject: f"{n} metadata link{'s' if n != 1 else ''} describe the {subject}; "
-            "remove them first."
+            subject: f"{n} metadata link{'s' if n != 1 else ''} describe the {subject}."
             for subject, n in used.items()
             if getattr(self, f"{subject}_id") is None
         }
@@ -212,24 +214,39 @@ class RepresentationMetadata(models.Model):
     representation = models.ForeignKey(
         Representation, on_delete=models.CASCADE, related_name="metadata_links"
     )
-    annotation = models.ForeignKey(
-        Annotation, on_delete=models.CASCADE, related_name="metadata_links"
-    )
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="metadata_links")
     role = models.ForeignKey(MetadataRole, on_delete=models.PROTECT, related_name="links")
     subject = models.CharField(max_length=20, choices=Subject.choices)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["representation", "annotation", "role", "subject"],
+                fields=["representation", "location", "role", "subject"],
                 name="unique_representation_metadata_link",
             ),
         ]
 
     def __str__(self) -> str:
-        return f"{self.representation} · {self.role}/{self.subject}: {self.annotation}"
+        return f"{self.representation} · {self.role}/{self.subject}: {self.location}"
+
+    @property
+    def relative_path(self) -> str:
+        """The location's path below the representation's (``Date``, ``Author/Name``)."""
+        return self.location.path.removeprefix(f"{self.representation.location.path}/")
 
     def clean(self) -> None:
         if self.subject and getattr(self.representation, f"{self.subject}_id") is None:
             msg = f"This representation has no {self.subject}."
             raise ValidationError({"subject": msg})
+        if self.location_id is not None and not is_below(
+            self.location, self.representation.location
+        ):
+            msg = "Only data points below the representation's location can describe it."
+            raise ValidationError({"location": msg})
+
+
+def is_below(location: Location, anchor: Location) -> bool:
+    """``location`` lies in ``anchor``'s subtree (on the same platform)."""
+    return location.platform_id == anchor.platform_id and location.path.startswith(
+        f"{anchor.path}/"
+    )

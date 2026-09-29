@@ -137,7 +137,6 @@ class AnnotationInPanelTests(TestCase):
         self.assertContains(modal, "Email address")
         self.assertContains(modal, "The account&#x27;s address.")
         self.assertContains(modal, "/a.json/email")  # the locations table
-        self.assertContains(modal, "Representations")
         self.assertNotContains(modal, "Open the annotation")
         self.assertNotContains(modal, "<html")  # a fragment, not a page
         # a fixed header with a small close button; the rest is the scrolling body

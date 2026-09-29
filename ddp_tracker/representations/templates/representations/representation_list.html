@@ -3,37 +3,39 @@
 {% block content %}
   <div class="page-header">
     <h1>Representations</h1>
-    {% if user.is_authenticated %}
-      <a class="btn" href="{% url 'representations:create' %}">New representation</a>
-    {% endif %}
   </div>
   <p class="lead">
-    Concepts across platforms, e.g. “user views video”: which platforms record them, and where.
+    What the entries of platforms' lists mean, e.g. “user views video”, and which data points describe them.
     Their terms are defined in the <a href="{% url 'representations:vocabulary' %}">vocabulary</a>.
+    Add one from a list's item in a platform's explorer.
   </p>
-  {% if rows %}
+  {% if representations %}
     <table class="table">
       <thead>
         <tr>
           <th>Representation</th>
           <th>Pattern</th>
           <th>Statement</th>
-          <th>Platforms</th>
-          <th>Linked annotations</th>
+          <th>Platform</th>
+          <th>Of</th>
+          <th>Metadata links</th>
         </tr>
       </thead>
       <tbody>
-        {% for row in rows %}
+        {% for representation in representations %}
           <tr>
             <td>
-              <a href="{{ row.representation.get_absolute_url }}">{{ row.representation.name }}</a>
+              <a href="{{ representation.get_absolute_url }}">{{ representation.name }}</a>
             </td>
             <td>
-              <span class="badge badge--{{ row.representation.pattern }}">{{ row.representation.pattern }}</span>
+              <span class="badge badge--{{ representation.pattern }}">{{ representation.pattern }}</span>
             </td>
-            <td>{{ row.representation.statement|default:"–" }}</td>
-            <td>{{ row.platforms|join:", "|default:"–" }}</td>
-            <td>{{ row.links }}</td>
+            <td>{{ representation.statement|default:"–" }}</td>
+            <td>{{ representation.location.platform }}</td>
+            <td>
+              <code>{{ representation.location.path }}</code>
+            </td>
+            <td>{{ representation.links }}</td>
           </tr>
         {% endfor %}
       </tbody>

@@ -1,96 +1,63 @@
 {% extends "base.html" %}
 {% block title %}{{ representation }} · Representations · DDP Tracker{% endblock %}
 {% block content %}
-  <p class="breadcrumbs">
-    <a href="{% url 'representations:representations' %}">Representations</a> / {{ representation }}
-  </p>
-  <h1>{{ representation }}</h1>
-  {% include "representations/_details.html" %}
-  {% if open_suggestions %}
-    <h2>Open suggestions</h2>
-    <div class="proposals"
-         hx-get="{% url 'proposals:for' 'representation' representation.pk %}"
-         hx-trigger="load"
-         hx-swap="innerHTML">
-      <p class="muted">Loading…</p>
-    </div>
-  {% endif %}
-  <h2>Represented by</h2>
-  <p class="muted">The data points that are this concept, per platform.</p>
-  {% if represented %}
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Platform</th>
-          <th>Annotation</th>
-          {% if user.is_authenticated %}<th></th>{% endif %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for annotation in represented %}
+  {# reloads itself after a change from the dialog (views._changed) #}
+  <div id="representation-page"
+       hx-get="{{ representation.get_absolute_url }}"
+       hx-trigger="representations-changed-{{ representation.location_id }} from:body"
+       hx-select="#representation-page"
+       hx-swap="outerHTML"
+       hx-disinherit="*">
+    <p class="breadcrumbs">
+      <a href="{% url 'representations:representations' %}">Representations</a> / {{ representation }}
+    </p>
+    <h1>{{ representation }}</h1>
+    <p>
+      Each entry of <code>{{ representation.location.path }}</code> on {{ representation.location.platform }}.
+      {% if representation.location.annotation %}
+        Annotated as <a href="{{ representation.location.annotation.get_absolute_url }}">{{ representation.location.annotation }}</a>.
+      {% endif %}
+    </p>
+    {% include "representations/_details.html" %}
+    {% if open_suggestions %}
+      <h2>Open suggestions</h2>
+      <div class="proposals"
+           hx-get="{% url 'proposals:for' 'representation' representation.pk %}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+        <p class="muted">Loading…</p>
+      </div>
+    {% endif %}
+    <h2>Described by</h2>
+    <p class="muted">The data points below it that describe it.</p>
+    {% if described %}
+      <table class="table">
+        <thead>
           <tr>
-            <td>{{ annotation.platform }}</td>
-            <td>
-              <a href="{{ annotation.get_absolute_url }}">{{ annotation }}</a>
-            </td>
-            {% if user.is_authenticated %}
-              <td>
-                <form hx-post="{% url 'representations:remove-annotation' representation.pk annotation.pk %}"
-                      hx-target="this"
-                      hx-swap="outerHTML">
-                  <button type="submit" class="link-button">{% if user.is_staff %}Remove{% else %}Suggest removing{% endif %}</button>
-                </form>
-              </td>
-            {% endif %}
+            <th>Subject</th>
+            <th>Role</th>
+            <th>Data point</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p class="muted">None yet. Link annotations from their pages.</p>
-  {% endif %}
-  <h2>Described by</h2>
-  <p class="muted">The data points that describe it: what each platform records, and where.</p>
-  {% if matrix %}
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Subject</th>
-          <th>Role</th>
-          {% for platform in platforms %}<th>{{ platform }}</th>{% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in matrix %}
-          <tr>
-            <td>{{ row.subject }}</td>
-            <td>{{ row.role }}</td>
-            {% for links in row.cells %}
-              <td>
-                {% for link in links %}
-                  <div>
-                    <a href="{{ link.annotation.get_absolute_url }}">{{ link.annotation }}</a>
-                    {% if user.is_authenticated %}
-                      <form class="inline-form"
-                            hx-post="{% url 'representations:remove-link' link.pk %}"
-                            hx-target="closest div"
-                            hx-swap="outerHTML">
-                        <button type="submit"
-                                class="link-button"
-                                title="Remove this link">×</button>
-                      </form>
-                    {% endif %}
-                  </div>
-                {% empty %}
-                  –
-                {% endfor %}
-              </td>
+        </thead>
+        <tbody>
+          {% for subject, links in described %}
+            {% for link in links %}
+              <tr>
+                <td>{{ subject }}</td>
+                <td>{{ link.role }}</td>
+                <td>
+                  <code>{{ link.relative_path }}</code>
+                  {% if link.location.annotation %}
+                    (<a href="{{ link.location.annotation.get_absolute_url }}">{{ link.location.annotation }}</a>)
+                  {% endif %}
+                </td>
+              </tr>
             {% endfor %}
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p class="muted">None yet. Link annotations from their pages.</p>
-  {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">None yet. Add metadata with “Edit”.</p>
+    {% endif %}
+  </div>
 {% endblock %}

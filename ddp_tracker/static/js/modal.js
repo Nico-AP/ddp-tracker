@@ -97,14 +97,15 @@ document.addEventListener("input", (event) => {
   });
 });
 
-// A formset's rows (e.g. a new representation's metadata): [data-add-row] clones the form's
-// <template data-row-template> (its "__prefix__" becoming the next index) into [data-rows] and
-// raises TOTAL_FORMS; [data-remove-row] removes its row (an index left empty is ignored).
+// A formset's rows (e.g. a representation's metadata, one formset per slot): [data-add-row]
+// clones its formset's (the closest [data-formset], else the form's) <template
+// data-row-template> (its "__prefix__" becoming the next index) into [data-rows] and raises
+// TOTAL_FORMS; [data-remove-row] removes its row (an index left empty is ignored).
 document.addEventListener("click", (event) => {
   const target = event.target instanceof Element ? event.target : null;
   const add = target?.closest("[data-add-row]");
   if (add) {
-    const scope = add.closest("form");
+    const scope = add.closest("[data-formset]") ?? add.closest("form");
     const template = scope?.querySelector("template[data-row-template]");
     const total = scope?.querySelector("input[name$='-TOTAL_FORMS']");
     if (!template || !total) return;

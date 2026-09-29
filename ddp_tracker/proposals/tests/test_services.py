@@ -13,6 +13,7 @@ from ddp_tracker.proposals.services import (
     StaleError,
     accept,
     changes,
+    is_stale,
     reject,
     submit,
     withdraw,
@@ -179,95 +180,126 @@ class RepresentationTests(ProposalTestCase):
     def setUp(self):
         super().setUp()
         self.video = ObjectType.objects.get(slug="video")
-        self.item = create_annotation(
-            Location.objects.get(path="/a.json/videos/[]"), "Video", self.staff
-        )
-        self.when = create_annotation(
-            Location.objects.get(path="/a.json/videos/[]/when"), "When", self.staff
-        )
+        self.item = Location.objects.get(path="/a.json/videos/[]")  # not annotated: no matter
+        self.when = Location.objects.get(path="/a.json/videos/[]/when")
         self.values = {"pattern": Pattern.OBJECT, "name": "Video", "object": self.video.pk}
 
-    def test_new_representation_with_its_entity(self):
+    def test_new_representation_of_a_location(self):
+        with self.assertRaisesMessage(ProposalError, "needs a data point"):
+            submit(self.curator, Kind.NEW_REPRESENTATION, values=self.values)
+        with self.assertRaisesMessage(ProposalError, "can't have representations"):
+            submit(self.curator, Kind.NEW_REPRESENTATION, location=self.name, values=self.values)
         proposal = submit(
-            self.curator,
-            Kind.NEW_REPRESENTATION,
-            annotation=self.item,
-            values=self.values | {"relation": "represents"},
+            self.curator, Kind.NEW_REPRESENTATION, location=self.item, values=self.values
         )
         assert proposal is not None
         self.assertFalse(Representation.objects.exists())
-        self.assertIn(("Object", "", "video"), [(f, b, a.lower()) for f, b, a in changes(proposal)])
+        self.assertEqual(proposal.platform, self.platform)
+        rows = [(f, b, a.lower()) for f, b, a in changes(proposal)]
+        self.assertIn(("Object", "", "video"), rows)
+        self.assertIn(("Of", "", self.item.path), rows)
         accept(proposal, self.staff)
         created = Representation.objects.get(name="Video")
-        self.assertEqual(list(created.annotations.all()), [self.item])
+        self.assertEqual(created.location, self.item)
         proposal.refresh_from_db()
         self.assertEqual(proposal.representation, created)
 
     def test_new_representation_with_metadata_rows(self):
         when = MetadataRole.objects.get(slug="when")
-        row = {"subject": "object", "role": when.pk, "annotation": self.when.pk}
-        with self.assertRaisesMessage(ProposalError, "metadata row"):
-            submit(
-                self.curator,
-                Kind.NEW_REPRESENTATION,
-                annotation=self.item,
-                values=self.values | {"metadata": [row | {"subject": "actor"}]},  # no actor
-            )
+        row = {"subject": "object", "role": when.pk, "location": self.when.pk}
+        refused = [
+            (row | {"subject": "actor"}, "describe the actor"),  # no actor
+            (row | {"location": self.name.pk}, "metadata row"),  # not below the item
+        ]
+        for bad, message in refused:
+            with self.subTest(row=bad), self.assertRaisesMessage(ProposalError, message):
+                submit(
+                    self.curator,
+                    Kind.NEW_REPRESENTATION,
+                    location=self.item,
+                    values=self.values | {"metadata": [bad]},
+                )
         proposal = submit(
             self.curator,
             Kind.NEW_REPRESENTATION,
-            annotation=self.item,
-            values=self.values | {"relation": "represents", "metadata": [row]},
+            location=self.item,
+            values=self.values | {"metadata": [row]},
         )
         assert proposal is not None
-        self.assertIn(("Metadata", "", "When: when of the object"), changes(proposal))
+        self.assertIn(("Metadata", "", f"{self.when.path}: when of the object"), changes(proposal))
         accept(proposal, self.staff)
         created = Representation.objects.get(name="Video")
-        self.assertEqual(list(created.annotations.all()), [self.item])
         self.assertEqual(
-            list(created.metadata_links.values_list("annotation", "role", "subject")),
+            list(created.metadata_links.values_list("location", "role", "subject")),
             [(self.when.pk, when.pk, "object")],
         )
 
-    def test_links_and_their_removal(self):
+    def test_edit_replaces_the_metadata_and_deletion(self):
         video = Representation.objects.create(
-            pattern=Pattern.OBJECT, name="Video", object=self.video
+            location=self.item, pattern=Pattern.OBJECT, name="Video", object=self.video
         )
         when = MetadataRole.objects.get(slug="when")
-        entity = submit(self.curator, Kind.REPRESENT, representation=video, annotation=self.item)
-        described = submit(
+        row = {"subject": "object", "role": when.pk, "location": self.when.pk}
+        with self.assertRaisesMessage(ProposalError, "metadata row"):  # not below the item
+            submit(
+                self.curator,
+                Kind.EDIT_REPRESENTATION,
+                representation=video,
+                values=self.values | {"metadata": [row | {"location": self.name.pk}]},
+            )
+        edit = submit(
             self.curator,
-            Kind.DESCRIBE,
+            Kind.EDIT_REPRESENTATION,
             representation=video,
-            annotation=self.when,
-            role=when,
-            subject="object",
+            values=self.values | {"metadata": [row]},
         )
-        assert entity is not None
-        assert described is not None
-        accept(entity, self.staff)
-        accept(described, self.staff)
-        self.assertEqual(list(video.annotations.all()), [self.item])
-        link = RepresentationMetadata.objects.get()
-        with self.assertRaisesMessage(ProposalError, "Already linked"):
-            submit(self.curator, Kind.REPRESENT, representation=video, annotation=self.item)
-        remove = submit(self.curator, Kind.UNREPRESENT, representation=video, annotation=self.item)
-        unlink = submit(self.curator, Kind.UNDESCRIBE, metadata=link)
+        assert edit is not None
+        self.assertEqual(edit.platform, self.platform)
+        self.assertEqual(edit.base["metadata"], [])
+        self.assertEqual(changes(edit), [("Metadata", "", f"{self.when.path}: when of the object")])
+        accept(edit, self.staff)
+        self.assertEqual(RepresentationMetadata.objects.get().location, self.when)
+        # the links changed since: a stale suggestion
+        remove = submit(
+            self.curator,
+            Kind.EDIT_REPRESENTATION,
+            representation=video,
+            values=self.values | {"metadata": []},
+        )
         assert remove is not None
-        assert unlink is not None
-        accept(remove, self.staff)
-        accept(unlink, self.staff)
-        self.assertFalse(video.annotations.exists())
-        self.assertFalse(RepresentationMetadata.objects.exists())
-        unlink.refresh_from_db()  # kept as history, with what the link was
-        self.assertEqual((unlink.metadata, unlink.status), (None, Status.ACCEPTED))
-        self.assertIn("When", changes(unlink)[0][1])
+        self.assertFalse(is_stale(remove))
+        self.assertEqual(
+            changes(remove), [("Metadata", f"{self.when.path}: when of the object", "none")]
+        )
+        RepresentationMetadata.objects.all().delete()
+        self.assertTrue(is_stale(remove))
+        # without metadata in the values: the links stay
+        RepresentationMetadata.objects.create(
+            representation=video, location=self.when, role=when, subject="object"
+        )
+        rename = submit(
+            self.curator,
+            Kind.EDIT_REPRESENTATION,
+            representation=video,
+            values=self.values | {"name": "Clip"},
+        )
+        assert rename is not None
+        accept(rename, self.staff)
+        self.assertTrue(RepresentationMetadata.objects.exists())
+        delete = submit(self.curator, Kind.DELETE_REPRESENTATION, representation=video)
+        assert delete is not None
+        self.assertFalse(is_stale(delete))
+        accept(delete, self.staff)
+        self.assertFalse(Representation.objects.exists())
+        delete.refresh_from_db()
+        self.assertEqual(changes(delete), [("Representation", "Clip", "none")])
 
     def test_unapproved_vocabulary_waits(self):
         mine = ObjectType.objects.create(name="Clip", created_by=self.curator)  # suggested only
         pending = submit(
             self.curator,
             Kind.NEW_REPRESENTATION,
+            location=self.item,
             values={"pattern": Pattern.OBJECT, "name": "Clips", "object": mine.pk},
         )
         assert pending is not None

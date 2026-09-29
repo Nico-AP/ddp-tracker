@@ -51,7 +51,7 @@
                 <input type="hidden" name="action" value="link">
                 <input type="hidden" name="annotation" value="{{ choice.annotation.pk }}">
                 <input type="hidden" name="upload" value="{{ upload.pk }}">
-                <button type="submit" class="btn" data-primary-action>
+                <button type="submit" class="btn btn-primary" data-primary-action>
                   {% if user.is_staff %}
                     Use suggestion:
                   {% else %}
@@ -77,7 +77,7 @@
             </button>
           {% else %}
             <button type="button"
-                    class="btn"
+                    class="btn btn-primary"
                     data-primary-action
                     hx-get="{% url 'schemas:triage' open.pk %}?upload={{ upload.pk }}"
                     hx-target="#modal"
@@ -153,14 +153,6 @@
         {% endif %}
         {% include "schemas/_examples.html" with location=target %}
       </section>
-      <section class="review-panel__section">
-        <h3 class="review-panel__label">Representations</h3>
-        <div hx-get="{% url 'representations:location-section' target.pk %}"
-             hx-trigger="load"
-             hx-swap="innerHTML">
-          <p class="muted">Loading…</p>
-        </div>
-      </section>
     {% else %}
       <section class="review-panel__section">
         <h3 class="review-panel__label">Available after annotating</h3>
@@ -169,13 +161,17 @@
           <dd>
             {% if own_list %}Add from your values{% else %}Add later{% endif %}
           </dd>
-          <dt>Representations</dt>
-          <dd>
-            Needs an annotation
-          </dd>
         </dl>
       </section>
     {% endif %}
+    <section class="review-panel__section">
+      <h3 class="review-panel__label">Representations</h3>
+      <div hx-get="{% url 'representations:location-section' target.pk %}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+        <p class="muted">Loading…</p>
+      </div>
+    </section>
     <footer class="review-panel__section review-panel__foot">
       <p class="muted">
         Seen in {{ history|length }} upload{{ history|length|pluralize }}{% if history|length == 1 %}: its history appears here once it shows up again{% endif %}.

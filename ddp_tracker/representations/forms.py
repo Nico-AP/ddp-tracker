@@ -1,12 +1,12 @@
+import copy
 from typing import Any, cast
 
 from django import forms
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
-from django.core.exceptions import ValidationError
-from django.db.models import Case, Model, When
+from django.db.models import Model
 from django.utils.text import slugify
 
-from ddp_tracker.annotations.models import Annotation
+from ddp_tracker.representations.eligibility import metadata_candidates
 from ddp_tracker.representations.models import (
     ActivityType,
     ActorType,
@@ -14,9 +14,9 @@ from ddp_tracker.representations.models import (
     ObjectType,
     Pattern,
     Representation,
-    RepresentationMetadata,
     Vocabulary,
 )
+from ddp_tracker.schemas.models import Location
 
 type AnyUser = AbstractBaseUser | AnonymousUser
 
@@ -42,6 +42,25 @@ class TermField(forms.ModelChoiceField):
 
     def label_from_instance(self, obj: Model) -> str:
         return str(obj) if getattr(obj, "approved", True) else f"{obj} (suggested)"
+
+
+class DataPointField(forms.ModelChoiceField):
+    """A location in a representation's subtree (``offer``): its path from the list on
+    (``VideoList/[]/Date``, the path above the list is the same for all), and its annotation if
+    it has one."""
+
+    shared = ""  # the path above the list, with its trailing "/"
+
+    def offer(self, anchor: Location) -> None:
+        """The data points below ``anchor``, a list's item."""
+        self.queryset = metadata_candidates(anchor)
+        above_list = (anchor.parent_path or "").rpartition("/")[0]  # "" for a file or the root
+        self.shared = f"{above_list}/"
+
+    def label_from_instance(self, obj: Model) -> str:
+        assert isinstance(obj, Location)
+        path = obj.path.removeprefix(self.shared)
+        return f"{path} ({obj.annotation})" if obj.annotation else path
 
 
 class RepresentationForm(forms.ModelForm):
@@ -86,44 +105,6 @@ class RepresentationForm(forms.ModelForm):
         return data
 
 
-class RepresentForm(forms.Form):
-    representation = forms.ModelChoiceField(queryset=Representation.objects.none())
-
-    def __init__(self, *args: Any, annotation: Annotation, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        field = self.fields["representation"]
-        assert isinstance(field, forms.ModelChoiceField)
-        field.queryset = Representation.objects.exclude(annotations=annotation)
-
-
-class DescribeForm(forms.Form):
-    representation = forms.ModelChoiceField(
-        queryset=Representation.objects.exclude(pattern=Pattern.UNMAPPED)
-    )
-    role = TermField(queryset=MetadataRole.objects.none())
-    subject = forms.ChoiceField(choices=RepresentationMetadata.Subject.choices)
-
-    def __init__(self, *args: Any, annotation: Annotation, user: AnyUser, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.annotation = annotation
-        field = self.fields["role"]
-        assert isinstance(field, forms.ModelChoiceField)
-        field.queryset = MetadataRole.for_user(user)
-
-    def clean(self) -> dict[str, Any]:
-        super().clean()
-        data = self.cleaned_data
-        if not self.errors:
-            link = RepresentationMetadata(annotation=self.annotation, **data)
-            try:
-                link.full_clean()
-            except ValidationError as error:
-                for field, messages in error.message_dict.items():
-                    for message in messages:
-                        self.add_error(None if field == "__all__" else field, message)
-        return data
-
-
 class SuggestTermForm(forms.Form):
     kind = forms.ChoiceField(
         choices=[
@@ -158,7 +139,7 @@ class SuggestTermForm(forms.Form):
 
 
 class NewRepresentationForm(RepresentationForm):
-    """A new representation, created from an annotation: that annotation is its entity."""
+    """The representation's own fields in the dialog (its layout)."""
 
     def __init__(self, *args: Any, user: AnyUser, **kwargs: Any) -> None:
         super().__init__(*args, user=user, **kwargs)
@@ -169,38 +150,31 @@ class NewRepresentationForm(RepresentationForm):
             self.fields[field].widget.attrs["class"] = "form-control"
 
 
-# the subjects a pattern's representation fills (what its metadata can describe)
+# the slots each pattern shows in the dialog, each with its metadata (what its metadata can describe)
 SUBJECTS: dict[str, tuple[str, ...]] = {
-    Pattern.ACTIVITY: ("actor", "activity", "object", "target"),
-    Pattern.OBJECT: ("object",),
-    Pattern.UNMAPPED: (),
+    pattern: REQUIRED[pattern] + OPTIONAL.get(pattern, ()) for pattern in Pattern
 }
 
-
-ROW_FIELDS = ("subject", "role", "annotation")
+ROW_FIELDS = ("location", "role")
 
 
 class MetadataRowForm(forms.Form):
-    """One metadata link of a new representation: ``annotation`` describes ``subject`` as
-    ``role``. An empty row is skipped; a partly filled one is an error."""
+    """One metadata link in a slot's section of the dialog: ``location`` (below ``anchor``)
+    describes the slot as ``role``. An empty row is skipped; a partly filled one is an error."""
 
-    subject = forms.ChoiceField(
-        choices=[("", "---------"), *RepresentationMetadata.Subject.choices], required=False
-    )
+    location = DataPointField(queryset=Location.objects.none(), required=False)
     role = TermField(queryset=MetadataRole.objects.none(), required=False)
-    annotation = forms.ModelChoiceField(queryset=Annotation.objects.none(), required=False)
 
-    def __init__(self, *args: Any, user: AnyUser, annotation: Annotation, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, user: AnyUser, anchor: Location, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        location = self.fields["location"]
+        assert isinstance(location, DataPointField)
+        location.offer(anchor)
         role = self.fields["role"]
         assert isinstance(role, forms.ModelChoiceField)
         role.queryset = MetadataRole.for_user(user)
-        choices = self.fields["annotation"]
-        assert isinstance(choices, forms.ModelChoiceField)
-        # the platform's annotations, the one the dialog is for first
-        choices.queryset = Annotation.objects.filter(platform=annotation.platform_id).order_by(
-            Case(When(pk=annotation.pk, then=0), default=1), "name"
-        )
+        location.widget.attrs["aria-label"] = "Data point"
+        role.widget.attrs["aria-label"] = "Role"
         for field in self.fields.values():
             field.widget.attrs["class"] = "form-select form-select-sm"
 
@@ -209,39 +183,25 @@ class MetadataRowForm(forms.Form):
         data = self.cleaned_data
         filled = [field for field in ROW_FIELDS if data.get(field)]
         if filled and len(filled) < len(ROW_FIELDS):
-            self.add_error(None, "A metadata row needs a subject, a role and an annotation.")
+            self.add_error(None, "A metadata row needs a data point and a role.")
         return data
-
-    @property
-    def link(self) -> dict[str, Any] | None:
-        """The row as a link (``None`` for an empty row)."""
-        data = self.cleaned_data
-        if not all(data.get(field) for field in ROW_FIELDS):
-            return None
-        return {"subject": data["subject"], "role": data["role"], "annotation": data["annotation"]}
 
 
 class BaseMetadataFormSet(forms.BaseFormSet):
-    def __init__(self, *args: Any, pattern: str = "", **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.pattern = pattern
+    """One slot's metadata rows (``subject``)."""
 
-    def clean(self) -> None:
-        if any(self.errors):
-            return
-        filled = SUBJECTS.get(self.pattern, ())
-        for link in self.links:
-            if link["subject"] not in filled:
-                msg = (
-                    "No confident mapping has no metadata."
-                    if self.pattern == Pattern.UNMAPPED
-                    else f"This representation has no {link['subject']}."
-                )
-                raise ValidationError(msg)
+    def __init__(self, *args: Any, subject: str, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.subject = subject
 
     @property
-    def links(self) -> list[dict[str, Any]]:
-        return [form.link for form in self.forms if form.is_valid() and form.link]
+    def links(self) -> list[tuple[str, MetadataRole, Location]]:
+        """The filled rows as ``(subject, role, location)``."""
+        return [
+            (self.subject, form.cleaned_data["role"], form.cleaned_data["location"])
+            for form in self.forms
+            if form.is_valid() and all(form.cleaned_data.get(field) for field in ROW_FIELDS)
+        ]
 
 
 # formset_factory builds a subclass of ``formset``; the stubs only know it as a BaseFormSet
@@ -249,3 +209,63 @@ MetadataFormSet = cast(
     "type[BaseMetadataFormSet]",
     forms.formset_factory(MetadataRowForm, formset=BaseMetadataFormSet, extra=0),
 )
+
+
+class RepresentationDialog:
+    """The representation dialog: its fields, and per slot the metadata rows describing it
+    (``sections``, one formset each). For a new representation of ``location`` or an existing
+    one (``instance``: its links become the rows, and the rows replace them on saving)."""
+
+    def __init__(
+        self,
+        data: Any,  # noqa: ANN401 - a QueryDict or None
+        *,
+        user: AnyUser,
+        location: Location,
+        instance: Representation | None = None,
+    ) -> None:
+        self.location = location
+        self.instance = instance
+        self.form = NewRepresentationForm(
+            data, instance=copy.copy(instance) if instance else None, user=user
+        )
+        # the saved links, only to show (compared with them, an unchanged row would be skipped)
+        rows: dict[str, list[dict[str, Any]]] = {subject: [] for subject in SLOTS}
+        if instance is not None and data is None:
+            for link in instance.metadata_links.order_by("pk"):
+                rows[link.subject].append({"location": link.location_id, "role": link.role_id})
+        self.sections = {
+            subject: MetadataFormSet(
+                data,
+                prefix=f"metadata-{subject}",
+                initial=rows[subject],
+                subject=subject,
+                form_kwargs={"user": user, "anchor": location},
+            )
+            for subject in SLOTS
+        }
+
+    def slots(self) -> list[tuple[forms.BoundField, BaseMetadataFormSet]]:
+        """Each slot's field with its metadata rows, in the dialog's order."""
+        return [(self.form[slot], self.sections[slot]) for slot in SLOTS]
+
+    def is_valid(self) -> bool:
+        sections = [section.is_valid() for section in self.sections.values()]
+        if all(sections):
+            # the rows describe the slots: a slot they need can't be left empty
+            self.form.instance.described = [subject for subject, _, _ in self.links]
+        return self.form.is_valid() and all(sections)
+
+    @property
+    def links(self) -> list[tuple[str, MetadataRole, Location]]:
+        """The rows of the slots the chosen pattern shows (a hidden slot's rows are dropped)."""
+        shown = SUBJECTS.get((self.form.data or {}).get("pattern", ""), ())
+        return [link for slot in shown for link in self.sections[slot].links]
+
+    @property
+    def rows(self) -> list[dict[str, Any]]:
+        """``links`` as a proposal keeps them."""
+        return [
+            {"subject": subject, "role": role.pk, "location": location.pk}
+            for subject, role, location in self.links
+        ]

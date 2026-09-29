@@ -157,38 +157,45 @@ Example for **changed**, one location's `format`, uploads in order of request da
 | 2026-05   | `%Y-%m-%d`  | no: seen before                   |
 | 2026-07   | `%d.%m.%Y`  | no: seen before                   |
 
-## Representations (cross-platform)
+## Representations
 
-A **representation** describes a concept independently of any platform, so annotations of different
-platforms can be compared. Its terms (actor types, activity types, object types, metadata roles)
-are curated in the database and can be extended. Relations point at a term's id; its slug is the
-stable name code and seeds use to look it up, and is fixed once created; its name can be edited.
-A slot that metadata links describe can't be emptied until those links are removed.
+A **representation** says what the entries of a list mean, in the terms of a shared vocabulary,
+e.g. "user · view · video" for each item of a watch history, so platforms can be compared. It
+belongs to one **location** (never to an annotation: a location can be represented before, or
+without, being annotated), and a location can have several. Only a **list's item that is an
+object** (`VideoList[]/<item>`, including the items of a file that is a list, such as a JSON
+array or a CSV's rows) can have representations for now; this is decided from all of the
+location's observations (its main type), and a representation it has is kept when later uploads
+change that. Its terms (actor types, activity types, object types, metadata roles) are curated in
+the database and can be extended. Relations point at a term's id; its slug is the stable name code
+and seeds use to look it up, and is fixed once created; its name can be edited. A slot that
+metadata links describe can't be emptied until those links are removed. Names needn't be unique.
 
-| Term                | Definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Pattern**         | **Activity**: something happened, *actor · activity · object*, optionally *· target* (user · view · video; user · add · video · collection; other user · follow · person). Actor types: the **user** (the data donor), **other user** (another account, e.g. a follower), the **platform**. **Object**: something exists (profile). **Unmapped**: no confident mapping yet.                                                                                                                       |
-| **Representing**    | Annotations that *are* the concept: the entity node itself: by default a list's `<item>` (one watched video), on any number of platforms. Can be empty: plain objects (`profile`) are no data points, so a "Profile" representation only has metadata links; a link's platform is its annotation's.                                                                                                                                                                                               |
-| **Metadata link**   | An annotation that *describes* the concept, with a **role** (when, duration, identifier, name …) and a **subject**: one of the slots the representation fills (`actor`, `activity`, `object`, `target`). E.g. TikTok's `Date` is *when* of the activity, its `Link` the *identifier* of the object, a follower's username the *name* of the actor; for an object representation (profile) everything describes the object. Unmapped representations fill no slot, so they have no metadata links. |
-| **Suggested term**  | A term a signed-in user proposed (on the vocabulary page). Its suggester can use it right away; an admin approves it, and only then is it listed publicly and offered to others.                                                                                                                                                                                                                                                                                                                  |
+| Term                | Definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Pattern**         | **Activity**: something happened, *actor · activity · object*, optionally *· target* (user · view · video; user · add · video · collection; other user · follow · person). Actor types: the **user** (the data donor), **other user** (another account, e.g. a follower), the **platform**. **Object**: something exists (profile). **Unmapped**: no confident mapping yet.                                                                                                           |
+| **Location**        | The list's item the representation is about (one watched video). Set when it is created, never changed.                                                                                                                                                                                                                                                                                                                                                                               |
+| **Metadata link**   | A data point **below** the location (any depth, not ignored) that *describes* the entry, with a **role** (when, duration, identifier, name …) and a **subject**: one of the slots the representation fills (`actor`, `activity`, `object`, `target`). E.g. TikTok's `Date` is *when* of the activity, its `Link` the *identifier* of the object; for an object representation everything describes the object. Unmapped representations fill no slot, so they have no metadata links. |
+| **Suggested term**  | A term a signed-in user proposed (on the vocabulary page). Its suggester can use it right away; an admin approves it, and only then is it listed publicly and offered to others.                                                                                                                                                                                                                                                                                                      |
 
-Curators assign annotations and link representations through **"Add annotation"** and **"Add
-representation"** (a dialog), from the explorer's side panel, the upload review and the annotation's
-page: **select an existing** one (something happened or something exists; the data point *is* it,
-or *describes* one of its slots), or **add a new** one, the data point as its entity, with any
-number of metadata rows (subject, role, annotation; not for "no confident mapping"). The
-representation's page shows the result across platforms: what represents it, and a table of who
-records what (subject and role × platform).
+Curators add representations from the **Representations** section of the explorer's side panel and
+the upload review, for a list's item: **"Add representation"** opens the representation dialog.
+It has one section per slot the pattern shows, each with its term and its metadata rows (data
+point, role; the section is the subject; "no confident mapping" has none), then the name and
+description. The section lists a location's representations read-only; **"Edit"** (there and on
+the representation's page) opens the same dialog to change anything, metadata included (its rows
+replace the links), or to delete the representation. The representations page lists them all,
+with their platform and location; a representation's page shows its metadata by subject and role.
 
 ## Suggestions and approval
 
 **Only staff decide** what is curated; everyone else **suggests** (`ddp_tracker/proposals`). The
-curated data (annotations, which annotation a location has, representations and their links)
+curated data (annotations, which annotation a location has, representations and their metadata)
 only ever holds approved changes; a suggestion waits beside it as a *proposal*.
 
 - **What is suggested:** annotating a location (link to an annotation, a new annotation, "not a
-  data point", removing the assignment), editing an annotation, and representations (new, edited,
-  linked as the entity or as metadata, links removed). Suggestions can be corrections to what is
+  data point", removing the assignment), editing an annotation, and representations (new, edited
+  with their metadata, deleted). Suggestions can be corrections to what is
   already annotated. Example values are not suggested: they change directly.
 - **Staff's own changes apply directly**; for everyone else the same buttons read "Suggest …".
 - **Deciding:** staff go through two queues, annotations (by platform) and representations, one

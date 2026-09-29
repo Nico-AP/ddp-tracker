@@ -49,8 +49,9 @@
   whether a data point is PII.
 
 **Representation**
-: A concept described independently of any platform, like "the user watched a video", linked to
-  the data points that hold it on each platform. See [Representations](representations.md).
+: What the entries of a list mean, in a shared vocabulary, like "the user watched a video" for
+  each item of a watch history, with the data points inside the entries that describe it. See
+  [Representations](representations.md).
 
 **Request date**
 : When the DDP was requested from the platform. Whether a data point is new, known or changed is

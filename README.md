@@ -3,7 +3,7 @@
 A web application to track how platforms' data download packages (DDPs) change over time. People
 upload the DDP they requested from a platform (TikTok, Instagram, …). Each upload is parsed into a
 schema of its files and data points and registered into that platform's collected schema. Curators
-then annotate the data points and link them to cross-platform representations.
+then annotate the data points and say what lists' entries represent, in terms shared across platforms.
 
 Privacy by design: an uploaded DDP is parsed and deleted right away. Only its schema is kept (never
 the raw file), and the file name is stored anonymized.

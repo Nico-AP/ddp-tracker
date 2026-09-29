@@ -19,15 +19,16 @@ from django.utils import timezone
 from ddp_tracker.annotations.forms import AnnotationForm
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.proposals.models import Proposal
+from ddp_tracker.representations.eligibility import is_eligible, metadata_candidates
 from ddp_tracker.representations.forms import (
     SLOTS,
     SUBJECTS,
     VOCABULARIES,
-    DescribeForm,
     RepresentationForm,
 )
-from ddp_tracker.representations.models import MetadataRole, ObjectType
-from ddp_tracker.representations.services import describe, represent
+from ddp_tracker.representations.models import MetadataRole, ObjectType, Representation
+from ddp_tracker.representations.services import describe
+from ddp_tracker.schemas.models import Location
 from ddp_tracker.schemas.services import create_annotation, ignore, link
 from ddp_tracker.users.models import User
 
@@ -77,6 +78,8 @@ def _platform(proposal: Proposal) -> Any:  # noqa: ANN401 - a Platform or None
         return proposal.location.platform
     if proposal.annotation is not None:
         return proposal.annotation.platform
+    if proposal.representation is not None:
+        return proposal.representation.location.platform
     return None
 
 
@@ -103,55 +106,56 @@ def _check_annotation(proposal: Proposal, user: User) -> None:
 
 
 def _check_representation(proposal: Proposal, user: User) -> None:
-    instance = None
-    if proposal.kind == Kind.EDIT_REPRESENTATION:
-        instance = copy.copy(_need(proposal.representation, "a representation"))
-    _valid(RepresentationForm(data=proposal.values, instance=instance, user=user))
-    if proposal.values.get("relation"):
-        _need(proposal.annotation, "an annotation")
+    if proposal.kind == Kind.NEW_REPRESENTATION:
+        location = _need(proposal.location, "a data point")
+        if not is_eligible(location):
+            msg = "This data point can't have representations."
+            raise ProposalError(msg)
+    _valid(_representation_form(proposal, user, copy.copy(proposal.representation)))
     _metadata_rows(proposal, user)
 
 
-def _metadata_rows(proposal: Proposal, user: User) -> list[tuple[str, MetadataRole, Annotation]]:
-    """A new representation's metadata links (``values["metadata"]``): subjects its pattern
-    fills, roles offered to ``user``, annotations that exist."""
+def _representation_form(
+    proposal: Proposal, user: User, instance: Representation | None
+) -> RepresentationForm:
+    """The proposed fields on ``instance`` (a new one if ``None``), validated against the
+    proposed metadata links (``values["metadata"]``, which replace the saved ones)."""
+    instance = instance or Representation()
+    if "metadata" in proposal.values:
+        instance.described = [row.get("subject", "") for row in proposal.values["metadata"]]
+    return RepresentationForm(data=proposal.values, instance=instance, user=user)
+
+
+def _anchor(proposal: Proposal) -> Location:
+    """The location the representation is (or will be) of."""
+    if proposal.representation is not None:
+        return proposal.representation.location
+    return _need(proposal.location, "a data point")
+
+
+def _metadata_rows(proposal: Proposal, user: User) -> list[tuple[str, MetadataRole, Location]]:
+    """A representation's metadata links (``values["metadata"]``): subjects its pattern
+    fills, roles offered to ``user``, data points below the representation's location."""
     rows = proposal.values.get("metadata") or []
+    if not rows:
+        return []
+    candidates = metadata_candidates(_anchor(proposal))
     subjects = SUBJECTS.get(proposal.values.get("pattern", ""), ())
     roles = MetadataRole.for_user(user)
     found = []
     for row in rows:
         role = roles.filter(pk=row.get("role") or 0).first()
-        annotation = Annotation.objects.filter(pk=row.get("annotation") or 0).first()
-        if row.get("subject") not in subjects or role is None or annotation is None:
+        location = candidates.filter(pk=row.get("location") or 0).first()
+        if row.get("subject") not in subjects or role is None or location is None:
             msg = f"A metadata row can't be used as it is: {row}."
             raise ProposalError(msg)
-        found.append((row["subject"], role, annotation))
+        found.append((row["subject"], role, location))
     return found
 
 
-def _check_entity_link(proposal: Proposal, user: User) -> None:
+def _check_delete_representation(proposal: Proposal, user: User) -> None:
     representation = _need(proposal.representation, "a representation")
-    annotation = _need(proposal.annotation, "an annotation")
-    linked = representation.annotations.filter(pk=annotation.pk).exists()
-    if linked == (proposal.kind == Kind.REPRESENT):
-        msg = "Already linked." if linked else "Not linked."
-        raise ProposalError(msg)
-
-
-def _check_describe(proposal: Proposal, user: User) -> None:
-    _need(proposal.representation, "a representation")
-    data = {
-        "representation": proposal.representation_id,
-        "role": proposal.role_id,
-        "subject": proposal.subject,
-    }
-    annotation = _need(proposal.annotation, "an annotation")
-    _valid(DescribeForm(data=data, annotation=annotation, user=user))
-
-
-def _check_undescribe(proposal: Proposal, user: User) -> None:
-    metadata = _need(proposal.metadata, "a metadata link")
-    proposal.values = {"link": str(metadata)}  # shown once the link is gone
+    proposal.values = {"representation": str(representation)}  # shown once it is gone
 
 
 VALIDATE: dict[str, Callable[[Proposal, User], None]] = {
@@ -162,10 +166,7 @@ VALIDATE: dict[str, Callable[[Proposal, User], None]] = {
     Kind.EDIT_ANNOTATION: _check_annotation,
     Kind.NEW_REPRESENTATION: _check_representation,
     Kind.EDIT_REPRESENTATION: _check_representation,
-    Kind.REPRESENT: _check_entity_link,
-    Kind.UNREPRESENT: _check_entity_link,
-    Kind.DESCRIBE: _check_describe,
-    Kind.UNDESCRIBE: _check_undescribe,
+    Kind.DELETE_REPRESENTATION: _check_delete_representation,
 }
 
 
@@ -190,12 +191,7 @@ _TARGETS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     **dict.fromkeys(LOCATION_KINDS, (LOCATION_KINDS, ("location",))),
     Kind.EDIT_ANNOTATION: ((Kind.EDIT_ANNOTATION,), ("annotation",)),
     Kind.EDIT_REPRESENTATION: ((Kind.EDIT_REPRESENTATION,), ("representation",)),
-    **dict.fromkeys(
-        (Kind.REPRESENT, Kind.UNREPRESENT),
-        ((Kind.REPRESENT, Kind.UNREPRESENT), ("annotation", "representation")),
-    ),
-    Kind.DESCRIBE: ((Kind.DESCRIBE,), ("annotation", "representation", "role", "subject")),
-    Kind.UNDESCRIBE: ((Kind.UNDESCRIBE,), ("metadata",)),
+    Kind.DELETE_REPRESENTATION: ((Kind.DELETE_REPRESENTATION,), ("representation",)),
 }
 
 
@@ -205,10 +201,7 @@ def _same_target(proposal: Proposal) -> Q:
     if proposal.kind not in _TARGETS:
         return Q(pk=proposal.pk)
     kinds, fields = _TARGETS[proposal.kind]
-    match = {
-        field: getattr(proposal, field if field == "subject" else f"{field}_id") for field in fields
-    }
-    return Q(kind__in=kinds, **match)
+    return Q(kind__in=kinds, **{field: getattr(proposal, f"{field}_id") for field in fields})
 
 
 def snapshot(proposal: Proposal) -> dict[str, Any]:
@@ -220,13 +213,26 @@ def snapshot(proposal: Proposal) -> dict[str, Any]:
     if kind == Kind.EDIT_ANNOTATION and proposal.annotation is not None:
         return model_to_dict(proposal.annotation, fields=list(ANNOTATION_FIELDS))
     if kind == Kind.EDIT_REPRESENTATION and proposal.representation is not None:
-        return model_to_dict(proposal.representation, fields=list(REPRESENTATION_FIELDS))
-    if kind in {Kind.REPRESENT, Kind.UNREPRESENT} and proposal.representation is not None:
-        linked = proposal.representation.annotations.filter(pk=proposal.annotation_id or 0)
-        return {"linked": linked.exists()}
-    if kind == Kind.UNDESCRIBE:
-        return {"exists": proposal.metadata_id is not None}
+        representation = proposal.representation
+        return model_to_dict(representation, fields=list(REPRESENTATION_FIELDS)) | {
+            "metadata": metadata_of(representation)
+        }
+    if kind == Kind.DELETE_REPRESENTATION:
+        return {"exists": proposal.representation_id is not None}
     return {}
+
+
+def metadata_of(representation: Representation) -> list[dict[str, Any]]:
+    """A representation's metadata links as a proposal keeps them, in a stable order."""
+    links = representation.metadata_links.values("subject", "role", "location")
+    return _in_order([dict(link) for link in links])
+
+
+def _in_order(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        rows,
+        key=lambda row: (row.get("subject", ""), row.get("location") or 0, row.get("role") or 0),
+    )
 
 
 def is_stale(proposal: Proposal) -> bool:
@@ -335,51 +341,31 @@ def _edit_annotation(proposal: Proposal, author: User, actor: User) -> None:
 
 
 def _representation(proposal: Proposal, author: User, actor: User) -> None:
-    form = RepresentationForm(data=proposal.values, instance=proposal.representation, user=actor)
+    """Create or edit it; its metadata links become the proposed ones (``values["metadata"]``,
+    an edit without it keeps them)."""
+    form = _representation_form(proposal, actor, proposal.representation)
     _valid(form)
+    rows = _metadata_rows(proposal, actor)
     representation = form.save(commit=False)
+    if representation.pk is None:  # new: the location it is for (never changed afterwards)
+        representation.location = _need(proposal.location, "a data point")
     representation.updated_by = author
     representation.save()
-    form.save_m2m()
-    relation = proposal.values.get("relation")
-    if relation == "represents":
-        represent(representation, _need(proposal.annotation, "an annotation"))
-    elif relation == "describes":
-        describe(
-            representation,
-            _need(proposal.annotation, "an annotation"),
-            _need(proposal.role, "a role"),
-            proposal.subject,
-        )
-    for subject, role, annotation in _metadata_rows(proposal, actor):
-        describe(representation, annotation, role, subject)
+    if "metadata" in proposal.values:
+        wanted = {(subject, role.pk, location.pk) for subject, role, location in rows}
+        for link in representation.metadata_links.all():
+            if (link.subject, link.role_id, link.location_id) not in wanted:
+                link.delete()
+        kept = set(representation.metadata_links.values_list("subject", "role", "location"))
+        for subject, role, location in rows:
+            if (subject, role.pk, location.pk) not in kept:
+                describe(representation, location, role, subject)
     proposal.representation = representation
 
 
-def _represent(proposal: Proposal, author: User, actor: User) -> None:
-    represent(
-        _need(proposal.representation, "a representation"),
-        _need(proposal.annotation, "an annotation"),
-    )
-
-
-def _describe(proposal: Proposal, author: User, actor: User) -> None:
-    describe(
-        _need(proposal.representation, "a representation"),
-        _need(proposal.annotation, "an annotation"),
-        _need(proposal.role, "a role"),
-        proposal.subject,
-    )
-
-
-def _unrepresent(proposal: Proposal, author: User, actor: User) -> None:
-    representation = _need(proposal.representation, "a representation")
-    representation.annotations.remove(_need(proposal.annotation, "an annotation"))
-
-
-def _undescribe(proposal: Proposal, author: User, actor: User) -> None:
-    _need(proposal.metadata, "a metadata link").delete()
-    proposal.metadata = None  # gone; ``values["link"]`` says what it was
+def _delete_representation(proposal: Proposal, author: User, actor: User) -> None:
+    _need(proposal.representation, "a representation").delete()
+    proposal.representation = None  # gone; ``values["representation"]`` says what it was
 
 
 APPLY: dict[str, Callable[[Proposal, User, User], None]] = {
@@ -390,10 +376,7 @@ APPLY: dict[str, Callable[[Proposal, User, User], None]] = {
     Kind.EDIT_ANNOTATION: _edit_annotation,
     Kind.NEW_REPRESENTATION: _representation,
     Kind.EDIT_REPRESENTATION: _representation,
-    Kind.REPRESENT: _represent,
-    Kind.DESCRIBE: _describe,
-    Kind.UNREPRESENT: _unrepresent,
-    Kind.UNDESCRIBE: _undescribe,
+    Kind.DELETE_REPRESENTATION: _delete_representation,
 }
 
 
@@ -427,26 +410,23 @@ def changes(proposal: Proposal) -> list[tuple[str, str, str]]:
             for field in fields
             if _shown(field, before.get(field)) != _shown(field, values.get(field))
         ]
-        if values.get("relation"):
-            rows.append(("Linked", "", f"{values['relation']} {proposal.annotation}"))
-        rows += [("Metadata", "", _metadata_row(row)) for row in values.get("metadata") or []]
+        if kind == Kind.NEW_REPRESENTATION and proposal.location is not None:
+            rows.append(("Of", "", proposal.location.path))
+        if "metadata" in values:
+            saved, wanted = before.get("metadata") or [], values["metadata"]
+            rows += [("Metadata", _metadata_row(row), "none") for row in saved if row not in wanted]
+            rows += [("Metadata", "", _metadata_row(row)) for row in wanted if row not in saved]
         return rows
-    linked = f"{proposal.representation}"
-    if kind == Kind.REPRESENT:
-        return [("Entity of", "", linked)]
-    if kind == Kind.DESCRIBE:
-        return [("Describes", "", f"{linked}: {proposal.role} of the {proposal.subject}")]
-    if kind == Kind.UNREPRESENT:
-        return [("Entity of", linked, "none")]
-    return [("Describes", values.get("link", ""), "none")]
+    return [("Representation", values.get("representation", ""), "none")]
 
 
 def _metadata_row(row: dict[str, Any]) -> str:
-    """``{"subject": "activity", "role": 3, "annotation": 7}`` in words: "Date: when of the
+    """``{"subject": "activity", "role": 3, "location": 7}`` in words: "…/[]/Date: when of the
     activity"."""
     role = MetadataRole.objects.filter(pk=row.get("role") or 0).first()
-    annotation = Annotation.objects.filter(pk=row.get("annotation") or 0).first()
-    return f"{annotation or '(deleted)'}: {role or '(deleted)'} of the {row.get('subject', '')}"
+    location = Location.objects.filter(pk=row.get("location") or 0).first()
+    where = location.path if location else "(deleted)"
+    return f"{where}: {role or '(deleted)'} of the {row.get('subject', '')}"
 
 
 def _assignment(base: dict[str, Any]) -> str:

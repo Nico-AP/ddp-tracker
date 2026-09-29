@@ -47,7 +47,7 @@
                 hx-target="closest [data-proposal]"
                 hx-swap="outerHTML">
             {% if entry.stale %}<input type="hidden" name="stale" value="1">{% endif %}
-            <button type="submit" class="btn btn--small" data-accept>
+            <button type="submit" class="btn btn-primary btn-sm" data-accept>
               {% if entry.stale %}
                 Accept anyway
               {% else %}

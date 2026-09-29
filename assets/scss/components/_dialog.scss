@@ -121,84 +121,52 @@ html.dialog-locked {
   }
 }
 
-// the representation dialog (representations/_representation_modal.html)
-.rep-select__bar {
-  display: flex;
-  align-items: center;
-  gap: $spacing-unit * 1.5;
-  margin-bottom: $spacing-unit;
-
-  .form-control {
-    flex: 1;
-  }
-}
-
-// the switch shows one kind's table (no script: :has)
-.rep-table--object,
-.rep-select:has(#rep-kind-object:checked) .rep-table--activity {
+// the representation dialog (representations/_representation_modal.html): one full-width
+// section per slot, its term and its metadata; the pattern decides which slots show (:has)
+.rep-new__slot {
   display: none;
-}
-
-.rep-select:has(#rep-kind-object:checked) .rep-table--object {
-  display: block;
-}
-
-.rep-table__actions {
-  width: 1%;
-  white-space: nowrap;
-
-  form {
-    display: inline;
-  }
-}
-
-.rep-describe {
-  display: inline-block;
-  margin-left: $spacing-unit;
-
-  > summary {
-    color: $color-primary;
-    cursor: pointer;
-    font-size: $font-size-small;
-  }
-}
-
-.rep-describe__form {
-  display: flex !important;
-  gap: $spacing-unit * 0.5;
-  margin-top: $spacing-unit * 0.5;
-}
-
-// a new representation: the pattern decides which slots and whether metadata show (:has)
-.rep-new__slots {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-  gap: $spacing-unit;
-}
-
-.rep-new__slot,
-.rep-new__metadata {
-  display: none;
+  margin-top: $spacing-unit * 1.5;
+  padding-top: $spacing-unit;
+  border-top: 1px solid $color-border;
 }
 
 .rep-new__form:has([name="pattern"][value="activity"]:checked) .rep-new__slot,
-.rep-new__form:has([name="pattern"][value="object"]:checked) .rep-new__slot[data-slot="object"],
-.rep-new__form:has([name="pattern"][value="activity"]:checked) .rep-new__metadata,
-.rep-new__form:has([name="pattern"][value="object"]:checked) .rep-new__metadata {
+.rep-new__form:has([name="pattern"][value="object"]:checked) .rep-new__slot[data-slot="object"] {
   display: block;
+}
+
+.rep-new__slot-title {
+  margin: 0 0 ($spacing-unit * 0.25);
+  font-size: 1rem;
 }
 
 .rep-new__pattern {
   margin-bottom: $spacing-unit;
 }
 
-.rep-new__metadata h4 {
-  margin: ($spacing-unit * 1.5) 0 0;
-  font-size: 1rem;
+.rep-new__metadata {
+  margin-top: $spacing-unit;
+
+  h4 {
+    margin: 0;
+    font-size: $font-size-small;
+    font-weight: 600;
+  }
+}
+
+.rep-new__delete {
+  margin-top: $spacing-unit * 1.5;
+  padding-top: $spacing-unit;
+  border-top: 1px solid $color-border;
 }
 
 .metadata-rows {
-  margin: $spacing-unit 0 ($spacing-unit * 0.5);
+  margin: ($spacing-unit * 0.5) 0;
+
+  // no rows yet: no header either
+  &:not(:has([data-row])) {
+    display: none;
+  }
 
   td {
     padding: ($spacing-unit * 0.5);

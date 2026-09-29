@@ -4,6 +4,7 @@
 @use "../abstracts/variables" as *;
 @use "bootstrap/scss/bootstrap" with (
   $primary: $color-primary,
+  $secondary: $color-secondary,
   $success: $color-success,
   $warning: $color-warning,
   $danger: $color-danger,
@@ -20,5 +21,14 @@
   $h1-font-size: 2rem,
   $h2-font-size: 1.5rem,
   $h3-font-size: 1.17rem,
-  $code-color: $color-text
+  $code-color: $color-text,
+  // buttons: sizes here, so .btn-sm/.btn-lg and the variants keep working (colors: buttons.scss)
+  $btn-padding-y: $spacing-unit,
+  $btn-padding-x: $spacing-unit * 2,
+  $btn-font-size: 1rem,
+  $btn-border-radius: $radius-base,
+  $btn-padding-y-sm: $spacing-unit * 0.5,
+  $btn-padding-x-sm: $spacing-unit,
+  $btn-font-size-sm: $font-size-small,
+  $btn-border-radius-sm: $radius-base
 );

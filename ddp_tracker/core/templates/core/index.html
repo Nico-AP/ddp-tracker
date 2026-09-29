@@ -51,8 +51,8 @@
         <a class="card__title"
            href="{% url 'representations:representations' %}">Representations: Compare meanings across platforms</a>
         <p>
-          Shared concepts, like a watched video, linked to the data points that
-          hold them on each platform. The <a href="{% url 'representations:vocabulary' %}">vocabulary</a>
+          What a list's entries mean, like a watched video, and the data points that
+          describe them. The <a href="{% url 'representations:vocabulary' %}">vocabulary</a>
           lists the terms they use.
         </p>
       </li>
@@ -98,8 +98,8 @@
       <li class="card">
         <a class="card__title" href="{{ explore_url }}">Annotate and link data points</a>
         <p>
-          In a platform's explorer or an upload's review: describe what a data point means and
-          link it to a representation.
+          In a platform's explorer or an upload's review: describe what a data point means, and
+          what a list's entries represent.
           {% if user.is_staff %}
             Your changes apply right away.
           {% else %}

@@ -12,7 +12,7 @@
       </dd>
     </dl>
     <button type="button"
-            class="btn btn--small"
+            class="btn btn-primary btn-sm"
             hx-get="{% url 'annotations:modal' location.annotation.pk %}"
             hx-target="#modal"
             hx-swap="innerHTML">Show annotation</button>
@@ -32,7 +32,7 @@
   {% endif %}
   {% if user.is_authenticated %}
     <button type="button"
-            class="btn btn--small"
+            class="btn btn-primary btn-sm"
             hx-get="{% url 'schemas:triage' location.pk %}{% if observation %}?upload={{ observation.upload_id }}{% endif %}"
             hx-target="#modal"
             hx-swap="innerHTML">

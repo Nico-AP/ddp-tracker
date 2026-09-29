@@ -36,7 +36,7 @@
         <input type="hidden"
                name="upload"
                value="{{ observation.upload_id|default:'' }}">
-        <button type="submit" class="btn btn--small">
+        <button type="submit" class="btn btn-primary btn-sm">
           {% if user.is_staff %}
             Remove assignment
           {% else %}
@@ -58,7 +58,7 @@
           <input type="hidden"
                  name="upload"
                  value="{{ observation.upload_id|default:'' }}">
-          <button type="submit" class="btn btn--small">{{ choice.annotation }}</button>
+          <button type="submit" class="btn btn-primary btn-sm">{{ choice.annotation }}</button>
           <small class="muted">{{ choice.reason }} from <code>{{ choice.via }}</code> ({{ choice.score }})</small>
         </form>
       {% endfor %}
@@ -110,7 +110,7 @@
                   rows="2"></textarea>
       {% endif %}
       <div>
-        <button type="submit" class="btn btn--small">
+        <button type="submit" class="btn btn-primary btn-sm">
           {% if user.is_staff %}
             Create
           {% else %}
@@ -153,7 +153,7 @@
                     <input type="hidden"
                            name="upload"
                            value="{{ observation.upload_id|default:'' }}">
-                    <button type="submit" class="btn btn--small">
+                    <button type="submit" class="btn btn-primary btn-sm">
                       {% if user.is_staff %}
                         Link
                       {% else %}

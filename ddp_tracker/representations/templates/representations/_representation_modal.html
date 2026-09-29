@@ -1,133 +1,123 @@
-{# "Add representation" for an annotation (views._modal): (a) select an existing representation, as its entity ("Is it") or its metadata ("Describes it…"); (b) add a new one, this annotation its entity, with metadata rows. A successful POST closes the modal (views._changed). Staff decide; everyone else suggests (proposals). #}
-{% if user.is_staff %}
+{# The representation dialog (views._dialog, forms.RepresentationDialog): a new representation of a location, or an existing one to edit or delete. Per slot its term and the metadata rows describing it; the pattern decides which slots show (CSS). A successful POST closes it or says it was suggested (views._changed). Staff decide; everyone else suggests (proposals). #}
+{% if representation %}
+  {% if user.is_staff %}
+    {% include "includes/modal_header.html" with title="Edit representation" %}
+  {% else %}
+    {% include "includes/modal_header.html" with title="Suggest a change" %}
+  {% endif %}
+{% elif user.is_staff %}
   {% include "includes/modal_header.html" with title="Add representation" %}
 {% else %}
   {% include "includes/modal_header.html" with title="Suggest a representation" %}
 {% endif %}
 <div class="dialog__body">
-  <p class="muted">For {{ annotation }} ({{ annotation.platform }}).</p>
-  {% if item_annotations %}
-    <p class="message">
-      This is a list. Representations usually point at its item:
-      {% for item in item_annotations %}
-        <a href="{{ item.get_absolute_url }}">{{ item }}</a>{% if not forloop.last %},{% endif %}
-      {% endfor %}
-      .
-    </p>
-  {% endif %}
-  {% for error in errors %}<p class="message message--error">{{ error }}</p>{% endfor %}
-  <section class="rep-select">
-    <h3>Select existing</h3>
-    <div class="rep-select__bar">
-      <fieldset class="segmented" aria-label="Kind">
-        <input type="radio"
-               class="segmented__input"
-               name="rep-kind"
-               id="rep-kind-activity"
-               value="activity"
-               checked>
-        <label class="segmented__label" for="rep-kind-activity">Something happened</label>
-        <input type="radio"
-               class="segmented__input"
-               name="rep-kind"
-               id="rep-kind-object"
-               value="object">
-        <label class="segmented__label" for="rep-kind-object">Something exists</label>
-      </fieldset>
-      <input type="search"
-             class="form-control"
-             placeholder="Search by name or description"
-             aria-label="Search the representations"
-             data-filter-table=".rep-table table">
-    </div>
-    {% include "representations/_existing_table.html" with entries=happened kind="activity" %}
-    {% include "representations/_existing_table.html" with entries=exists kind="object" %}
-  </section>
+  <p class="muted">
+    For <code>{{ location.path }}</code> ({{ location.platform }}).
+  </p>
   <section class="rep-new">
-    <h3>Add new</h3>
     <form class="dialog__form rep-new__form"
-          hx-post="{% url 'representations:create-linked' annotation.pk %}"
+          hx-post="{% if representation %}{% url 'representations:edit' representation.pk %}{% else %}{% url 'representations:add' location.pk %}{% endif %}"
           hx-target="#modal"
           hx-swap="innerHTML">
-      {% for error in create_form.non_field_errors %}<p class="message message--error">{{ error }}</p>{% endfor %}
-      <fieldset class="segmented rep-new__pattern" aria-label="What it is">
-        {% for radio in create_form.pattern %}
-          <input type="radio"
-                 class="segmented__input"
-                 name="pattern"
-                 id="new-pattern-{{ radio.data.value }}"
-                 value="{{ radio.data.value }}"
-                 {% if radio.data.selected %}checked{% endif %}>
-          <label class="segmented__label"
-                 for="new-pattern-{{ radio.data.value }}">{{ radio.choice_label }}</label>
-        {% endfor %}
-      </fieldset>
-      <div class="rep-new__slots mt-3 mb-3">
-        {% for field in create_form %}
-          {% if field.name in "actor activity object target" %}
-            <div class="rep-new__slot" data-slot="{{ field.name }}">
-              <label for="{{ field.id_for_label }}"
-                     class="form-label">{{ field.label }}{% if field.name == "target" %} (optional){% endif %}</label>
-              <p class="mb-0"><small>{{ field.help_text }}</small></p>
+      {% with form=dialog.form %}
+        {% for error in form.non_field_errors %}<p class="message message--error">{{ error }}</p>{% endfor %}
+        <fieldset class="segmented rep-new__pattern" aria-label="What it is">
+          {% for radio in form.pattern %}
+            <input type="radio"
+                   class="segmented__input"
+                   name="pattern"
+                   id="new-pattern-{{ radio.data.value }}"
+                   value="{{ radio.data.value }}"
+                   {% if radio.data.selected %}checked{% endif %}>
+            <label class="segmented__label"
+                   for="new-pattern-{{ radio.data.value }}">{{ radio.choice_label }}</label>
+          {% endfor %}
+        </fieldset>
+        {% for field, metadata in dialog.slots %}
+          <section class="rep-new__slot p-0 card" data-slot="{{ field.name }}">
+            <div class="card-header">
+              <h3 class="rep-new__slot-title">
+                <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.name == "target" %} (optional){% endif %}</label>
+              </h3>
+            </div>
+            <div class="card-body pt-1">
+              {% if field.help_text %}<p class="form__help mb-1">{{ field.help_text }}</p>{% endif %}
               {{ field }}
               {% for error in field.errors %}<div class="form__error">{{ error }}</div>{% endfor %}
+              <div class="rep-new__metadata pt-2" data-formset>
+                <h4>{{ field.label }} metadata</h4>
+                {{ metadata.management_form }}
+                {% for error in metadata.non_form_errors %}<p class="message message--error">{{ error }}</p>{% endfor %}
+                <table class="table metadata-rows">
+                  <thead>
+                    <tr>
+                      <th scope="col">Data point</th>
+                      <th scope="col">Role</th>
+                      <th scope="col">
+                        <span class="visually-hidden">Remove</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody data-rows>
+                    {% for row in metadata %}
+                      {% include "representations/_metadata_row.html" %}
+                    {% endfor %}
+                  </tbody>
+                </table>
+                <template data-row-template>
+                  {% include "representations/_metadata_row.html" with row=metadata.empty_form %}
+                </template>
+                <button type="button"
+                        class="btn btn-secondary btn-sm mt-2"
+                        data-add-row>+ Add metadata</button>
+              </div>
             </div>
+          </section>
+        {% endfor %}
+        <p class="mb-0 mt-3">Give the representation a name and briefly describe it:</p>
+        {% for field in form %}
+          {% if field.name in "name description" %}
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<div class="form__error">{{ error }}</div>{% endfor %}
+          {% endif %}
+          {% if field.name == "note" %}
+            <details {% if field.value %}open{% endif %}>
+              <summary>
+                <label for="{{ field.id_for_label }}" class="form-label">Add a note</label>
+              </summary>
+              {{ field }}
+            </details>
+            {% for error in field.errors %}<div class="form__error">{{ error }}</div>{% endfor %}
           {% endif %}
         {% endfor %}
-      </div>
-      <div class="rep-new__metadata mb-3">
-        <h4>Metadata</h4>
-        <p class="form__help mb-0">Add data points that describe it: e.g. a date as “when” of the activity.</p>
-        {{ metadata.management_form }}
-        {% for error in metadata.non_form_errors %}<p class="message message--error">{{ error }}</p>{% endfor %}
-        <table class="table metadata-rows">
-          <thead>
-            <tr>
-              <th scope="col">Subject</th>
-              <th scope="col">Role</th>
-              <th scope="col">Annotation</th>
-              <th scope="col">
-                <span class="visually-hidden">Remove</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody data-rows>
-            {% for row in metadata %}
-              {% include "representations/_metadata_row.html" %}
-            {% endfor %}
-          </tbody>
-        </table>
-        <template data-row-template>
-          {% include "representations/_metadata_row.html" with row=metadata.empty_form %}
-        </template>
-        <button type="button" class="link-button" data-add-row>+ Add metadata</button>
-      </div>
-      <p class="mb-0 mt-2">Give the representation a name and briefly describe it:</p>
-      {% for field in create_form %}
-        {% if field.name in "name description" %}
-          <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-          {{ field }}
-          {% for error in field.errors %}<div class="form__error">{{ error }}</div>{% endfor %}
-        {% endif %}
-        {% if field.name == "note" %}
-          <details>
-            <summary>
-              <label for="{{ field.id_for_label }}" class="form-label">Add a note</label>
-            </summary>
-            {{ field }}
-          </details>
-          {% for error in field.errors %}<div class="form__error">{{ error }}</div>{% endfor %}
-        {% endif %}
-      {% endfor %}
-      <div>
-        <button type="submit" class="btn btn--small">
-          {% if user.is_staff %}
-            Create
-          {% else %}
+      {% endwith %}
+      <div class="mt-3">
+        <button type="submit" class="btn btn-primary btn-sm">
+          {% if not user.is_staff %}
             Suggest
+          {% elif representation %}
+            Save
+          {% else %}
+            Create
           {% endif %}
         </button>
       </div>
     </form>
+    {% if representation %}
+      <form class="rep-new__delete"
+            hx-post="{% url 'representations:delete' representation.pk %}"
+            hx-target="#modal"
+            hx-swap="innerHTML"
+            hx-confirm="Delete {{ representation }}?">
+        <button type="submit" class="link-button link-button--danger">
+          {% if user.is_staff %}
+            Delete this representation
+          {% else %}
+            Suggest deleting it
+          {% endif %}
+        </button>
+      </form>
+    {% endif %}
   </section>
 </div>

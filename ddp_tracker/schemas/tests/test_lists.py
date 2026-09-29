@@ -78,11 +78,14 @@ class ListTests(TestCase):
         self.assertIn("/data.json/Ids/[]", [m.location.path for m in review(gone).missing])
 
     def test_representations_point_at_the_item(self):
-        item_annotation = create_annotation(self.item, "ID", self.user)
-        list_annotation = create_annotation(self.ids, "List of ID", self.user)
+        videos = Location.objects.get(path="/data.json/VideoList")
+        video = Location.objects.get(path="/data.json/VideoList/[]")
         self.client.force_login(self.user)
-        modal = self.client.get(reverse("representations:add", args=[list_annotation.pk]))
-        self.assertContains(modal, "Representations usually point at its item")
-        self.assertContains(modal, item_annotation.get_absolute_url())
-        item_modal = self.client.get(reverse("representations:add", args=[item_annotation.pk]))
-        self.assertNotContains(item_modal, "usually point at its item")
+        # the list's panel shows the item's representations (not annotated: no matter)
+        panel = self.client.get(reverse("schemas:location", args=["tiktok"]), {"path": videos.path})
+        self.assertContains(panel, reverse("representations:location-section", args=[video.pk]))
+        section = reverse("representations:location-section", args=[video.pk])
+        self.assertContains(self.client.get(section), "Add representation")
+        # a list of values: its items are no objects
+        section = reverse("representations:location-section", args=[self.item.pk])
+        self.assertContains(self.client.get(section), "for the items of lists of objects")

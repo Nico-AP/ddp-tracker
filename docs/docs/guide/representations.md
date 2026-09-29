@@ -1,13 +1,15 @@
 # Representations
 
-Annotations describe one platform's data points. **Representations** connect them across
-platforms: a representation is a concept, such as "a user watched a video", described
-independently of any platform and linked to the data points that hold it on each one. That is how
-platforms can be compared.
+Annotations describe what a data point is. **Representations** describe what the entries of a
+list *mean*, in a shared vocabulary: each item of a TikTok watch history is "the user watched a
+video", and so is each item of a YouTube watch history. That is how platforms can be compared.
 
-**Representations** in the top menu lists them all. A representation's page shows which
-platforms have it, and a table of who records what: for each part of the concept, the data point
-that holds it on each platform.
+A representation belongs to a **list's item whose entries are objects** (an entry with fields,
+such as a date and a link), including files that are such a list (a JSON array, a CSV's rows).
+One list can have several representations. The item doesn't need an annotation first.
+
+**Representations** in the top menu lists them all, with their platform and the list they
+belong to. A representation's page shows which data points describe it.
 
 ## Kinds of representations
 
@@ -20,18 +22,18 @@ that holds it on each platform.
 The "who" can be **the user** (the person the DDP belongs to), **another user** (for example a
 follower) or **the platform** itself.
 
-## How data points are linked
+## Describing a representation
 
-A data point can relate to a representation in two ways:
+The data points inside the list's entries **describe** a representation, each with a **role**:
+TikTok's `Date` is *when* the video was watched, its `Link` *identifies* the video, a follower's
+username is the *name* of the other user. Any data point below the item can be used, however
+deeply nested.
 
-- It **is** the concept: for "the user watched a video", a watched video (an entry in a watch
-  history list) on TikTok, and one on YouTube.
-- It **describes** part of it, with a **role**: TikTok's `Date` is *when* the video was watched,
-  its `Link` *identifies* the video, a follower's username is the *name* of the other user.
-
-You link data points from the annotation dialog's **Add representation**: pick an existing
-representation (the data point *is* it, or *describes* one of its parts), or create a new one with
-the data point as its concept, and add rows for the data points that describe it.
+In a platform's explorer or an upload's review, open a list's row: its side panel has a
+**Representations** section. **Add representation** opens a dialog with a section for each part
+(actor, activity, object, target): choose the term, and under it, with **+ Add metadata**, the
+data points that describe that part, each with its role. **Edit** opens the same dialog for an
+existing representation (also on its own page): change it, its metadata included, or delete it.
 
 ## The vocabulary
 

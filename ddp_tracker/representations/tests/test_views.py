@@ -3,6 +3,8 @@ from django.urls import reverse
 
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform
+from ddp_tracker.proposals.models import Proposal
+from ddp_tracker.proposals.services import accept, changes
 from ddp_tracker.representations.forms import RepresentationForm, TermField
 from ddp_tracker.representations.models import (
     ActivityType,
@@ -13,14 +15,14 @@ from ddp_tracker.representations.models import (
     Representation,
     RepresentationMetadata,
 )
-from ddp_tracker.representations.services import describe, represent, suggest_term
-from ddp_tracker.schemas.models import Location
+from ddp_tracker.representations.services import describe, suggest_term
+from ddp_tracker.representations.tests.fixtures import WatchHistory
 from ddp_tracker.users.models import User
 
 Subject = RepresentationMetadata.Subject
 
 
-class ViewTestCase(TestCase):
+class ViewTestCase(WatchHistory, TestCase):
     def setUp(self):
         self.curator = User.objects.create_user("curator", is_staff=True)  # staff decide directly
         self.other = User.objects.create_user("other")
@@ -29,12 +31,9 @@ class ViewTestCase(TestCase):
         self.video = ObjectType.objects.get(slug="video")
         self.collection = ObjectType.objects.get(slug="collection")
         self.when = MetadataRole.objects.get(slug="when")
-        self.tiktok = Platform.objects.create(name="TikTok", slug="tiktok")
-        self.youtube = Platform.objects.create(name="YouTube", slug="youtube")
-        self.item = Annotation.objects.create(platform=self.tiktok, name="watch_history item")
-        self.date = Annotation.objects.create(platform=self.tiktok, name="Date")
-        self.time = Annotation.objects.create(platform=self.youtube, name="time")
+        self.add_watch_history(Platform.objects.create(name="TikTok", slug="tiktok"))
         self.watched = Representation.objects.create(
+            location=self.item,
             pattern=Pattern.ACTIVITY,
             name="Watched video",
             actor=self.user,
@@ -47,46 +46,35 @@ class ViewTestCase(TestCase):
             key: getattr(value, "pk", value) for key, value in fields.items()
         }
 
+    def section(self, location):
+        return self.client.get(reverse("representations:location-section", args=[location.pk]))
+
 
 class PublicPagesTests(ViewTestCase):
     def test_list_and_detail(self):
-        represent(self.watched, self.item)
         describe(self.watched, self.date, self.when, Subject.ACTIVITY)
-        describe(self.watched, self.time, self.when, Subject.ACTIVITY)
+        describe(self.watched, self.author_name, MetadataRole.objects.get(slug="name"), "object")
+        self.item.annotation = Annotation.objects.create(platform=self.platform, name="Watched")
+        self.item.save()
         listing = self.client.get(reverse("representations:representations"))
         self.assertContains(listing, "user · viewed · video")
-        self.assertContains(listing, "<td>TikTok, YouTube</td>", html=True)
-        self.assertNotContains(listing, "New representation")
+        self.assertContains(listing, "<td>TikTok</td>", html=True)
+        self.assertContains(listing, f"<td><code>{self.item.path}</code></td>", html=True)
+        self.assertContains(listing, "<td>2</td>", html=True)
         detail = self.client.get(self.watched.get_absolute_url())
-        self.assertContains(detail, "watch_history item")
+        self.assertContains(detail, self.item.path)
+        self.assertContains(detail, "Annotated as")
+        self.assertContains(detail, "<code>Author/Name</code>", html=True)
         self.assertNotContains(detail, "Remove")
         self.assertNotContains(detail, ">Edit<")
-        # the matrix: one row (activity, when), a column per platform
-        matrix = detail.context["matrix"]
+        # grouped by subject, in the slots' order
         self.assertEqual(
-            [(row["subject"], str(row["role"])) for row in matrix], [("activity", "when")]
+            [
+                (subject, [str(link.role) for link in links])
+                for subject, links in detail.context["described"]
+            ],
+            [("activity", ["when"]), ("object", ["name"])],
         )
-        self.assertEqual(
-            [[str(link.annotation) for link in cell] for cell in matrix[0]["cells"]],
-            [["Date"], ["time"]],
-        )
-        self.assertEqual([str(p) for p in detail.context["platforms"]], ["TikTok", "YouTube"])
-
-    def test_matrix_rows_follow_the_slot_order(self):
-        added = Representation.objects.create(
-            pattern=Pattern.ACTIVITY,
-            name="Added",
-            actor=self.user,
-            activity=ActivityType.objects.get(slug="added"),
-            object=self.video,
-            target=self.collection,
-        )
-        name = MetadataRole.objects.get(slug="name")
-        describe(added, self.date, name, Subject.TARGET)
-        describe(added, self.date, self.when, Subject.ACTIVITY)
-        describe(added, self.date, name, Subject.OBJECT)
-        matrix = self.client.get(added.get_absolute_url()).context["matrix"]
-        self.assertEqual([row["subject"] for row in matrix], ["activity", "object", "target"])
 
     def test_empty_pages(self):
         self.assertContains(self.client.get(self.watched.get_absolute_url()), "None yet")
@@ -94,33 +82,42 @@ class PublicPagesTests(ViewTestCase):
         self.assertContains(
             self.client.get(reverse("representations:representations")), "No representations"
         )
-        missing = reverse("representations:details", args=[self.watched.pk + 1])
+        missing = reverse("representations:representation", args=[self.watched.pk + 1])
         self.assertEqual(self.client.get(missing).status_code, 404)
 
-    def test_annotation_page_section_is_read_only_for_visitors(self):
-        represent(self.watched, self.item)
-        response = self.client.get(self.item.get_absolute_url())
-        self.assertContains(response, "<td>is it</td>", html=True)
-        self.assertContains(response, self.watched.get_absolute_url())
-        self.assertNotContains(response, "Add representation")
-        self.assertNotContains(response, "Remove")
-        self.assertContains(self.client.get(self.date.get_absolute_url()), "Not linked")
-
-    def test_sections(self):
-        represent(self.watched, self.item)
+    def test_section_is_read_only_for_visitors(self):
         describe(self.watched, self.date, self.when, Subject.ACTIVITY)
-        url = reverse("representations:annotation-section", args=[self.date.pk])
-        panel = self.client.get(url, {"layout": "panel"})
-        self.assertContains(panel, "Describes the <em>when</em> of the activity in")
-        self.assertNotContains(panel, "<table")
-        self.assertContains(self.client.get(url), "<table")  # the page layout by default
-        # the explorer's side panel: via the location's annotation
-        location = Location.objects.create(platform=self.tiktok, path="/a.json/at", name="at")
-        location_url = reverse("representations:location-section", args=[location.pk])
-        self.assertContains(self.client.get(location_url), "Assign an annotation first")
-        location.annotation = self.date
-        location.save()
-        self.assertContains(self.client.get(location_url), "Watched video")
+        response = self.section(self.item)
+        self.assertContains(response, self.watched.get_absolute_url())
+        self.assertContains(response, "<code>Date</code>: <em>when</em> of the activity", html=True)
+        for text in ("Add representation", "Edit", "Suggest a change", "hx-post"):
+            self.assertNotContains(response, text)
+
+    def test_section_without_representations(self):
+        self.watched.delete()
+        self.assertContains(self.section(self.item), "No representation yet")
+        # not annotated: no matter
+        self.assertIsNone(self.item.annotation)
+        for location in (self.date, self.elsewhere, self.tag):
+            with self.subTest(path=location.path):
+                self.assertContains(
+                    self.section(location), "Representations are for the items of lists of objects"
+                )
+
+
+def sections(**rows):
+    """The dialog's metadata formsets' data: per slot, ``rows`` of (location, role)."""
+    data: dict[str, object] = {}
+    for subject in ("actor", "activity", "object", "target"):
+        prefix = f"metadata-{subject}"
+        filled = rows.get(subject, [])
+        data |= {f"{prefix}-TOTAL_FORMS": str(len(filled)), f"{prefix}-INITIAL_FORMS": "0"}
+        for index, (location, role) in enumerate(filled):
+            data |= {
+                f"{prefix}-{index}-location": getattr(location, "pk", location),
+                f"{prefix}-{index}-role": getattr(role, "pk", role),
+            }
+    return data
 
 
 class CurationTests(ViewTestCase):
@@ -130,197 +127,236 @@ class CurationTests(ViewTestCase):
 
     def test_changes_need_a_login(self):
         self.client.logout()
-        urls = [
-            reverse("representations:create"),
+        for url in (
             reverse("representations:edit", args=[self.watched.pk]),
-        ]
-        for url in urls:
+            reverse("representations:add", args=[self.item.pk]),
+        ):
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 302)
-        represent_url = reverse("representations:represent", args=[self.item.pk])
-        self.assertEqual(self.client.post(represent_url).status_code, 302)
+        delete = reverse("representations:delete", args=[self.watched.pk])
+        self.assertEqual(self.client.post(delete).status_code, 302)
 
-    def test_create(self):
-        url = reverse("representations:create")
-        self.assertContains(self.client.get(url), "representation-form")
-        self.assertNotContains(self.client.get(url), 'name="pattern" value=""')
-        response = self.client.post(url, self.form_data(name="Video", pattern=Pattern.OBJECT))
-        self.assertContains(response, "Required for something exists.")
-        response = self.client.post(
-            url,
-            self.form_data(
-                name="Video",
-                pattern=Pattern.OBJECT,
-                object=self.video,
-                actor=self.user,  # hidden for objects: dropped
-            ),
-        )
-        video = Representation.objects.get(name="Video")
-        self.assertRedirects(response, video.get_absolute_url())
-        self.assertEqual((video.actor, video.updated_by), (None, self.curator))
+    def test_section_for_curators(self):
+        describe(self.watched, self.date, self.when, Subject.ACTIVITY)
+        response = self.section(self.item)
+        self.assertContains(response, "Add representation")
+        self.assertContains(response, reverse("representations:edit", args=[self.watched.pk]))
+        # read-only: changes happen in the dialog
+        for text in ("Add metadata", "Delete", "hx-post"):
+            self.assertNotContains(response, text)
+        self.assertNotContains(self.section(self.date), "Add representation")
 
-    def test_edit(self):
-        url = reverse("representations:edit", args=[self.watched.pk])
-        self.assertContains(self.client.get(url), "Edit Watched video")
-        response = self.client.post(
-            url,
-            self.form_data(
-                name="Watched a video",
-                actor=self.user,
-                activity=self.view,
-                object=self.video,
-                target=self.collection,
-            ),
-        )
-        self.assertContains(response, "user · viewed · video · collection")
-        self.watched.refresh_from_db()
-        self.assertEqual(
-            (self.watched.name, self.watched.updated_by), ("Watched a video", self.curator)
-        )
-        self.assertContains(
-            self.client.get(reverse("representations:details", args=[self.watched.pk])),
-            "user · viewed · video · collection",
-        )
-
-    def test_edit_keeps_slots_in_use(self):
-        describe(self.watched, self.date, MetadataRole.objects.get(slug="name"), Subject.ACTOR)
-        response = self.client.post(
-            reverse("representations:edit", args=[self.watched.pk]),
-            self.form_data(name="Video", pattern=Pattern.OBJECT, object=self.video),
-        )
-        self.assertContains(response, "1 metadata link describe the actor")
-
-    def assert_changed(self, response, annotation):
-        """A successful change from the modal: no content, and the lists reload."""
+    def assert_changed(self, response, location):
+        """Staff's change from the dialog: it closes (no content), and the section reloads."""
         self.assertEqual(response.content, b"")
-        self.assertEqual(response["HX-Trigger"], f"representations-changed-{annotation.pk}")
+        self.assertEqual(response["HX-Trigger"], f"representations-changed-{location.pk}")
 
-    def test_modal(self):
-        page = self.client.get(self.item.get_absolute_url())
-        self.assertContains(page, "Add representation")
-        self.assertNotContains(page, "Select existing")  # only in the modal
-        video = Representation.objects.create(
-            pattern=Pattern.OBJECT, name="Video", object=self.video, description="A clip"
-        )
-        represent(video, self.item)
+    def test_new_dialog(self):
         modal = self.client.get(reverse("representations:add", args=[self.item.pk]))
         # a fixed header with a small close button; the rest is the scrolling body
         self.assertContains(
             modal, '<button type="submit" class="btn-close" aria-label="Close"></button>', html=True
         )
         self.assertContains(modal, '<div class="dialog__body">')
-        for text in ("Select existing", "Add new", "Something happened", "Something exists"):
+        self.assertContains(modal, self.item.path)
+        for text in ("Something happened", "Something exists", "Actor metadata", "Target metadata"):
             self.assertContains(modal, text)
-        # the switch's two tables: activities and objects
-        self.assertEqual([e["representation"] for e in modal.context["happened"]], [self.watched])
-        self.assertEqual([e["representation"] for e in modal.context["exists"]], [video])
-        self.assertContains(modal, 'data-filter-text="video video a clip"')
-        # linked already: no "Is it", but it can still be described (its filled slot)
-        (entry,) = modal.context["exists"]
-        self.assertTrue(entry["linked"])
-        self.assertEqual([value for value, _ in entry["subjects"]], ["object"])
-        (watched,) = modal.context["happened"]
-        self.assertEqual(
-            [value for value, _ in watched["subjects"]], ["actor", "activity", "object"]
-        )  # no target: it has none
-        # the metadata rows: a management form and a row template
-        self.assertContains(modal, 'name="metadata-TOTAL_FORMS"')
-        self.assertContains(modal, "metadata-__prefix__-subject")
-        self.client.logout()
-        self.assertEqual(
-            self.client.get(reverse("representations:add", args=[self.item.pk])).status_code, 302
+        self.assertNotContains(modal, "Delete this representation")  # nothing to delete yet
+        # per slot a formset: its rows (data point, then role) and a template to add one
+        for subject in ("actor", "activity", "object", "target"):
+            self.assertContains(modal, f'name="metadata-{subject}-TOTAL_FORMS"')
+            self.assertContains(modal, f"metadata-{subject}-__prefix__-location")
+        self.assertNotContains(modal, "-subject")
+        content = modal.content.decode()
+        self.assertLess(
+            content.index("metadata-actor-__prefix__-location"),
+            content.index("metadata-actor-__prefix__-role"),
         )
-
-    def test_represent(self):
-        url = reverse("representations:represent", args=[self.item.pk])
-        self.assert_changed(self.client.post(url, {"representation": self.watched.pk}), self.item)
-        self.assertEqual(list(self.watched.annotations.all()), [self.item])
-        # linked already: no longer offered, the modal comes back with the error
-        response = self.client.post(url, {"representation": self.watched.pk})
-        self.assertContains(response, "message--error")
-        self.assertContains(response, "Add representation")
-
-    def test_describe(self):
-        url = reverse("representations:describe", args=[self.date.pk])
-        data = {"representation": self.watched.pk, "role": self.when.pk}
-        response = self.client.post(url, data | {"subject": Subject.TARGET})
-        self.assertContains(response, "This representation has no target.")
-        self.assert_changed(self.client.post(url, data | {"subject": Subject.ACTIVITY}), self.date)
-        response = self.client.post(url, data | {"subject": Subject.ACTIVITY})
-        self.assertContains(response, "already exists")
-
-    def rows(self, *rows):
-        """A metadata formset's data: ``rows`` of (subject, role, annotation)."""
-        data = {"metadata-TOTAL_FORMS": str(len(rows)), "metadata-INITIAL_FORMS": "0"}
-        for index, (subject, role, annotation) in enumerate(rows):
-            data |= {
-                f"metadata-{index}-subject": subject,
-                f"metadata-{index}-role": getattr(role, "pk", role),
-                f"metadata-{index}-annotation": getattr(annotation, "pk", annotation),
-            }
-        return data
+        self.assertContains(
+            modal,
+            f'<option value="{self.author_name.pk}">history/[]/Author/Name</option>',
+            html=True,
+        )
+        self.assertNotContains(modal, self.elsewhere.path)
+        # only for locations that can have one
+        response = self.client.get(reverse("representations:add", args=[self.date.pk]))
+        self.assertEqual(response.status_code, 404)
 
     def test_create_with_metadata(self):
-        url = reverse("representations:create-linked", args=[self.item.pk])
+        url = reverse("representations:add", args=[self.item.pk])
         video = self.form_data(pattern=Pattern.OBJECT, name="Video", object=self.video)
-        # a subject the new representation doesn't fill: nothing is created
-        response = self.client.post(
-            url, video | self.rows((Subject.ACTIVITY, self.when, self.date))
-        )
-        self.assertContains(response, "This representation has no activity.")
-        self.assertFalse(Representation.objects.filter(name="Video").exists())
         # a partly filled row
-        response = self.client.post(url, video | self.rows((Subject.OBJECT, "", self.date)))
-        self.assertContains(response, "needs a subject, a role and an annotation")
-        # two rows (the second empty: skipped); the annotation is the entity
+        response = self.client.post(url, video | sections(object=[(self.date, "")]))
+        self.assertContains(response, "needs a data point and a role")
+        # a location outside the item
+        response = self.client.post(url, video | sections(object=[(self.elsewhere, self.when)]))
+        self.assertContains(response, "Select a valid choice")
+        self.assertFalse(Representation.objects.filter(name="Video").exists())
+        # rows of a slot the pattern hides are dropped; an empty row is skipped
         self.assert_changed(
             self.client.post(
-                url, video | self.rows((Subject.OBJECT, self.when, self.date), ("", "", ""))
+                url,
+                video
+                | sections(
+                    object=[(self.date, self.when), ("", "")],
+                    activity=[(self.link, self.when)],
+                ),
             ),
             self.item,
         )
         created = Representation.objects.get(name="Video")
+        self.assertEqual((created.updated_by, created.location), (self.curator, self.item))
         self.assertEqual(
-            (created.updated_by, list(created.annotations.all())), (self.curator, [self.item])
+            list(created.metadata_links.values_list("subject", "location__path")),
+            [("object", self.date.path)],
         )
-        self.assertEqual(
-            list(created.metadata_links.values_list("subject", "annotation__name")),
-            [("object", "Date")],
-        )
+        # the names needn't be unique
+        self.assert_changed(self.client.post(url, video | sections()), self.item)
+        self.assertEqual(Representation.objects.filter(name="Video").count(), 2)
 
     def test_create_activity_and_unmapped(self):
-        url = reverse("representations:create-linked", args=[self.item.pk])
+        url = reverse("representations:add", args=[self.item.pk])
         activity = self.form_data(
-            name="Watched with",
+            name="Watched with", actor=self.user, activity=self.view, object=self.video
+        )
+        # target metadata needs a target
+        response = self.client.post(url, activity | sections(target=[(self.date, self.when)]))
+        self.assertContains(response, "1 metadata link describe the target.")
+        activity |= {"target": self.collection.pk}
+        self.assert_changed(
+            self.client.post(url, activity | sections(target=[(self.date, self.when)])),
+            self.item,
+        )
+        created = Representation.objects.get(name="Watched with")
+        self.assertEqual(created.statement, "user · viewed · video · collection")
+        self.assertEqual(created.metadata_links.get().subject, "target")
+        unmapped = self.form_data(pattern=Pattern.UNMAPPED, name="Unclear")
+        self.assert_changed(
+            self.client.post(url, unmapped | sections(object=[(self.date, self.when)])),
+            self.item,
+        )
+        unclear = Representation.objects.get(name="Unclear")
+        self.assertFalse(unclear.metadata_links.exists())  # no slots: its rows are dropped
+
+    def test_create_as_a_suggestion(self):
+        self.client.force_login(self.other)
+        url = reverse("representations:add", args=[self.item.pk])
+        data = self.form_data(pattern=Pattern.OBJECT, name="Video", object=self.video)
+        response = self.client.post(url, data | sections(object=[(self.link, self.when)]))
+        self.assertContains(response, "staff will review your suggestion")  # the dialog says so
+        self.assertEqual(response["HX-Trigger"], f"representations-changed-{self.item.pk}")
+        self.assertFalse(Representation.objects.filter(name="Video").exists())
+        proposal = Proposal.objects.get(kind=Proposal.Kind.NEW_REPRESENTATION)
+        self.assertEqual((proposal.location, proposal.platform), (self.item, self.platform))
+        accept(proposal, self.curator)
+        created = Representation.objects.get(name="Video")
+        self.assertEqual((created.location, created.updated_by), (self.item, self.other))
+        self.assertEqual([link.location for link in created.metadata_links.all()], [self.link])
+
+    def test_edit_dialog(self):
+        describe(self.watched, self.date, self.when, Subject.ACTIVITY)
+        url = reverse("representations:edit", args=[self.watched.pk])
+        modal = self.client.get(url)
+        self.assertContains(modal, "Edit representation")
+        self.assertContains(modal, "Delete this representation")
+        self.assertContains(modal, 'value="Watched video"')
+        # its links are the rows of their slot
+        self.assertContains(modal, 'name="metadata-activity-TOTAL_FORMS" value="1"')
+        self.assertContains(
+            modal, f'<option value="{self.date.pk}" selected>history/[]/Date</option>', html=True
+        )
+
+    def test_edit_replaces_the_metadata(self):
+        name = MetadataRole.objects.get(slug="name")
+        describe(self.watched, self.date, self.when, Subject.ACTIVITY)
+        describe(self.watched, self.author_name, name, Subject.ACTOR)
+        url = reverse("representations:edit", args=[self.watched.pk])
+        data = self.form_data(
+            name="Watched a video",
             actor=self.user,
             activity=self.view,
             object=self.video,
             target=self.collection,
         )
+        # the date is kept, the author's name removed, the link added
+        rows = sections(activity=[(self.date, self.when)], object=[(self.link, self.when)])
+        rows["metadata-activity-INITIAL_FORMS"] = "1"  # as the dialog shows the saved one
+        self.assert_changed(self.client.post(url, data | rows), self.item)
+        self.watched.refresh_from_db()
+        self.assertEqual(
+            (self.watched.name, self.watched.updated_by, self.watched.location),
+            ("Watched a video", self.curator, self.item),
+        )
+        self.assertEqual(self.watched.statement, "user · viewed · video · collection")
+        self.assertEqual(
+            sorted(self.watched.metadata_links.values_list("subject", "location__path")),
+            [("activity", self.date.path), ("object", self.link.path)],
+        )
+
+    def test_edit_can_empty_a_slot_with_its_metadata(self):
+        describe(self.watched, self.date, MetadataRole.objects.get(slug="name"), Subject.ACTOR)
+        url = reverse("representations:edit", args=[self.watched.pk])
+        video = self.form_data(name="Video", pattern=Pattern.OBJECT, object=self.video)
+        # the actor's rows are hidden with it: dropped, so the actor can go
         self.assert_changed(
-            self.client.post(url, activity | self.rows((Subject.TARGET, self.when, self.date))),
+            self.client.post(url, video | sections(actor=[(self.date, self.when)])), self.item
+        )
+        self.watched.refresh_from_db()
+        self.assertEqual((self.watched.pattern, self.watched.actor), (Pattern.OBJECT, None))
+        self.assertFalse(self.watched.metadata_links.exists())
+
+    def test_edit_as_a_suggestion(self):
+        describe(self.watched, self.date, self.when, Subject.ACTIVITY)
+        self.client.force_login(self.other)
+        url = reverse("representations:edit", args=[self.watched.pk])
+        self.assertContains(self.client.get(url), "Suggest a change")
+        data = self.form_data(actor=self.user, activity=self.view, object=self.video)
+        self.client.post(url, data | sections(object=[(self.link, self.when)]))
+        self.assertEqual(self.watched.metadata_links.get().location, self.date)  # unchanged
+        proposal = Proposal.objects.get(kind=Proposal.Kind.EDIT_REPRESENTATION)
+        described = [row for row in changes(proposal) if row[0] == "Metadata"]
+        self.assertEqual(
+            described,
+            [
+                ("Metadata", f"{self.date.path}: when of the activity", "none"),
+                ("Metadata", "", f"{self.link.path}: when of the object"),
+            ],
+        )
+        accept(proposal, self.curator)
+        self.assertEqual(self.watched.metadata_links.get().location, self.link)
+
+    def test_delete(self):
+        # from the side panel's dialog: it closes, the section reloads
+        self.assert_changed(
+            self.client.post(reverse("representations:delete", args=[self.watched.pk])),
             self.item,
         )
-        created = Representation.objects.get(name="Watched with")
-        self.assertEqual(created.statement, "user · viewed · video · collection")
-        unmapped = self.form_data(pattern=Pattern.UNMAPPED, name="Unclear")
+        self.assertFalse(Representation.objects.exists())
+        # on its own page: back to the list
+        other = Representation.objects.create(
+            location=self.item, pattern=Pattern.UNMAPPED, name="Other"
+        )
         response = self.client.post(
-            url, unmapped | self.rows((Subject.OBJECT, self.when, self.date))
+            reverse("representations:delete", args=[other.pk]),
+            headers={"hx-current-url": f"http://testserver{other.get_absolute_url()}"},
         )
-        self.assertContains(response, "No confident mapping has no metadata.")
-        self.assert_changed(self.client.post(url, unmapped | self.rows()), self.item)
-        self.assertIn(Representation.objects.get(name="Unclear"), self.item.representations.all())
+        self.assertEqual(response["HX-Redirect"], reverse("representations:representations"))
 
-    def test_remove(self):
-        represent(self.watched, self.item)
-        link = describe(self.watched, self.date, self.when, Subject.ACTIVITY)
-        self.assertContains(self.client.get(self.watched.get_absolute_url()), "Remove")
-        self.client.post(
-            reverse("representations:remove-annotation", args=[self.watched.pk, self.item.pk])
-        )
-        self.client.post(reverse("representations:remove-link", args=[link.pk]))
-        self.assertFalse(self.watched.annotations.exists())
-        self.assertFalse(self.watched.metadata_links.exists())
+    def test_delete_as_a_suggestion(self):
+        self.client.force_login(self.other)
+        response = self.client.post(reverse("representations:delete", args=[self.watched.pk]))
+        self.assertContains(response, "staff will review your suggestion")
+        proposal = Proposal.objects.get(kind=Proposal.Kind.DELETE_REPRESENTATION)
+        self.assertEqual(proposal.location, self.item)
+        accept(proposal, self.curator)
+        self.assertFalse(Representation.objects.exists())
+        proposal.refresh_from_db()
+        self.assertEqual(proposal.values, {"representation": "Watched video"})
+
+    def test_the_page_opens_the_dialog(self):
+        page = self.client.get(self.watched.get_absolute_url())
+        self.assertContains(page, reverse("representations:edit", args=[self.watched.pk]))
+        self.assertContains(page, f"representations-changed-{self.item.pk} from:body")
 
 
 class VocabularyTests(ViewTestCase):
@@ -367,7 +403,9 @@ class VocabularyTests(ViewTestCase):
         )
         self.assertNotIn(livestream, field(self.other).queryset)
         # once in use, others can still edit the representation
-        live = Representation.objects.create(pattern=Pattern.OBJECT, name="Live", object=livestream)
+        live = Representation.objects.create(
+            location=self.item, pattern=Pattern.OBJECT, name="Live", object=livestream
+        )
         self.assertIn(livestream, field(self.other, live).queryset)
 
     def test_admin_approves(self):

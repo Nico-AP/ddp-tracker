@@ -6,6 +6,6 @@
     {% csrf_token %}
     {% include "includes/form.html" %}
     <input type="hidden" name="next" value="{{ next }}">
-    <button type="submit" class="btn">Log in</button>
+    <button type="submit" class="btn btn-primary">Log in</button>
   </form>
 {% endblock %}

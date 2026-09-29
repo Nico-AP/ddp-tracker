@@ -1,0 +1,10 @@
+{# The dialog after a suggestion (views._changed): nothing changed yet, staff decide. #}
+{% include "includes/modal_header.html" with title="Suggested" %}
+<div class="dialog__body">
+  <p>
+    Thanks: staff will review your suggestion. See <a href="{% url 'proposals:mine' %}">my suggestions</a>.
+  </p>
+  <form method="dialog">
+    <button type="submit" class="btn btn-primary btn-sm">Close</button>
+  </form>
+</div>

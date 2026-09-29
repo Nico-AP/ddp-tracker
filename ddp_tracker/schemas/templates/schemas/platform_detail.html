@@ -5,7 +5,7 @@
   <script src="{% static 'js/explorer.js' %}" defer></script>
   <div class="page-header">
     <h1>{{ platform }}</h1>
-    <a class="btn"
+    <a class="btn btn-primary"
        href="{% url 'annotations:annotations' platform.slug %}">Annotations ({{ counts.annotations }})</a>
   </div>
   {% if formats %}
@@ -45,7 +45,7 @@
         {{ field }}
       </fieldset>
     {% endfor %}
-    <button type="submit" class="btn btn--small">Filter</button>
+    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
     {% if filter.is_active %}
       <a href="?request_format={{ filter.request_format }}&amp;root_format={{ filter.root_format }}">Reset</a>
     {% endif %}
@@ -88,8 +88,10 @@
     </div>
     <div class="review-layout">
       <div class="review-main" data-dialog-over>{% include "schemas/tree/_groups.html" %}</div>
-      <aside id="node-detail" class="review-panel-slot" aria-live="polite">
-        <div class="review-panel review-panel--empty">
+      <aside id="node-detail"
+             class="review-panel review-panel-slot"
+             aria-live="polite">
+        <div class="review-panel--empty">
           <p class="muted">Select a data point to see what is known about it.</p>
         </div>
       </aside>

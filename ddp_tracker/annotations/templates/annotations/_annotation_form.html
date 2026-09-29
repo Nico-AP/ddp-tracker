@@ -15,7 +15,7 @@
     <label for="annotation-comment" class="form-label">Why? (for the reviewer, optional)</label>
     <textarea id="annotation-comment" name="comment" class="form-control" rows="2"></textarea>
   {% endif %}
-  <button type="submit" class="btn btn--small">
+  <button type="submit" class="btn btn-primary btn-sm">
     {% if user.is_staff %}
       Save
     {% else %}

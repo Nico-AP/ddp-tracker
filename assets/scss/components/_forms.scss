@@ -54,9 +54,8 @@
   }
 }
 
-.btn--small {
-  padding: ($spacing-unit * 0.5) $spacing-unit;
-  font-size: $font-size-small;
+.link-button--danger {
+  color: $color-danger;
 }
 
 a.btn {

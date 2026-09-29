@@ -1,5 +1,5 @@
+{# A representation's statement and description (its page); "Edit" opens the dialog. #}
 <section class="representation">
-  {% if suggested %}<p class="message message--info">Suggested; staff will review your change.</p>{% endif %}
   <p>
     <span class="badge badge--{{ representation.pattern }}">{{ representation.get_pattern_display }}</span>
     {% if representation.statement %}<strong>{{ representation.statement }}</strong>{% endif %}
@@ -14,9 +14,9 @@
   {% endif %}
   {% if user.is_authenticated %}
     <button type="button"
-            class="btn btn--small"
+            class="btn btn-primary btn-sm"
             hx-get="{% url 'representations:edit' representation.pk %}"
-            hx-target="closest .representation"
-            hx-swap="outerHTML">Edit</button>
+            hx-target="#modal"
+            hx-swap="innerHTML">Edit</button>
   {% endif %}
 </section>

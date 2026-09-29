@@ -10,11 +10,7 @@ from django.db import models
 
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Platform
-from ddp_tracker.representations.models import (
-    MetadataRole,
-    Representation,
-    RepresentationMetadata,
-)
+from ddp_tracker.representations.models import Representation
 from ddp_tracker.schemas.models import Location
 
 
@@ -30,10 +26,7 @@ class Proposal(models.Model):
         # representations
         NEW_REPRESENTATION = "new_representation", "New representation"
         EDIT_REPRESENTATION = "edit_representation", "Edit the representation"
-        REPRESENT = "represent", "Link as the representation's entity"
-        DESCRIBE = "describe", "Link as the representation's metadata"
-        UNREPRESENT = "unrepresent", "Remove the entity link"
-        UNDESCRIBE = "undescribe", "Remove the metadata link"
+        DELETE_REPRESENTATION = "delete_representation", "Delete the representation"
 
     class Status(models.TextChoices):
         OPEN = "open", "Open"
@@ -60,7 +53,8 @@ class Proposal(models.Model):
     reason = models.TextField(blank=True, help_text="Why it was rejected or superseded.")
 
     # what it is about (each kind uses some). SET_NULL: a proposal stays as history when its
-    # target goes (an accepted "remove the metadata link" deletes that link)
+    # target goes (an accepted "delete the representation" deletes it). A new representation's
+    # location is the one it is for
     platform = models.ForeignKey(
         Platform, null=True, blank=True, on_delete=models.CASCADE, related_name="proposals"
     )
@@ -73,20 +67,8 @@ class Proposal(models.Model):
     representation = models.ForeignKey(
         Representation, null=True, blank=True, on_delete=models.SET_NULL, related_name="proposals"
     )
-    metadata = models.ForeignKey(
-        RepresentationMetadata,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="proposals",
-    )
-    role = models.ForeignKey(
-        MetadataRole, null=True, blank=True, on_delete=models.SET_NULL, related_name="proposals"
-    )
-    subject = models.CharField(
-        max_length=20, blank=True, choices=RepresentationMetadata.Subject.choices
-    )
-    # the proposed fields (an annotation's name/description/note/pii, a representation's form data)
+    # the proposed fields (an annotation's name/description/note/pii, a representation's form data
+    # and its metadata links)
     values = models.JSONField(default=dict, blank=True)
     # the target as it was when proposed: a proposal made on another state is stale
     base = models.JSONField(default=dict, blank=True)

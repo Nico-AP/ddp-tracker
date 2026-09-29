@@ -78,78 +78,64 @@ class SuggestingTests(TestCase):
 
     def test_representations_are_suggested(self):
         video = ObjectType.objects.get(slug="video")
-        create = self.client.post(
-            reverse("representations:create"),
-            {"pattern": Pattern.OBJECT, "name": "Video", "object": video.pk},
+        when = MetadataRole.objects.get(slug="when")
+        item = Location.objects.get(path="/a.json/videos/[]")
+        at = Location.objects.get(path="/a.json/videos/[]/when")
+        management = {
+            f"metadata-{subject}-{count}": "0"
+            for subject in ("actor", "activity", "object", "target")
+            for count in ("TOTAL_FORMS", "INITIAL_FORMS")
+        }
+        response = self.client.post(
+            reverse("representations:add", args=[item.pk]),
+            management
+            | {
+                "pattern": Pattern.OBJECT,
+                "name": "Video",
+                "object": video.pk,
+                "metadata-object-TOTAL_FORMS": "1",
+                "metadata-object-0-location": at.pk,
+                "metadata-object-0-role": when.pk,
+            },
         )
-        self.assertRedirects(create, reverse("proposals:mine"))
+        self.assertContains(response, "staff will review your suggestion")
+        self.assertEqual(response["HX-Trigger"], f"representations-changed-{item.pk}")
         self.assertFalse(Representation.objects.exists())
-        existing = Representation.objects.create(pattern=Pattern.OBJECT, name="Clip", object=video)
+        suggested = Proposal.objects.get(kind=Kind.NEW_REPRESENTATION)
+        self.assertEqual(
+            suggested.values["metadata"],
+            [{"subject": "object", "role": when.pk, "location": at.pk}],
+        )
+        self.assertIn("Metadata", [field for field, _, _ in changes(suggested)])
+        existing = Representation.objects.create(
+            location=item, pattern=Pattern.OBJECT, name="Clip", object=video
+        )
+        RepresentationMetadata.objects.create(
+            representation=existing, location=at, role=when, subject="object"
+        )
         edit = self.client.post(
             reverse("representations:edit", args=[existing.pk]),
-            {"pattern": Pattern.OBJECT, "name": "Short clip", "object": video.pk},
+            management | {"pattern": Pattern.OBJECT, "name": "Short clip", "object": video.pk},
         )
-        self.assertContains(edit, "Suggested")
+        self.assertContains(edit, "staff will review your suggestion")
         existing.refresh_from_db()
         self.assertEqual(existing.name, "Clip")
-        self.client.post(
-            reverse("representations:represent", args=[self.shown.pk]),
-            {"representation": existing.pk},
+        self.assertTrue(existing.metadata_links.exists())  # the suggestion removes it, later
+        self.assertContains(
+            self.client.post(reverse("representations:delete", args=[existing.pk])),
+            "staff will review your suggestion",
         )
-        self.client.post(
-            reverse("representations:describe", args=[self.shown.pk]),
-            {
-                "representation": existing.pk,
-                "role": MetadataRole.objects.get(slug="when").pk,
-                "subject": "object",
-            },
-        )
-        self.client.post(
-            reverse("representations:create-linked", args=[self.shown.pk]),
-            {
-                "pattern": Pattern.OBJECT,
-                "name": "Mail",
-                "object": video.pk,
-                "metadata-TOTAL_FORMS": "1",
-                "metadata-INITIAL_FORMS": "0",
-                "metadata-0-subject": "object",
-                "metadata-0-role": MetadataRole.objects.get(slug="when").pk,
-                "metadata-0-annotation": self.shown.pk,
-            },
-        )
-        self.assertFalse(existing.annotations.exists())
-        self.assertFalse(RepresentationMetadata.objects.exists())
-        suggested = Proposal.objects.get(kind=Kind.NEW_REPRESENTATION, values__name="Mail")
-        self.assertEqual(len(suggested.values["metadata"]), 1)
-        self.assertIn("Metadata", [field for field, _, _ in changes(suggested)])
+        self.assertTrue(Representation.objects.filter(pk=existing.pk).exists())
         self.assertEqual(
             sorted(Proposal.objects.values_list("kind", flat=True)),
             sorted(
                 [
                     Kind.NEW_REPRESENTATION,
                     Kind.EDIT_REPRESENTATION,
-                    Kind.REPRESENT,
-                    Kind.DESCRIBE,
-                    Kind.NEW_REPRESENTATION,
+                    Kind.DELETE_REPRESENTATION,
                 ]
             ),
         )
-        link = RepresentationMetadata.objects.create(
-            representation=existing,
-            annotation=self.shown,
-            role=MetadataRole.objects.get(slug="when"),
-            subject="object",
-        )
-        existing.annotations.add(self.shown)
-        remove = self.client.post(
-            reverse("representations:remove-annotation", args=[existing.pk, self.shown.pk])
-        )
-        self.assertContains(remove, "Suggested")
-        self.assertContains(
-            self.client.post(reverse("representations:remove-link", args=[link.pk])), "Suggested"
-        )
-        self.assertTrue(existing.annotations.exists())
-        self.assertTrue(RepresentationMetadata.objects.exists())
 
     def test_pending_markers(self):
         submit(self.user, Kind.LINK, location=self.name, annotation=self.shown)
@@ -224,10 +210,7 @@ class DecidingTests(TestCase):
         self.client.force_login(self.staff)
         response = self.client.post(url)
         self.assertContains(response, "Accepted by admin")
-        self.assertEqual(
-            response["HX-Trigger"],
-            f"triaged-{self.name.pk}, representations-changed-{self.shown.pk}",
-        )
+        self.assertEqual(response["HX-Trigger"], f"triaged-{self.name.pk}")
         self.assertEqual(Location.objects.get(pk=self.name.pk).annotation, self.shown)
         reject = self.client.post(
             reverse("proposals:decide", args=[rejected.pk, "reject"]), {"reason": "Not a mail."}
@@ -262,8 +245,10 @@ class DecidingTests(TestCase):
 
     def test_representation_queue(self):
         video = ObjectType.objects.get(slug="video")
-        self.propose(
+        item = Location.objects.get(platform=self.platform, path="/a.json/videos/[]")
+        proposal = self.propose(
             kind=Kind.NEW_REPRESENTATION,
+            location=item,
             values={"pattern": Pattern.OBJECT, "name": "Video", "object": video.pk},
         )
         self.client.force_login(self.staff)
@@ -271,3 +256,11 @@ class DecidingTests(TestCase):
         self.assertContains(queue, "New representation")
         self.assertContains(queue, "Video")
         self.assertContains(queue, "data-proposals")
+        response = self.client.post(reverse("proposals:decide", args=[proposal.pk, "accept"]))
+        self.assertEqual(
+            response["HX-Trigger"], f"triaged-{item.pk}, representations-changed-{item.pk}"
+        )
+        created = Representation.objects.get()
+        delete = self.propose(kind=Kind.DELETE_REPRESENTATION, representation=created)
+        response = self.client.post(reverse("proposals:decide", args=[delete.pk, "reject"]))
+        self.assertEqual(response["HX-Trigger"], f"representations-changed-{item.pk}")

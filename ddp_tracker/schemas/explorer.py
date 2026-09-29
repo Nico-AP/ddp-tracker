@@ -4,12 +4,11 @@ something themselves (an unparsed file, an object always seen empty) as muted ro
 
 from collections.abc import Callable
 
-from django.db.models import Q
-
 from ddp_tracker.ddps.models import Platform
+from ddp_tracker.representations.eligibility import eligible
 from ddp_tracker.schemas.examples import preview
 from ddp_tracker.schemas.filters import SchemaFilter, format_label
-from ddp_tracker.schemas.models import Location, Observation
+from ddp_tracker.schemas.models import ITEM, Location, Observation
 from ddp_tracker.schemas.tree import PREVIEW, Row, Tree, TreeBuilder, places, row_key
 
 
@@ -62,7 +61,7 @@ def explorer_tree(
     platform: Platform, schema_filter: SchemaFilter, q: str = "", *, show: str = SHOW_ALL
 ) -> Tree:
     """The tree of the filtered uploads' data points. ``show``: all of them, only those without
-    an annotation, or only annotated ones whose annotation has no representation (``SHOW``).
+    an annotation, or only those that could have a representation but have none (``SHOW``).
     ``q`` keeps the rows whose name or path contain it."""
     latest = _latest(_observations(platform, schema_filter))
     points = {path: o for path, o in latest.items() if o.is_data_point}
@@ -77,8 +76,8 @@ def explorer_tree(
     if show == MISSING_ANNOTATIONS:
         _keep_only(builder, lambda row: row.is_open)
     elif show == MISSING_REPRESENTATIONS:
-        represented = _represented(platform)
-        _keep_only(builder, lambda row: _lacks_representation(row, represented))
+        unrepresented = _unrepresented(platform)
+        _keep_only(builder, lambda row: not row.muted and row.primary.pk in unrepresented)
     # groups alphabetical too (by their first row, "A/B" would come before "A"'s own rows)
     builder.groups = dict(
         sorted(builder.groups.items(), key=lambda item: _alphabetical_key(item[0]))
@@ -101,18 +100,11 @@ def _is_muted(observation: Observation, parents: set[str | None]) -> bool:
     )
 
 
-def _represented(platform: Platform) -> set[int]:
-    """The platform's annotations linked to a representation: as its entity, or as metadata."""
-    linked = platform.annotations.filter(
-        Q(representations__isnull=False) | Q(metadata_links__isnull=False)
-    )
-    return set(linked.values_list("pk", flat=True))
-
-
-def _lacks_representation(row: Row, represented: set[int]) -> bool:
-    """Annotated (for a list: its item, which carries the meaning), but not represented."""
-    annotation = row.primary.annotation_id
-    return not row.muted and annotation is not None and annotation not in represented
+def _unrepresented(platform: Platform) -> set[int]:
+    """The platform's locations that can have a representation (a list's item, the row's
+    primary location) but have none."""
+    items = platform.locations.filter(path__endswith=ITEM, representations__isnull=True)
+    return eligible(items)
 
 
 def _keep_only(builder: TreeBuilder, wanted: Callable[[Row], bool]) -> None:

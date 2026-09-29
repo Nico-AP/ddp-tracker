@@ -47,16 +47,17 @@ class VocabularyAdmin(admin.ModelAdmin):
 
 class MetadataInline(admin.TabularInline):
     model = RepresentationMetadata
-    autocomplete_fields = ["annotation"]
+    raw_id_fields = ["location"]
     extra = 1
 
 
 @admin.register(Representation)
 class RepresentationAdmin(admin.ModelAdmin):
-    list_display = ["name", "pattern", "actor", "activity", "object", "target", "updated_at"]
-    list_filter = ["pattern", "activity", "object"]
-    search_fields = ["name", "description"]
-    filter_horizontal = ["annotations"]
+    list_display = ["name", "pattern", "location", "actor", "activity", "object", "updated_at"]
+    list_filter = ["pattern", "location__platform", "activity", "object"]
+    list_select_related = ["location__platform", "actor", "activity", "object"]
+    search_fields = ["name", "description", "location__path"]
+    raw_id_fields = ["location"]
     inlines = [MetadataInline]
 
     def save_model(

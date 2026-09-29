@@ -54,7 +54,7 @@
           {% else %}
             <a href="{% url 'proposals:mine' %}">My suggestions</a>
           {% endif %}
-          <a class="btn btn--small" href="{% url 'ddps:upload-create' %}">Upload a DDP</a>
+          <a class="btn btn-primary btn-sm" href="{% url 'ddps:upload-create' %}">Upload a DDP</a>
           <form method="post" action="{% url 'logout' %}" class="inline-form">
             {% csrf_token %}
             <button type="submit" class="link-button">Log out</button>

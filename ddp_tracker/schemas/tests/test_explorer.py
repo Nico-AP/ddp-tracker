@@ -9,13 +9,7 @@ from django.urls import reverse
 
 from ddp_tracker.core.tests.utils import parsed_upload
 from ddp_tracker.ddps.models import Platform
-from ddp_tracker.representations.models import (
-    MetadataRole,
-    ObjectType,
-    Pattern,
-    Representation,
-    RepresentationMetadata,
-)
+from ddp_tracker.representations.models import ObjectType, Pattern, Representation
 from ddp_tracker.schemas.examples import USER_INPUT, add_examples
 from ddp_tracker.schemas.explorer import (
     MISSING_ANNOTATIONS,
@@ -73,26 +67,29 @@ class ExplorerTreeTests(TestCase):
         self.assertEqual(tree.open_count, 2)  # when, tags[] (list and item: one row); no muted
 
     def test_show_missing_annotations_or_representations(self):
-        when = create_annotation(Location.objects.get(path="/a.json/when"), "When", self.user)
-        tag = create_annotation(Location.objects.get(path="/a.json/tags/[]"), "Tag", self.user)
+        create_annotation(Location.objects.get(path="/a.json/when"), "When", self.user)
+        create_annotation(Location.objects.get(path="/a.json/tags/[]"), "Tag", self.user)
         create_annotation(Location.objects.get(path="/a.json/tags"), "List of Tag", self.user)
         self.assertIn("/a.json/when", self.rows())  # all, muted rows too
         self.assertIn("/a.json/meta", self.rows())
         # nothing is left without an annotation (muted rows never count)
         self.assertEqual(self.rows(show=MISSING_ANNOTATIONS), {})
-        # annotated, but no representation yet: both; once represented, gone
-        self.assertEqual(
-            set(self.rows(show=MISSING_REPRESENTATIONS)), {"/a.json/when", "/a.json/tags"}
+        # no list of objects: nothing to represent
+        self.assertEqual(self.rows(show=MISSING_REPRESENTATIONS), {})
+        parsed_upload(
+            self.platform,
+            {"b.json": b'{"videos": [{"id": 1}]}'},
+            requested_at=date(2026, 2, 1),
+            register=True,
         )
-        video = Representation.objects.create(
-            pattern=Pattern.OBJECT, name="Tag", object=ObjectType.objects.get(slug="video")
+        # a list of objects, not annotated: no matter; once represented, gone
+        self.assertEqual(set(self.rows(show=MISSING_REPRESENTATIONS)), {"/b.json/videos"})
+        Representation.objects.create(
+            location=Location.objects.get(path="/b.json/videos/[]"),
+            pattern=Pattern.OBJECT,
+            name="Video",
+            object=ObjectType.objects.get(slug="video"),
         )
-        video.annotations.add(tag)  # the item carries the meaning: the list's row is done
-        self.assertEqual(set(self.rows(show=MISSING_REPRESENTATIONS)), {"/a.json/when"})
-        date_role = MetadataRole.objects.get(slug="when")
-        RepresentationMetadata.objects.create(
-            representation=video, annotation=when, role=date_role, subject="object"
-        )  # a metadata link counts too
         self.assertEqual(self.rows(show=MISSING_REPRESENTATIONS), {})
 
     def test_the_filter(self):
@@ -154,8 +151,8 @@ class ExplorerPageTests(TestCase):
         create_annotation(self.item, "Tag", self.user)
         create_annotation(self.tags, "List of Tag", self.user)
         groups = self.client.get(url, {"show": "representations"}, headers={"hx-request": "true"})
-        self.assertContains(groups, "tags[]")
-        self.assertNotContains(groups, "when")  # not annotated: not a missing representation
+        self.assertNotContains(groups, "tags[]")  # a list of values: nothing to represent
+        self.assertContains(groups, "Every list of objects here has a representation.")
         done = self.client.get(
             url, {"show": "annotations", "q": "tags"}, headers={"hx-request": "true"}
         )
