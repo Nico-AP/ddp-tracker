@@ -8,7 +8,7 @@ The explorer shows one root format's data points as a tree (``schemas/tree.py``,
 from typing import Any
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import QuerySet
+from django.db.models import Count, Max, Q, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 
@@ -63,6 +63,26 @@ def _explorer_context(request: HttpRequest, platform: Platform) -> dict[str, Any
         "tree": explorer_tree(platform, schema_filter, q, show=show),
         "row_template": "schemas/tree/_row.html",
     }
+
+
+def platform_list(request: HttpRequest) -> HttpResponse:
+    """The Explore page: every platform with its figures (only uploads that count: registered),
+    each leading to its explorer and its annotations."""
+    counted = Q(uploads__registered_at__isnull=False)
+    platforms = Platform.objects.annotate(
+        annotation_count=Count("annotations", distinct=True),
+        upload_count=Count("uploads", filter=counted, distinct=True),
+        data_point_count=Count(
+            "locations",
+            filter=Q(
+                locations__observations__is_data_point=True,
+                locations__observations__upload__registered_at__isnull=False,
+            ),
+            distinct=True,
+        ),
+        last_updated=Max("uploads__registered_at", filter=counted),
+    )
+    return render(request, "schemas/platform_list.html", {"platforms": platforms})
 
 
 def platform_detail(request: HttpRequest, slug: str) -> HttpResponse:

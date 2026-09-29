@@ -55,6 +55,36 @@
   font-weight: 700;
 }
 
+.card p {
+  margin: ($spacing-unit * 0.75) 0 0;
+}
+
+// a card's side note: "Sign in to upload", "Last updated …"
+.card__hint {
+  color: $color-text-muted;
+  font-size: $font-size-small;
+}
+
+.card__links {
+  display: flex;
+  gap: $spacing-unit * 2;
+  font-size: $font-size-small;
+}
+
+// the landing page's "What do you want to do?": one group of cards per goal
+.goal-group {
+  margin-bottom: $spacing-unit * 3;
+
+  h3 {
+    margin-bottom: $spacing-unit;
+    font-size: 1.1rem;
+  }
+
+  .cards {
+    margin-bottom: 0;
+  }
+}
+
 .plain-list {
   padding-left: $spacing-unit * 2;
 }

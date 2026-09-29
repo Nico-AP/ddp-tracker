@@ -2,18 +2,13 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import URLPattern, URLResolver, include, path, re_path
 from django.views import defaults as default_views
-from django.views.static import serve
 
+from ddp_tracker.core import views as core_views
 from ddp_tracker.ddps.views import LogoutView
 
 urlpatterns: list[URLPattern | URLResolver] = [
     path("admin/", admin.site.urls),
-    re_path(
-        r"^docs/(?P<path>.*)$",
-        serve,
-        {"document_root": settings.MKDOCS_ROOT, "show_indexes": True},
-        name="docs",
-    ),
+    re_path(r"^docs/(?P<path>.*)$", core_views.docs, name="docs"),  # the MkDocs site
     path("accounts/logout/", LogoutView.as_view(), name="logout"),  # also forgets value keys
     path("accounts/", include("allauth.urls")),
     path("uploads/", include("ddp_tracker.ddps.urls")),

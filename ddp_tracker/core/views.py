@@ -1,20 +1,34 @@
-from django.db.models import Count, Q
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import render
+import posixpath
+from pathlib import Path
 
-from ddp_tracker.ddps.models import Platform
+from django.conf import settings
+from django.core.exceptions import SuspiciousFileOperation
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
+from django.shortcuts import redirect, render
+from django.utils._os import safe_join
+from django.views.static import serve
 
 
 def index(request: HttpRequest) -> HttpResponse:
-    platforms = Platform.objects.annotate(
-        annotation_count=Count("annotations", distinct=True),
-        upload_count=Count(
-            "uploads", filter=Q(uploads__registered_at__isnull=False), distinct=True
-        ),
-    )
-    return render(
-        request, "core/index.html", {"project_name": "DDP Tracker", "platforms": platforms}
-    )
+    """What the app offers and where to go for it (the platforms are on the Explore page,
+    ``schemas.views.platform_list``)."""
+    return render(request, "core/index.html", {"project_name": "DDP Tracker"})
+
+
+def docs(request: HttpRequest, path: str) -> HttpResponseBase:
+    """The MkDocs site (``settings.MKDOCS_ROOT``, built into the production image). MkDocs makes
+    every page a folder (``tracker/concepts/index.html``) and links to the folder, so a folder
+    serves its ``index.html``; without its trailing slash it redirects to it, for the page's
+    relative links to resolve."""
+    try:
+        target = Path(safe_join(settings.MKDOCS_ROOT, posixpath.normpath(path or ".")))
+    except SuspiciousFileOperation as error:  # outside the docs
+        raise Http404 from error
+    if target.is_dir():
+        if path and not path.endswith("/"):
+            return redirect(request.path + "/")
+        path = posixpath.join(path, "index.html")
+    return serve(request, path, document_root=str(settings.MKDOCS_ROOT))
 
 
 def health(request: HttpRequest) -> JsonResponse:

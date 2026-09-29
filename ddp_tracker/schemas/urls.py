@@ -5,6 +5,7 @@ from ddp_tracker.schemas import views
 app_name = "schemas"
 
 urlpatterns = [
+    path("platforms/", views.platform_list, name="platforms"),
     path("platforms/<slug:slug>/", views.platform_detail, name="platform"),
     path("platforms/<slug:slug>/rows/<int:location_pk>/", views.explorer_row, name="row"),
     path("platforms/<slug:slug>/location/", views.location_detail, name="location"),

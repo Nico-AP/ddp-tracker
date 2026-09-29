@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Explore · DDP Tracker{% endblock %}
+{% block content %}
+  <h1>Explore</h1>
+  <p class="lead">
+    Choose a platform to see what its data takeouts contain: every data point with its type,
+    examples and meaning, in its explorer; or what its data points mean, in its annotations. To
+    compare platforms, see the <a href="{% url 'representations:representations' %}">representations</a>.
+  </p>
+  {% if platforms %}
+    <ul class="cards">
+      {% for platform in platforms %}
+        <li class="card">
+          <a class="card__title" href="{{ platform.get_absolute_url }}">{{ platform.name }}</a>
+          <p>
+            {{ platform.data_point_count }} data point{{ platform.data_point_count|pluralize }} ·
+            {{ platform.annotation_count }} annotation{{ platform.annotation_count|pluralize }} ·
+            {{ platform.upload_count }} upload{{ platform.upload_count|pluralize }}
+          </p>
+          <p class="card__hint">
+            {% if platform.last_updated %}
+              Last updated {{ platform.last_updated|date:"Y-m-d" }}
+            {% else %}
+              No uploads yet
+            {% endif %}
+          </p>
+          <p class="card__links">
+            <a href="{{ platform.get_absolute_url }}">Explore</a>
+            <a href="{% url 'annotations:annotations' platform.slug %}">Annotations</a>
+          </p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No platforms yet. Add them in the admin.</p>
+  {% endif %}
+{% endblock %}

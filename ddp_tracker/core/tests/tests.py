@@ -2,8 +2,8 @@ from django.test import TestCase
 from django.urls import reverse
 
 from ddp_tracker.core.templatetags.core_tags import as_json
-from ddp_tracker.core.tests.utils import parsed_upload
 from ddp_tracker.ddps.models import Platform
+from ddp_tracker.users.models import User
 
 
 class IndexViewTests(TestCase):
@@ -13,12 +13,46 @@ class IndexViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "core/index.html")
 
-    def test_lists_platforms_with_counts(self):
-        platform = Platform.objects.create(name="Instagram", slug="instagram")
-        parsed_upload(platform, {"a.json": b"{}"}, register=True)
+    def test_platforms_are_on_the_explore_page(self):
+        Platform.objects.create(name="Instagram", slug="instagram")
         response = self.client.get(reverse("core:index"))
-        self.assertContains(response, "Instagram")
-        self.assertContains(response, "1 upload")
+        self.assertNotContains(response, "Instagram")  # listed on the Explore page instead
+        explore = reverse("schemas:platforms")
+        self.assertContains(response, f'<a href="{explore}">Explore</a>', html=True)  # header
+        self.assertContains(response, f'href="{explore}"', count=4)  # header + three cards
+
+    def test_signed_out_explore_and_how_to_contribute(self):
+        response = self.client.get(reverse("core:index"))
+        for url in (
+            reverse("representations:representations"),
+            reverse("representations:vocabulary"),
+            reverse("docs", args=["tracker/concepts/"]),
+        ):
+            self.assertContains(response, url)
+        login = reverse("account_login")
+        self.assertContains(response, f"{login}?next=/uploads/new/")
+        self.assertContains(response, "Sign in to upload")
+        self.assertContains(response, reverse("account_signup"))
+        self.assertNotContains(response, "Curate")
+        self.assertNotContains(response, reverse("proposals:mine"))
+
+    def test_signed_in_contributors(self):
+        self.client.force_login(User.objects.create_user("someone@example.org"))
+        response = self.client.get(reverse("core:index"))
+        self.assertContains(response, f'href="{reverse("ddps:upload-create")}"')
+        self.assertNotContains(response, "Sign in to upload")
+        self.assertContains(response, "suggestions that staff review")
+        self.assertContains(response, reverse("proposals:mine"))
+        self.assertNotContains(response, "Curate")
+
+    def test_staff_get_their_queues(self):
+        self.client.force_login(User.objects.create_user("admin@example.org", is_staff=True))
+        response = self.client.get(reverse("core:index"))
+        self.assertContains(response, "Curate")
+        self.assertContains(response, "Approvals (0)")
+        self.assertContains(response, reverse("ddps:approvals"))
+        self.assertContains(response, reverse("proposals:representations"))
+        self.assertContains(response, "Your changes apply right away")
 
 
 class HealthViewTests(TestCase):
