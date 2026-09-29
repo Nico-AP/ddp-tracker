@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import Any
 
 from django.conf import settings
 from django.contrib import messages
@@ -7,6 +8,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -22,9 +24,22 @@ from ddp_tracker.users.auth import signed_in_user
 from ddp_tracker.users.models import User
 
 
+def _visible(request: HttpRequest) -> QuerySet[Upload]:
+    """The uploads the signed-in user may open (``UploadQuerySet.visible_to``)."""
+    return Upload.objects.visible_to(request.user)
+
+
+def _duplicates(request: HttpRequest, upload: Upload) -> dict[str, Any]:
+    """The earlier uploads of the same file, and which of them the user may open (the notice
+    links only those)."""
+    duplicates = upload.duplicates()
+    visible = _visible(request).filter(pk__in=duplicates).values_list("pk", flat=True)
+    return {"duplicates": duplicates, "visible_duplicates": set(visible)}
+
+
 @login_required
 def upload_list(request: HttpRequest) -> HttpResponse:
-    uploads = Upload.objects.select_related("platform", "uploaded_by")
+    uploads = Upload.objects.visible_to(request.user).select_related("platform")
     return render(request, "ddps/upload_list.html", {"uploads": uploads})
 
 
@@ -48,11 +63,11 @@ def upload_create(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def upload_detail(request: HttpRequest, pk: int) -> HttpResponse:
-    upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
+    upload = get_object_or_404(_visible(request).select_related("platform"), pk=pk)
     user = signed_in_user(request)
     context = {
         "upload": upload,
-        "duplicates": upload.duplicates(),
+        **_duplicates(request, upload),
         "threshold": settings.DDP_SIMILARITY_THRESHOLD,
         "is_uploader": upload.uploaded_by_id == user.pk,
         "can_approve": checks.can_approve(upload, user),
@@ -65,7 +80,7 @@ def upload_detail(request: HttpRequest, pk: int) -> HttpResponse:
 def upload_inspect(request: HttpRequest, pk: int) -> HttpResponse:
     """A held upload's structure, compared with the uploads that count (``ddps/inspection.py``):
     for its uploader and staff, to decide on it. The uploader also sees their own values."""
-    upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
+    upload = get_object_or_404(_visible(request).select_related("platform"), pk=pk)
     user = signed_in_user(request)
     if not checks.can_inspect(upload, user):
         raise PermissionDenied
@@ -73,7 +88,7 @@ def upload_inspect(request: HttpRequest, pk: int) -> HttpResponse:
         "upload": upload,
         "inspection": inspect(upload, checks.peers_of(upload)),
         "own": values.own_values(request, upload),
-        "duplicates": upload.duplicates(),
+        **_duplicates(request, upload),
         "threshold": settings.DDP_SIMILARITY_THRESHOLD,
         "is_uploader": upload.uploaded_by_id == user.pk,
         "can_approve": checks.can_approve(upload, user),
@@ -85,7 +100,7 @@ def upload_inspect(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def upload_status(request: HttpRequest, pk: int) -> HttpResponse:
     """HTMX partial, polled while the upload is being parsed."""
-    upload = get_object_or_404(Upload, pk=pk)
+    upload = get_object_or_404(_visible(request), pk=pk)
     if upload.is_finished:
         response = HttpResponse()
         response["HX-Refresh"] = "true"  # reload the page to show the result
@@ -106,7 +121,7 @@ _ACTIONS: dict[str, tuple[Callable[[Upload, User], None], str]] = {
 @require_POST
 def upload_decide(request: HttpRequest, pk: int, action: str) -> HttpResponse:
     """Confirm (uploader), approve or reject (staff) a held upload; see ddps/checks.py."""
-    upload = get_object_or_404(Upload, pk=pk)
+    upload = get_object_or_404(_visible(request), pk=pk)
     user = signed_in_user(request)
     if action == "discard":
         try:
@@ -147,7 +162,7 @@ def upload_approvals(request: HttpRequest) -> HttpResponse:
 @require_POST
 def upload_forget_values(request: HttpRequest, pk: int) -> HttpResponse:
     """The uploader deletes their values of an upload, and the key to them."""
-    upload = get_object_or_404(Upload, pk=pk)
+    upload = get_object_or_404(_visible(request), pk=pk)
     if upload.uploaded_by_id != signed_in_user(request).pk:
         raise PermissionDenied
     response = redirect(reverse("reviews:review", args=[upload.pk]))

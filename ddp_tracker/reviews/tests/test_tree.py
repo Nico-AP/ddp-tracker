@@ -259,7 +259,11 @@ class MissingRootTests(TestCase):
         parsed_file(platform, "posts.json", b'{"Posts": {"title": "t"}}', register=True)
         create_annotation(Location.objects.get(path="/Posts/title"), "title", user)
         later = parsed_upload(
-            platform, {"a.json": b'{"x": 1}'}, requested_at=date(2026, 12, 1), register=True
+            platform,
+            {"a.json": b'{"x": 1}'},
+            requested_at=date(2026, 12, 1),
+            register=True,
+            user=user,  # the review is its uploader's
         )
         self.client.force_login(user)
         page = self.client.get(reverse("reviews:review", args=[later.pk]), {"tab": "missing"})

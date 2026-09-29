@@ -4,6 +4,7 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from ddp_tracker.core.tests.utils import parsed_file, parsed_upload
+from ddp_tracker.ddps.checks import decide
 from ddp_tracker.ddps.models import Platform
 from ddp_tracker.schemas.filters import (
     UNKNOWN,
@@ -14,6 +15,7 @@ from ddp_tracker.schemas.filters import (
     request_formats,
     root_formats,
 )
+from ddp_tracker.users.models import User
 
 
 class FilterTests(TestCase):
@@ -168,3 +170,27 @@ class UnknownRequestFormatTests(TestCase):
         self.assertEqual(request_format_label(UNKNOWN), "Format not provided")
         self.assertEqual(request_format_label("json"), "JSON file")
         self.assertTrue(FilterForm({"request_format": UNKNOWN}, platform=self.platform).is_valid())
+
+
+class RecentUploadsTests(TestCase):
+    """The platform page lists the uploads its tree is built from: counted, of the chosen
+    format, without links (uploads are their uploaders') or a status (they're all parsed)."""
+
+    def test_only_the_trees_uploads_unlinked(self):
+        platform = Platform.objects.create(name="TikTok", slug="tiktok")
+        counted = parsed_upload(platform, {"a.json": b'{"k": 1}'}, register=True)
+        duplicate = parsed_upload(platform, {"a.json": b'{"k": 1}'})
+        decide(duplicate)  # the same file again: not counted
+        pending = parsed_upload(platform, {"b.json": b'{"k": 1}'})  # not registered
+        other_format = parsed_file(platform, "single.csv", b"a,b\n1,2\n", register=True)
+        self.client.force_login(User.objects.create_user("curator"))
+        url = reverse("schemas:platform", args=["tiktok"])
+        page = self.client.get(url, {"request_format": "json"})
+        self.assertEqual(list(page.context["uploads"]), [counted])
+        for upload in (counted, duplicate, pending, other_format):
+            self.assertNotContains(page, upload.get_absolute_url())
+        self.assertNotContains(page, '<th scope="col">Status</th>', html=True)
+        csv = self.client.get(url, {"request_format": "csv"})
+        self.assertEqual(list(csv.context["uploads"]), [other_format])
+        self.client.logout()
+        self.assertIsNone(self.client.get(url).context["uploads"])  # signed in only

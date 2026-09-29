@@ -176,14 +176,14 @@ class HeldUploadTests(TestCase):
         self.assertContains(page, "only 0 % of its data points are known")
         self.assertContains(page, "Yes, ask for approval")
         self.assertContains(self.client.get(reverse("ddps:uploads")), "badge--unconfirmed")
-        self.client.force_login(self.other)
-        self.assertNotContains(self.client.get(self.odd.get_absolute_url()), "Yes, ask")
+        self.client.force_login(self.other)  # not theirs: as if it didn't exist
+        self.assertEqual(self.client.get(self.odd.get_absolute_url()).status_code, 404)
 
     def test_confirm_then_approve(self):
-        self.assertEqual(self.act(self.other, "confirm").status_code, 403)  # not theirs
+        self.assertEqual(self.act(self.other, "confirm").status_code, 404)  # not theirs
         self.assertRedirects(self.act(self.uploader, "confirm"), self.odd.get_absolute_url())
         self.assertEqual(self.state(), Plausibility.AWAITING)
-        self.assertEqual(self.act(self.other, "approve").status_code, 403)  # not staff
+        self.assertEqual(self.act(self.other, "approve").status_code, 404)  # not staff
         self.client.force_login(self.staff)
         page = self.client.get(self.odd.get_absolute_url())
         self.assertContains(page, "Waiting for an admin")
@@ -202,10 +202,12 @@ class HeldUploadTests(TestCase):
         self.assertEqual(self.state(), Plausibility.REJECTED)
         self.assertIsNone(self.odd.registered_at)
         self.client.force_login(self.uploader)
-        self.assertContains(self.client.get(self.odd.get_absolute_url()), "Rejected by admin")
+        rejected = self.client.get(self.odd.get_absolute_url())
+        self.assertContains(rejected, f"Rejected by #{self.staff.pk}")  # not by email
+        self.assertNotContains(rejected, f"Rejected by {self.staff.email}")
 
     def test_discard(self):
-        self.assertEqual(self.act(self.other, "discard").status_code, 403)
+        self.assertEqual(self.act(self.other, "discard").status_code, 404)
         self.assertRedirects(self.act(self.uploader, "discard"), reverse("ddps:uploads"))
         self.assertFalse(Upload.objects.filter(pk=self.odd.pk).exists())
 

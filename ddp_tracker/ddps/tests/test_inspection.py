@@ -106,9 +106,9 @@ class InspectPageTests(TestCase):
 
     def test_uploader_and_staff_only(self):
         self.assertEqual(self.client.get(self.url).status_code, 302)  # login first
-        self.client.force_login(self.other)
-        self.assertEqual(self.client.get(self.url).status_code, 403)
-        self.assertNotContains(self.client.get(self.odd.get_absolute_url()), self.url)
+        self.client.force_login(self.other)  # not theirs: as if it didn't exist
+        self.assertEqual(self.client.get(self.url).status_code, 404)
+        self.assertEqual(self.client.get(self.odd.get_absolute_url()).status_code, 404)
         for user in (self.uploader, self.staff):
             with self.subTest(user=user):
                 self.client.force_login(user)

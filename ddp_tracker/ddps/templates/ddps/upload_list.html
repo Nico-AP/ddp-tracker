@@ -1,8 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Uploads · DDP Tracker{% endblock %}
+{% block title %}
+  {% if user.is_staff %}
+    Uploads
+  {% else %}
+    My uploads
+  {% endif %}
+  · DDP Tracker
+{% endblock %}
 {% block content %}
   <div class="page-header">
-    <h1>Uploads</h1>
+    <h1>
+      {% if user.is_staff %}
+        Uploads
+      {% else %}
+        My uploads
+      {% endif %}
+    </h1>
     <a class="btn btn-primary" href="{% url 'ddps:upload-create' %}">Upload a DDP</a>
   </div>
   {% if uploads %}
@@ -16,6 +29,7 @@
           <th>Language</th>
           <th>Status</th>
           <th>Uploaded</th>
+          {% if user.is_staff %}<th>Uploaded by</th>{% endif %}
         </tr>
       </thead>
       <tbody>
@@ -35,6 +49,16 @@
               {% endif %}
             </td>
             <td>{{ upload.created_at|date:"Y-m-d H:i" }}</td>
+            {% if user.is_staff %}
+              {# the account's ID, not its email: look it up in the admin if needed #}
+              <td>
+                {% if upload.uploaded_by_id %}
+                  #{{ upload.uploaded_by_id }}
+                {% else %}
+                  –
+                {% endif %}
+              </td>
+            {% endif %}
           </tr>
         {% endfor %}
       </tbody>

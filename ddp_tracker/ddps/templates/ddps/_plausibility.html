@@ -48,15 +48,19 @@
   </div>
 {% elif upload.plausibility == "rejected" %}
   <p class="message message--error">
-    Rejected{% if upload.approved_by %} by {{ upload.approved_by }}{% endif %}: it doesn't count towards the {{ upload.platform }} schema.
+    Rejected{% if upload.approved_by_id %} by #{{ upload.approved_by_id }}{% endif %}: it doesn't count towards the {{ upload.platform }} schema.
   </p>
 {% elif upload.plausibility == "duplicate" %}
   <p class="message message--warning">
     The same file was uploaded before, so it isn't counted again:
     {% for other in duplicates %}
-      <a href="{{ other.get_absolute_url }}">#{{ other.pk }}</a>
+      {% if other.pk in visible_duplicates %}
+        <a href="{{ other.get_absolute_url }}">#{{ other.pk }}</a>
+      {% else %}
+        #{{ other.pk }}
+      {% endif %}
     {% endfor %}
   </p>
 {% elif upload.plausibility == "approved" %}
-  <p class="muted">Approved{% if upload.approved_by %} by {{ upload.approved_by }}{% endif %}.</p>
+  <p class="muted">Approved{% if upload.approved_by_id %} by #{{ upload.approved_by_id }}{% endif %}.</p>
 {% endif %}

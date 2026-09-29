@@ -30,7 +30,7 @@ class SuggestingTests(TestCase):
         self.staff = User.objects.create_user("admin", is_staff=True)
         self.user = User.objects.create_user("curator")
         self.platform = Platform.objects.create(name="TikTok", slug="tiktok")
-        self.upload = parsed_upload(self.platform, DATA, register=True)
+        self.upload = parsed_upload(self.platform, DATA, register=True, user=self.user)
         self.name = Location.objects.get(path="/a.json/name")
         self.email = Location.objects.get(path="/a.json/email")
         self.shown = create_annotation(self.email, "Email", self.staff)

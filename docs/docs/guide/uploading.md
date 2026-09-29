@@ -61,5 +61,8 @@ public overview.
 
 ## Your uploads
 
-**Uploads** in the top menu lists all uploads with their status. From an upload's page you reach
-its [review](reviewing.md) once it counts.
+**My uploads** in the top menu lists your uploads with their status; nobody else sees them, except
+staff (their menu reads **Uploads** and lists everyone's, with the uploader's account number, not
+their email). From an upload's page you reach its [review](reviewing.md) once it counts. A
+platform's page lists its recent uploads (only anonymized file names) that count
+towards what it shows, without links.

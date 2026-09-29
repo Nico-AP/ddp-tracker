@@ -135,7 +135,7 @@ class SchemaFilter:
         return chosen
 
     def uploads(self, platform: Platform) -> QuerySet[Upload]:
-        uploads = platform.uploads.filter(registered_at__isnull=False)
+        uploads: QuerySet[Upload] = platform.uploads.filter(registered_at__isnull=False)
         if self.requested_from:
             uploads = uploads.filter(requested_at__gte=self.requested_from)
         if self.requested_to:

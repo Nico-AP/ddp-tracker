@@ -128,20 +128,27 @@ class UploadPagesTests(TestCase):
         self.client.force_login(self.user)
 
     def test_list(self):
-        parsed_upload(self.platform, PROFILE)
+        parsed_upload(self.platform, PROFILE, user=self.user)
         response = self.client.get(reverse("ddps:uploads"))
         self.assertContains(response, "export.zip")
 
     def test_detail_links_the_review_and_flags_duplicates(self):
-        first = parsed_upload(self.platform, PROFILE, register=True)
-        second = parsed_upload(self.platform, PROFILE)
+        first = parsed_upload(self.platform, PROFILE, register=True, user=self.user)
+        second = parsed_upload(self.platform, PROFILE, user=self.user)
         response = self.client.get(first.get_absolute_url())
         self.assertContains(response, reverse("reviews:review", args=[first.pk]))
         decide(second)
         response = self.client.get(second.get_absolute_url())
         self.assertContains(response, "Not part of the collected schema")
         self.assertContains(response, "isn't counted again")
-        self.assertContains(response, f"#{first.pk}")  # duplicate of the first upload
+        self.assertContains(response, f'<a href="{first.get_absolute_url()}">#{first.pk}</a>')
+        # a duplicate of someone else's upload: named, not linked
+        other = parsed_upload(self.platform, {"x.json": b"{}"}, register=True)
+        mine = parsed_upload(self.platform, {"x.json": b"{}"}, user=self.user)
+        decide(mine)
+        response = self.client.get(mine.get_absolute_url())
+        self.assertContains(response, f"#{other.pk}")
+        self.assertNotContains(response, other.get_absolute_url())
 
     def test_failed_and_pending_uploads(self):
         failed = Upload.objects.create(
@@ -150,16 +157,23 @@ class UploadPagesTests(TestCase):
             file_name="x.zip",
             status="failed",
             error="bad zip",
+            uploaded_by=self.user,
         )
         self.assertContains(self.client.get(failed.get_absolute_url()), "bad zip")
         pending = Upload.objects.create(
-            platform=self.platform, requested_at="2026-09-01", file_name="y.zip"
+            platform=self.platform,
+            requested_at="2026-09-01",
+            file_name="y.zip",
+            uploaded_by=self.user,
         )
         self.assertContains(self.client.get(pending.get_absolute_url()), "every 2s")
 
     def test_status_polling(self):
         pending = Upload.objects.create(
-            platform=self.platform, requested_at="2026-09-01", file_name="y.zip"
+            platform=self.platform,
+            requested_at="2026-09-01",
+            file_name="y.zip",
+            uploaded_by=self.user,
         )
         response = self.client.get(reverse("ddps:upload-status", args=[pending.pk]))
         self.assertContains(response, "Waiting to be parsed")
@@ -167,6 +181,47 @@ class UploadPagesTests(TestCase):
         pending.save()
         response = self.client.get(reverse("ddps:upload-status", args=[pending.pk]))
         self.assertEqual(response["HX-Refresh"], "true")
+
+    def test_uploads_are_their_uploaders_and_staffs(self):
+        mine = parsed_upload(self.platform, PROFILE, register=True, user=self.user)
+        other_user = User.objects.create_user("uploader@example.test")
+        theirs = parsed_upload(
+            self.platform, {"theirs.json": b"{}"}, register=True, user=other_user
+        )
+        listing = self.client.get(reverse("ddps:uploads"))
+        self.assertContains(listing, "<h1>My uploads</h1>", html=True)
+        self.assertEqual(list(listing.context["uploads"]), [mine])
+        self.assertNotContains(listing, "Uploaded by")
+        self.assertContains(listing, "My uploads</a>")  # the menu
+        # someone else's: as if it didn't exist
+        urls = [
+            theirs.get_absolute_url(),
+            reverse("ddps:upload-status", args=[theirs.pk]),
+            reverse("ddps:upload-inspect", args=[theirs.pk]),
+            reverse("reviews:review", args=[theirs.pk]),
+        ]
+        for url in urls:
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 404)
+        for url in (
+            reverse("ddps:upload-decide", args=[theirs.pk, "confirm"]),
+            reverse("ddps:upload-forget-values", args=[theirs.pk]),
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(self.client.post(url).status_code, 404)
+        self.assertEqual(self.client.get(mine.get_absolute_url()).status_code, 200)
+        # staff: everyone's, the uploader by account number, never by email
+        staff = User.objects.create_user("admin", is_staff=True)
+        self.client.force_login(staff)
+        listing = self.client.get(reverse("ddps:uploads"))
+        self.assertContains(listing, "<h1>Uploads</h1>", html=True)
+        self.assertEqual(set(listing.context["uploads"]), {mine, theirs})
+        self.assertContains(listing, f"#{other_user.pk}")
+        self.assertNotContains(listing, other_user.email)
+        self.assertEqual(self.client.get(theirs.get_absolute_url()).status_code, 200)
+        self.assertEqual(
+            self.client.get(reverse("reviews:review", args=[theirs.pk])).status_code, 200
+        )
 
     def test_model_helpers(self):
         upload = parsed_upload(self.platform, PROFILE)

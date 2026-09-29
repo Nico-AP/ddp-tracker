@@ -41,6 +41,10 @@ similarity with all its counted uploads of the same root format.
 **Approval** is by staff (the *Approvals* page, or the upload's page), their own uploads
 included. Approved uploads count; rejected ones don't.
 
+**Who sees an upload.** An upload, its page and its review are for its uploader and staff only
+(`UploadQuerySet.visible_to`); anyone else gets "not found". Other curators annotate through the
+platform's explorer. Pages name accounts by their number (uploader, approver), never by email.
+
 **Inspecting a held upload.** An upload that doesn't count isn't registered, so it has no review.
 To decide on it, its uploader and staff (nobody else: it may not be a DDP at all) can
 **inspect** it (`ddp_tracker/ddps/inspection.py`): its files and data points, computed from its

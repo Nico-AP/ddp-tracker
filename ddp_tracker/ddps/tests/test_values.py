@@ -116,26 +116,30 @@ class OwnValuesTests(TestCase):
         self.assertContains(row, "Fritzli")
 
     def test_nobody_else_sees_them_even_with_the_key(self):
+        review_urls = (
+            self.review,
+            self.panel,
+            reverse("reviews:row", args=[self.upload.pk, self.name.pk]),
+        )
+        triage = reverse("schemas:triage", args=[self.name.pk])
         for user in (self.other, self.staff):
             with self.subTest(user=user.username):
                 client = Client()
                 client.cookies = self.client.cookies  # even with the uploader's key
                 client.force_login(user)
-                for url, params in (
-                    (self.review, {}),
-                    (self.panel, {}),
-                    (reverse("schemas:triage", args=[self.name.pk]), {"upload": self.upload.pk}),
-                    (reverse("reviews:row", args=[self.upload.pk, self.name.pk]), {}),
-                ):
-                    response = self.get(url, client, **params)
+                responses = [self.get(triage, client, upload=self.upload.pk)]
+                if user.is_staff:  # staff open the review, others don't reach it at all
+                    responses += [self.get(url, client) for url in review_urls]
+                else:
+                    for url in review_urls:
+                        self.assertEqual(self.get(url, client).status_code, 404)
+                for response in responses:
                     self.assertNotContains(response, "Fritzli")
                     self.assertNotContains(response, "Values in this file")
                     self.assertNotContains(response, "Your values")  # the dialog's label
         self.client.logout()
-        self.assertNotContains(
-            self.get(reverse("reviews:row", args=[self.upload.pk, self.name.pk])),
-            "Fritzli",
-        )
+        row = self.get(reverse("reviews:row", args=[self.upload.pk, self.name.pk]))
+        self.assertEqual(row.status_code, 302)  # login first
 
     def test_unreadable_in_another_browser(self):
         client = Client()
@@ -167,8 +171,8 @@ class OwnValuesTests(TestCase):
         self.client.post(other_url, {"use": ["0"]})
         joined.refresh_from_db()
         self.assertEqual(joined.example_values, [{"value": "2024-02-02", "source": "extracted"}])
-        self.client.force_login(self.other)
-        self.assertEqual(self.client.post(url, {"use": ["0"]}).status_code, 403)
+        self.client.force_login(self.other)  # not theirs: as if it didn't exist
+        self.assertEqual(self.client.post(url, {"use": ["0"]}).status_code, 404)
         # the uploader in another browser can't read them, so can't contribute them either
         client = Client()
         client.force_login(self.uploader)
@@ -204,7 +208,7 @@ class OwnValuesTests(TestCase):
     def test_delete_my_values(self):
         url = reverse("ddps:upload-forget-values", args=[self.upload.pk])
         self.client.force_login(self.other)
-        self.assertEqual(self.client.post(url).status_code, 403)
+        self.assertEqual(self.client.post(url).status_code, 404)
         self.client.force_login(self.uploader)
         response = self.client.post(url)
         self.assertRedirects(response, self.review)

@@ -8,7 +8,7 @@ from typing import Any
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
@@ -39,6 +39,11 @@ class Progress:
         return round(100 * self.decided / self.total) if self.total else 100
 
 
+def _visible(request: HttpRequest) -> QuerySet[Upload]:
+    """An upload's review is for its uploader and staff (``UploadQuerySet.visible_to``)."""
+    return Upload.objects.visible_to(request.user)
+
+
 def progress_of(upload: Upload) -> Progress:
     points = upload.observations.filter(is_data_point=True)
     decided = points.filter(Q(location__annotation__isnull=False) | Q(location__ignored=True))
@@ -47,8 +52,9 @@ def progress_of(upload: Upload) -> Progress:
 
 @login_required
 def upload_review(request: HttpRequest, pk: int) -> HttpResponse:
-    """The review page. With htmx (the filter box), only the tree's groups."""
-    upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
+    """The review page (its uploader and staff). With htmx (the filter box), only the tree's
+    groups."""
+    upload = get_object_or_404(_visible(request).select_related("platform"), pk=pk)
     tab = _tab(request)
     context: dict[str, Any] = {"upload": upload, "tab": tab, "review": None}
     if upload.registered_at:
@@ -99,10 +105,11 @@ def _review_context(request: HttpRequest, upload: Upload, tab: str) -> dict[str,
     }
 
 
+@login_required
 def review_row(request: HttpRequest, pk: int, location_pk: int) -> HttpResponse:
     """HTMX: one row of the New or Known tree (``?tab=``), reloaded after a change; out of band,
     its group's and root's counts, what is left to assign in the tab, and the progress."""
-    upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
+    upload = get_object_or_404(_visible(request).select_related("platform"), pk=pk)
     location = get_object_or_404(Location, pk=location_pk, platform=upload.platform)
     get_object_or_404(Observation, upload=upload, location=location)
     own = own_values(request, upload)
@@ -134,7 +141,7 @@ def review_row(request: HttpRequest, pk: int, location_pk: int) -> HttpResponse:
 def review_location(request: HttpRequest, pk: int, location_pk: int) -> HttpResponse:
     """HTMX: the side panel of a row (for a list: the list and its item), in the reviewed
     upload's context; a missing location's over all uploads."""
-    upload = get_object_or_404(Upload.objects.select_related("platform"), pk=pk)
+    upload = get_object_or_404(_visible(request).select_related("platform"), pk=pk)
     location = get_object_or_404(
         Location.objects.select_related("annotation", "platform"),
         pk=location_pk,
@@ -168,7 +175,7 @@ def review_add_examples(request: HttpRequest, pk: int, location_pk: int) -> Http
     """HTMX: the uploader contributes some of the values found in their file, as they are, to a
     data point's public examples (marked "extracted"); returns the updated examples block. Only
     their positions are posted: the values come from the file's values, not from the browser."""
-    upload = get_object_or_404(Upload, pk=pk)
+    upload = get_object_or_404(_visible(request), pk=pk)
     location = get_object_or_404(Location, pk=location_pk, platform=upload.platform)
     own = own_values(request, upload)
     if own is None or not own.readable:

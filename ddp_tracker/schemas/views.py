@@ -115,7 +115,12 @@ def platform_detail(request: HttpRequest, slug: str) -> HttpResponse:
             "untriaged": data_points.filter(annotation__isnull=True, ignored=False).count(),
             "uploads": schema_filter.uploads(platform).count(),
         },
-        "uploads": platform.uploads.all()[:20] if request.user.is_authenticated else None,
+        # what the tree is built from: the counted uploads of this filter, newest first
+        "uploads": (
+            schema_filter.uploads(platform).order_by("-created_at")[:20]
+            if request.user.is_authenticated
+            else None
+        ),
     }
     return render(request, "schemas/platform_detail.html", context)
 

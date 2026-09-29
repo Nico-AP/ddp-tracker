@@ -125,7 +125,9 @@ class AnnotationInPanelTests(TestCase):
         self.assertContains(panel, "Show annotation")
         # the panel reloads itself after a change
         self.assertContains(panel, f'hx-trigger="triaged-{self.location.pk} from:body"')
-        # in a review (with its upload) it is a list item, not the panel's block
+        # in a review (with its upload, for its uploader and staff) it is a list item, not the
+        # panel's block
+        self.client.force_login(User.objects.create_user("admin", is_staff=True))
         review_row = self.client.get(
             reverse("reviews:row", args=[self.upload.pk, self.location.pk])
         )

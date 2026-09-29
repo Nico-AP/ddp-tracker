@@ -126,16 +126,14 @@
                     <th scope="col">File</th>
                     <th scope="col">Request Date</th>
                     <th scope="col">Language</th>
-                    <th scope="col">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for upload in uploads %}
                     <tr>
-                      <td><a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a></td>
+                      <td>{{ upload.file_name }}</td>
                       <td>{{ upload.requested_at }}</td>
                       <td>{% if upload.language %}{{ upload.get_language_display }}{% else %}-{% endif %}</td>
-                      <td><span class="badge badge--{{ upload.status }}">{{ upload.get_status_display }}</span></td>
                     </tr>
                   {% endfor %}
                 </tbody>

@@ -2,7 +2,7 @@
 {% block title %}{{ upload.file_name }} · DDP Tracker{% endblock %}
 {% block content %}
   <p class="breadcrumbs">
-    <a href="{% url 'ddps:uploads' %}">Uploads</a> / {{ upload.file_name }}
+    <a href="{% url 'ddps:uploads' %}">{% if user.is_staff %}Uploads{% else %}My uploads{% endif %}</a> / {{ upload.file_name }}
   </p>
   <h1>{{ upload.file_name }}</h1>
   <dl class="facts">

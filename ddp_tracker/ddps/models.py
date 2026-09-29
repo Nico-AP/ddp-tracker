@@ -1,6 +1,7 @@
 from typing import Any
 
 from django.conf import global_settings, settings
+from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.db import models
 from django.urls import reverse
 
@@ -21,6 +22,17 @@ class Platform(models.Model):
 
     def get_absolute_url(self) -> str:
         return reverse("schemas:platform", args=[self.slug])
+
+
+class UploadQuerySet(models.QuerySet["Upload"]):
+    def visible_to(self, user: AbstractBaseUser | AnonymousUser) -> "UploadQuerySet":
+        """The uploads ``user`` may open: all for staff, their own otherwise (an upload is
+        personal: someone's DDP). Views look uploads up in these, so others' are a 404."""
+        if not user.is_authenticated:
+            return self.none()
+        if getattr(user, "is_staff", False):
+            return self
+        return self.filter(uploaded_by=user.pk)
 
 
 class Upload(models.Model):
@@ -120,6 +132,8 @@ class Upload(models.Model):
         related_name="approved_uploads",
     )
     approved_at = models.DateTimeField(null=True, blank=True)
+
+    objects = UploadQuerySet.as_manager()
 
     class Meta:
         ordering = ["-created_at"]

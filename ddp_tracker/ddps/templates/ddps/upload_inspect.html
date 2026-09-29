@@ -2,7 +2,7 @@
 {% block title %}Inspect {{ upload.file_name }} · DDP Tracker{% endblock %}
 {% block content %}
   <p class="breadcrumbs">
-    <a href="{% url 'ddps:uploads' %}">Uploads</a> / <a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a> / inspect
+    <a href="{% url 'ddps:uploads' %}">{% if user.is_staff %}Uploads{% else %}My uploads{% endif %}</a> / <a href="{{ upload.get_absolute_url }}">{{ upload.file_name }}</a> / inspect
   </p>
   <h1>Inspect {{ upload.file_name }}</h1>
   <p class="lead">

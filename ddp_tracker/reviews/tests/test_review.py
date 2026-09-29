@@ -236,6 +236,7 @@ class ChangedTests(TestCase):
             {"a.json": b'{"when": "01.02.2024"}'},
             requested_at=date(2026, 1, 1),
             register=True,
+            user=self.user,  # the review is its uploader's
         )
         (change,) = review(later).changed
         (diff,) = change.diffs
@@ -252,7 +253,11 @@ class ChangedTests(TestCase):
             self.platform, {"a.json": b'{"n": 1}'}, requested_at=date(2025, 1, 1), register=True
         )
         broken = parsed_upload(
-            self.platform, {"a.json": b"{"}, requested_at=date(2026, 1, 1), register=True
+            self.platform,
+            {"a.json": b"{"},
+            requested_at=date(2026, 1, 1),
+            register=True,
+            user=self.user,
         )
         diffs = {d.field: (d.before, d.now) for c in review(broken).changed for d in c.diffs}
         self.assertEqual(diffs["kind"], (("file",), "unmatched"))
