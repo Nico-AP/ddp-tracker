@@ -119,7 +119,7 @@ INSTALLED_APPS += ["anymail"]
 # https://anymail.readthedocs.io/en/stable/installation/#anymail-settings-reference
 # https://anymail.readthedocs.io/en/stable/esps
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-ANYMAIL = {}
+ANYMAIL: dict[str, str] = {}
 
 
 # Content security policy (CSP)

@@ -2,18 +2,17 @@
 
 ## Setup
 
+Local development runs in Docker Compose (Django, PostgreSQL, Mailpit): follow the
+[README's quickstart](README.md#quickstart-docker), or its
+[section on running without Docker](README.md#running-without-docker).
+
 This project uses [uv](https://docs.astral.sh/uv/) for dependency management. Nothing is
-installed globally — `uv` provisions its own Python and a project-local `.venv`.
+installed globally — `uv` provisions its own Python and a project-local `.venv`. For the tooling
+that runs on your machine (hooks, linters, docs), also:
 
 ```bash
 uv sync
 uv run pre-commit install
-cp .env.example .env   # only needed if you want to override local defaults (e.g. Postgres)
-uv run manage.py migrate
-npm install
-npm run build          # compiles assets/scss/ (incl. Bootstrap) -> static/css/main.css, copies htmx + Bootstrap JS to static/vendor/
-uv run manage.py createsuperuser
-uv run manage.py runserver
 ```
 
 Uploaded DDPs are parsed by a background task. Locally (and in tests) it runs immediately inside the
@@ -119,7 +118,8 @@ merge with any of them red.
 Settings are split under `config/settings/`:
 
 - `base.py` — shared by every environment
-- `local.py` — local development (`DEBUG=True`, sqlite fallback, insecure default `SECRET_KEY`)
+- `local.py` — local development (`DEBUG=True`, insecure default `SECRET_KEY`, Mailpit); the
+  database comes from `.envs/.local/` (Docker) or `DATABASE_URL`
 - `production.py` — deployment (everything sensitive required from the environment, no defaults —
   a missing `DJANGO_SECRET_KEY` or `DATABASE_URL` fails at startup rather than running insecurely)
 - `cicd.py` — GitHub Actions (in-memory sqlite, no external services; `DATABASE_URL` overrides
@@ -145,9 +145,99 @@ automatically on commit when either file changes.
 
 ## Git workflow
 
-- Branch off `dev` with a short descriptive name, e.g. `feat/ddp-diff-view`, `fix/htmx-partial-refresh`.
-- Keep commits scoped to one logical change. Write commit messages in the imperative mood
-  (`add DDP diff endpoint`, not `added` / `adds`) — a short prefix like `feat:`, `fix:`, `chore:`,
-  `refactor:`, or `docs:` is encouraged but not enforced.
-- Open a PR against `main`; CI (lint + tests + pip-audit) must pass before merging.
-- Don't bypass `pre-commit` (`--no-verify`) or CI failures — fix the underlying issue.
+> **Status:** we're actively developing the first prototype. There is no release strategy yet (no
+> versioning, release branches or tags); `stage` is only a test deployment. This section will grow
+> once releases start.
+
+### Branches
+
+| Branch                         | Purpose                                                          | Who changes it          |
+|--------------------------------|------------------------------------------------------------------|-------------------------|
+| `dev`                          | integration branch: every change lands here first, through a PR  | maintainers (via PRs)   |
+| `stage`                        | test release: `dev` merged in when it's ready to try out         | maintainers             |
+| `main`                         | not used for development yet (see the status note above)         | —                       |
+| `feat/…`, `fix/…`, `docs/…`, … | your work, one change per branch                                 | you                     |
+
+### Step by step: contributing a change
+
+1. **Start from an up-to-date `dev`:**
+
+   ```bash
+   git switch dev
+   git pull origin dev
+   ```
+
+2. **Create a branch** with a short, descriptive name and a type prefix:
+
+   ```bash
+   git switch -c feat/ddp-diff-view        # or fix/htmx-partial-refresh, docs/setup-guide, …
+   ```
+
+3. **Commit your work** in small, focused commits. Write messages in the imperative mood
+   (`add DDP diff endpoint`, not `added` / `adds`); a prefix like `feat:`, `fix:`, `chore:`,
+   `refactor:` or `docs:` is encouraged but not enforced. The pre-commit hooks run on every commit;
+   don't bypass them with `--no-verify`, fix what they report instead.
+
+   ```bash
+   git add -p                               # stage what belongs to this change
+   git commit -m "feat: add DDP diff endpoint"
+   ```
+
+4. **Run the checks locally** (see [Code quality](#code-quality) and [Testing](#testing)), so CI
+   doesn't find the problems for you:
+
+   ```bash
+   uv run ruff check . && uv run ruff format --check .
+   uv run mypy .
+   uv run djlint . --check
+   just pytest                              # or: DJANGO_SETTINGS_MODULE=config.settings.cicd uv run pytest
+   ```
+
+5. **Bring in the latest `dev`** if it moved on while you worked, and resolve any conflicts:
+
+   ```bash
+   git fetch origin
+   git rebase origin/dev                    # or: git merge origin/dev
+   ```
+
+6. **Push the branch:**
+
+   ```bash
+   git push -u origin feat/ddp-diff-view
+   ```
+
+7. **Open a pull request against `dev`** (not `main`, the repository's default branch): on GitHub,
+   choose `dev` as the base branch, or with the [GitHub CLI](https://cli.github.com/):
+
+   ```bash
+   gh pr create --base dev --title "feat: add DDP diff view" --body "What changes and why."
+   ```
+
+   Describe what the change does and why, and how to try it. CI (lint, tests on SQLite and
+   PostgreSQL, pip-audit, the Sass build) runs on the PR and must be green. If CI fails, fix the
+   cause; don't work around it.
+
+8. **Review:** a maintainer reviews the PR. Address their comments with further commits on the
+   same branch (`git push` updates the PR). Once it's approved and green, a maintainer merges it
+   into `dev`. After the merge you can delete your branch:
+
+   ```bash
+   git switch dev
+   git pull origin dev
+   git branch -d feat/ddp-diff-view
+   ```
+
+### For maintainers: test release to `stage`
+
+When `dev` is ready to be tried out, a maintainer merges it into `stage`:
+
+```bash
+git fetch origin
+git switch stage
+git pull origin stage
+git merge --no-ff origin/dev             # a merge commit marks each test release
+git push origin stage
+```
+
+`stage` only ever receives merges from `dev`: never commit to it directly, and fix problems found
+on `stage` through the normal flow above (a branch from `dev`, a PR against `dev`).

@@ -1,5 +1,4 @@
 site_name: DDP Tracker Documentation
-site_url: https://mydomain.org/mysite
 theme:
   name: material
 dev_addr: 'localhost:8001'

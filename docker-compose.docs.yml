@@ -5,14 +5,8 @@ services:
     build:
       context: .
       dockerfile: ./compose/local/docs/Dockerfile
-    env_file:
-      - path: ./.envs/.local/.django
-        required: false
     volumes:
-      - /app/.venv
       - ./docs:/docs:z
-      - ./config:/app/config:z
-      - ./ddp_tracker:/app/ddp_tracker:z
     ports:
       - '9000:9000'
     command: /start-docs

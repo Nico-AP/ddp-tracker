@@ -213,7 +213,8 @@ plugins = [ "mypy_django_plugin.main" ]
 # Start lenient on a clean repo; tighten (disallow_untyped_defs = true, etc.)
 # once the codebase has enough type coverage to make it useful rather than noisy.
 [tool.django-stubs]
-django_settings_module = "config.settings.local"
+# the plugin imports the settings: CI's need no environment (local.py needs Docker's variables)
+django_settings_module = "config.settings.cicd"
 
 [tool.pytest]
 ini_options.norecursedirs = [ ".*", "ddp2json", "node_modules" ]  # ddp2json: vendored prototype, reference only

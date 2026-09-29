@@ -40,24 +40,8 @@ ARG BUILD_ENVIRONMENT
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-RUN apt-get update && apt-get install --no-install-recommends -y \
-  # To run the Makefile
-  make \
-  # psycopg dependencies
-  libpq-dev \
-  # Translations dependencies
-  gettext \
-  # Uncomment below lines to enable Sphinx output to latex and pdf
-  # texlive-latex-recommended \
-  # texlive-fonts-recommended \
-  # texlive-latex-extra \
-  # latexmk \
-  # cleaning up unused files
-  && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
-  && rm -rf /var/lib/apt/lists/*
-
-# copy python dependency wheels from python-build-stage
-COPY --from=python-build-stage --chown=app:app /app /app
+# the virtualenv (with MkDocs) from the build stage; the docs themselves are mounted at /docs
+COPY --from=python-build-stage /app /app
 
 COPY ./compose/local/docs/start /start-docs
 RUN sed -i 's/\r$//g' /start-docs

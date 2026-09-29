@@ -37,6 +37,10 @@ logs *args:
 manage +args:
     @docker compose run --rm django python ./manage.py {{args}}
 
+# docs: Live preview of the documentation (MkDocs) on http://localhost:9000.
+docs:
+    @docker compose -f docker-compose.docs.yml up --build
+
 # pytest: Run tests with pytest.
 pytest *args:
     @docker compose run --rm django pytest {{args}}

@@ -33,9 +33,9 @@ Adding a dependency with anything other than `uv add`/`uv add --group dev` (e.g.
 config/
   settings/
     base.py        # shared settings
-    local.py        # local dev (DEBUG=True, sqlite fallback)
+    local.py        # local dev (DEBUG=True; Postgres from .envs/.local/ or DATABASE_URL)
     production.py    # deploy (all secrets required, no defaults)
-    cicd.py          # GitHub Actions (in-memory sqlite)
+    cicd.py          # GitHub Actions (in-memory sqlite; DATABASE_URL overrides)
   urls.py, wsgi.py, asgi.py
 apps/
   core/              # index, health check, shared helpers (auth.py, testing.py, template tags)
