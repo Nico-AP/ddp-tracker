@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ mockup.title }} · Prototype · DDP Tracker{% endblock %}
+{% block content %}
+  {% include "journeys/_prototype_banner.html" %}
+  <p class="breadcrumbs">
+    <a href="{% url 'journeys:index' %}">Home</a> / prototype / {{ mockup.title }}
+  </p>
+  <h1>{% block heading %}{{ mockup.title }}{% endblock %}</h1>
+  <p class="lead">{{ mockup.lead }}</p>
+  {% block mockup %}{% endblock %}
+  <footer class="prototype-footer">
+    <h2>Where this fits</h2>
+    <p>
+      {{ mockup.number }}, a mock-up of {{ mockup.feature }}
+      (features analysis, section {{ mockup.section }}). Part of the journey of:
+      {% for role in mockup_roles %}
+        <a href="{% url 'journeys:journey' role.slug %}">{{ role.name }}</a>{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    </p>
+    {% if mockup.hackathon %}<p>From the hackathon notes: {{ mockup.hackathon }}</p>{% endif %}
+  </footer>
+{% endblock %}

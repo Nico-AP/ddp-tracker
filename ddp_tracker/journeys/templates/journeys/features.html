@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Feature cards · DDP Tracker{% endblock %}
+{% block content %}
+  <p class="breadcrumbs">
+    <a href="{% url 'journeys:index' %}">Home</a> / feature cards
+  </p>
+  <h1>Feature cards</h1>
+  <p class="lead">Planned features, in the template of the hackathon document.</p>
+  <ul>
+    {% for card in cards %}<li>{{ card.title }}</li>{% endfor %}
+  </ul>
+{% endblock %}

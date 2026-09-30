@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ role.name }} · DDP Tracker{% endblock %}
+{% block content %}
+  <p class="breadcrumbs">
+    <a href="{% url 'journeys:index' %}">Home</a> / journeys / {{ role.name }}
+  </p>
+  <h1>{{ role.name }}</h1>
+  <dl class="facts">
+    <dt>Aim</dt>
+    <dd>
+      {{ role.aim }}
+    </dd>
+    <dt>Who this is for</dt>
+    <dd>
+      {{ role.audience }}
+    </dd>
+  </dl>
+  {% if not has_demo_data %}
+    <p class="message message--info">
+      This database has no demo data yet, so links to TikTok's pages lead nowhere. Create it
+      with <code>uv run manage.py seed_demo</code>.
+    </p>
+  {% endif %}
+  <h2>Steps</h2>
+  <ol class="journey-steps">
+    {% for step, demo in steps %}
+      {% include "journeys/_step.html" %}
+    {% endfor %}
+  </ol>
+  <h2>Features this journey needs</h2>
+  <div class="table-scroll">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th scope="col">Feature</th>
+          <th scope="col">Today</th>
+          <th scope="col">Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for feature in role.features %}
+          <tr>
+            <td>{{ feature.title }}</td>
+            <td>
+              <span class="badge badge--{{ feature.status }}">{{ feature.status_label }}</span>
+            </td>
+            <td>
+              {{ feature.note }}
+              {% if feature.hackathon %}<span class="muted">(raised at the hackathon)</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    The planned ones are described as
+    <a href="{% url 'journeys:features' %}">feature cards</a>.
+  </p>
+  <h2>Other journeys</h2>
+  <ul class="role-switch">
+    {% for other in others %}
+      <li>
+        <a href="{% url 'journeys:journey' other.slug %}">{{ other.name }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

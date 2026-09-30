@@ -1,0 +1,26 @@
+<li class="journey-step journey-step--{{ step.status }}">
+  <h3 class="journey-step__title">
+    {{ step.title }}
+    {% if step.status == "available" %}
+      <span class="badge badge--available">Available</span>
+    {% else %}
+      <span class="badge badge--prototype">Prototype</span>
+    {% endif %}
+  </h3>
+  <p>{{ step.text }}</p>
+  {% if step.needs_label %}<p class="card__hint">{{ step.needs_label }}.</p>{% endif %}
+  <p class="button-row">
+    <a class="btn btn-primary btn-sm" href="{{ step.url }}">{{ step.link_label }}</a>
+    {% if step.today_url %}
+      <a class="btn btn-secondary btn-sm" href="{{ step.today_url }}">{{ step.today_label }}</a>
+    {% endif %}
+    {% if demo %}
+      <a class="btn btn-secondary btn-sm" href="{{ demo.url }}">{{ demo.label }}</a>
+    {% endif %}
+  </p>
+  {% if step.missing %}
+    <p class="journey-step__missing muted">
+      <strong>Still missing:</strong> {{ step.missing }}
+    </p>
+  {% endif %}
+</li>
