@@ -1,7 +1,8 @@
 // The user journeys prototype (ddp_tracker/journeys): [data-copy] buttons copy their value, for
-// example the link to a shared shortlist or a citation, and say so for a moment (.is-copied).
-// If the page has a [data-copy-status] element (a role="status"), the script also writes the
-// outcome there, so that screen readers announce it: the button's data-copied text, or "Copied".
+// example the link to a shared shortlist or a citation. The page says so in its
+// [data-copy-status] element (a role="status", so that screen readers announce it): the
+// button's data-copied text, or "Copied". The button also gets .is-copied for a moment, which
+// styles nothing of its own.
 const announce = (text) => {
   const status = document.querySelector("[data-copy-status]");
   if (!status) return;

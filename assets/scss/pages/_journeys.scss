@@ -380,7 +380,7 @@ a.chip--active,
   }
 }
 
-// a button that copies its data-copy value (static/js/journeys.js) and says so for a moment
-.copy-button.is-copied::after {
-  content: " (copied)";
+// a path in a table that scrolls sideways: wide enough to read; the table scrolls in its box
+.table-scroll td.text-break {
+  min-width: 14rem;
 }
