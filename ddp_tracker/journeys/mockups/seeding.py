@@ -6,11 +6,15 @@ Everything here is fictional, the "official" texts included: they are written fo
 not taken from any platform's documentation.
 """
 
+from collections import Counter
 from dataclasses import dataclass
 
+from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect
+from django.urls import reverse
 
-from ddp_tracker.journeys.mockups import render_mockup
+from ddp_tracker.journeys.mockups import DEMO_PLATFORMS, render_mockup
 
 DOCS, PAIRS, AI = "docs", "pairs", "ai"
 SOURCES: tuple[tuple[str, str], ...] = (
@@ -27,6 +31,12 @@ MATCH_LABELS = {
     NOT_OBSERVED: "Documented but not observed",
     NOT_DOCUMENTED: "Observed but not documented",
 }
+# the colour of a status's badge (its label says the same in words)
+MATCH_BADGES = {
+    MATCHED: "badge--exists",
+    NOT_OBSERVED: "badge--gap",
+    NOT_DOCUMENTED: "badge--partial",
+}
 FB = "/your_facebook_activity"
 
 
@@ -40,6 +50,10 @@ class DocEntry:
     @property
     def status_label(self) -> str:
         return MATCH_LABELS[self.status]
+
+    @property
+    def status_badge(self) -> str:
+        return MATCH_BADGES[self.status]
 
 
 DOC_PLATFORM = "facebook"
@@ -163,8 +177,33 @@ AI_NOTE = (
     "Whether that should stay so is an open question for the track."
 )
 
-# --- view (placeholder; task 4.5 replaces it) -----------------------------------------------
+# --- view -------------------------------------------------------------------------------------
 
 
 def seed_sources(request: HttpRequest) -> HttpResponse:
-    return render_mockup(request, "seed", "journeys/prototype/placeholder.html")
+    """M10: three sources for a first version of annotations, each to be checked by a person."""
+    chosen = request.POST.get("source") or request.GET.get("source", "")
+    source = chosen if chosen in dict(SOURCES) else DOCS
+    if request.method == "POST":
+        messages.info(
+            request,
+            "In the real feature, this would record your decision and create or update the "
+            "annotation. Nothing was saved.",
+        )
+        # ``source`` is one of SOURCES here, so the target is always this page
+        return redirect(f"{reverse('journeys:seed')}?source={source}")
+    statuses = Counter(entry.status for entry in DOC_ENTRIES)
+    context = {
+        "sources": SOURCES,
+        "source": source,
+        "doc_platform": DEMO_PLATFORMS[DOC_PLATFORM],
+        "doc_source": DOC_SOURCE,
+        "doc_entries": DOC_ENTRIES,
+        "doc_summary": [(MATCH_LABELS[status], statuses[status]) for status in MATCH_LABELS],
+        "pair_title": PAIR_TITLE,
+        "pair_differs_in": PAIR_DIFFERS_IN,
+        "pair_rows": PAIR_ROWS,
+        "ai_suggestions": AI_SUGGESTIONS,
+        "ai_note": AI_NOTE,
+    }
+    return render_mockup(request, "seed", "journeys/prototype/seed.html", context)
