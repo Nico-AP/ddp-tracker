@@ -30,7 +30,7 @@ class Snapshot:
     def citation(self) -> str:
         return (
             f"DDP Tracker contributors. ({self.released:%Y}). DDP Tracker knowledge base "
-            f"(Version {self.version}) [Data set]. https://doi.org/{self.doi} (fictional DOI)"
+            f"(Version {self.version}) [Data set]. https://doi.org/{self.doi}"
         )
 
     @property

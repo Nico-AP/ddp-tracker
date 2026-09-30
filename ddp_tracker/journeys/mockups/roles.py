@@ -66,10 +66,10 @@ class Hub:
 
 
 HUBS: tuple[Hub, ...] = (
-    Hub("TikTok", "Example University A (fictional)", "Short video working group"),
-    Hub("Instagram", "Example University A (fictional)", "Meta platforms working group"),
-    Hub("Facebook", "Example Institute B (fictional)", "Meta platforms working group"),
-    Hub("YouTube", "Example University C (fictional)", "Video platforms working group"),
+    Hub("TikTok", "Example University A", "Short video working group"),
+    Hub("Instagram", "Example University A", "Meta platforms working group"),
+    Hub("Facebook", "Example Institute B", "Meta platforms working group"),
+    Hub("YouTube", "Example University C", "Video platforms working group"),
 )
 
 # the rule from the parser's documentation, shown when the database has no rule of its own

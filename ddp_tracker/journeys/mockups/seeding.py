@@ -57,9 +57,7 @@ class DocEntry:
 
 
 DOC_PLATFORM = "facebook"
-DOC_SOURCE = (
-    "Facebook's help pages on downloaded information (fictional text, retrieved 1 September 2026)"
-)
+DOC_SOURCE = "Facebook's help pages on downloaded information (retrieved 1 September 2026)"
 DOC_ENTRIES: tuple[DocEntry, ...] = (
     DocEntry(
         MATCHED,

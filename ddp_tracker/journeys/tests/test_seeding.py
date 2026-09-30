@@ -43,6 +43,7 @@ class SeedingPageTests(TestCase):
         )
         self.assertIn("so that the gap between what a platform says", page)
         self.assertIn("Platform: Facebook. Source: Facebook's help pages on downloaded", page)
+        self.assertNotIn("(fictional", page)  # the banner says it once for the whole page
 
     def test_only_a_matched_entry_can_be_accepted(self) -> None:
         response = self.client.get(PAGE)

@@ -24,7 +24,9 @@ class SnapshotDataTests(SimpleTestCase):
         for snapshot in SNAPSHOTS:
             self.assertTrue(snapshot.doi.startswith("10.0000/fictional"))
             self.assertTrue(snapshot.doi.startswith(DOI_PREFIX))
-            self.assertIn("fictional DOI", snapshot.citation)
+            # the citation links the DOI under the unregistered prefix, with no written tag
+            self.assertIn(f"https://doi.org/{DOI_PREFIX}", snapshot.citation)
+            self.assertNotIn("(fictional", snapshot.citation)
 
 
 class SnapshotPageTests(TestCase):
