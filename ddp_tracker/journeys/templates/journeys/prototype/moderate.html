@@ -19,25 +19,33 @@
           {% with queues=panel.queues %}
             <ul class="list-group list-group-flush mb-3">
               <li class="list-group-item bg-transparent px-0">
-                <strong>{{ queues.untriaged }} of {{ queues.data_points }}</strong> data points to triage
-                <br>
-                <a href="{% url 'schemas:platform' panel.slug %}?show=annotations">Triage {{ panel.name }}'s data points in the explorer</a>
+                {% if queues.data_points %}
+                  <strong>{{ queues.untriaged }} of {{ queues.data_points }}</strong> data points to triage
+                  <br>
+                  <a href="{% url 'schemas:platform' panel.slug %}?show=annotations">Triage {{ panel.name }}'s data points in the explorer</a>
+                {% else %}
+                  No counted uploads of {{ panel.name }} yet.
+                {% endif %}
               </li>
               <li class="list-group-item bg-transparent px-0">
-                <strong>{{ queues.suggestions }}</strong> suggestion{{ queues.suggestions|pluralize }} to decide
+                <strong>{{ queues.suggestions }}</strong> annotation suggestion{{ queues.suggestions|pluralize }} to decide
                 <br>
                 {% if user.is_staff %}
-                  <a href="{% url 'proposals:annotations' %}?platform={{ panel.slug }}">Decide {{ panel.name }}'s suggestions</a>
+                  <a href="{% url 'proposals:annotations' %}?platform={{ panel.slug }}">Decide {{ panel.name }}'s annotation suggestions</a>
                 {% else %}
                   <span class="muted">Deciding is for staff only today.</span>
                 {% endif %}
               </li>
               <li class="list-group-item bg-transparent px-0">
-                <strong>{{ queues.approvals }}</strong> upload{{ queues.approvals|pluralize }} to approve
-                <br>
                 {% if user.is_staff %}
-                  <a href="{% url 'ddps:approvals' %}">Open the uploads waiting for approval</a>
+                  <strong>{{ queues.approvals }}</strong> upload{{ queues.approvals|pluralize }} to approve
+                  {% if queues.approvals %}
+                    <br>
+                    <a href="{% url 'ddps:approvals' %}">Open the uploads waiting for approval</a>
+                  {% endif %}
                 {% else %}
+                  Uploads to approve
+                  <br>
                   <span class="muted">Approving is for staff only today.</span>
                 {% endif %}
               </li>
@@ -47,22 +55,24 @@
                 <a href="{% url 'schemas:platform' panel.slug %}?show=representations">Describe {{ panel.name }}'s lists in the explorer</a>
               </li>
             </ul>
-            <h4 class="h6">Annotate next</h4>
-            {% if queues.next %}
-              <ol>
-                {% for location in queues.next %}
-                  <li>
-                    <code class="text-break">{{ location.path }}</code>
-                    <span class="muted">in {{ location.seen }} upload{{ location.seen|pluralize }}</span>
-                  </li>
-                {% endfor %}
-              </ol>
-              <p class="muted mb-0">
-                The data points that occur in the most uploads come first. In the real feature, the
-                order would also use how often researchers shortlist a data point.
-              </p>
-            {% else %}
-              <p class="mb-0">Every data point of {{ panel.name }} has an annotation.</p>
+            {% if queues.data_points %}
+              <h4 class="h6">Annotate next</h4>
+              {% if queues.next %}
+                <ol>
+                  {% for location in queues.next %}
+                    <li>
+                      <code class="text-break">{{ location.path }}</code>
+                      <span class="muted">in {{ location.seen }} upload{{ location.seen|pluralize }}</span>
+                    </li>
+                  {% endfor %}
+                </ol>
+                <p class="muted mb-0">
+                  The data points that occur in the most uploads come first. In the real feature, the
+                  order would also use how often researchers shortlist a data point.
+                </p>
+              {% else %}
+                <p class="mb-0">Every data point of {{ panel.name }} has an annotation.</p>
+              {% endif %}
             {% endif %}
           {% endwith %}
         {% else %}
@@ -73,7 +83,9 @@
   </div>
   <h2>Elsewhere</h2>
   <p>
-    {% if elsewhere %}
+    {% if not user.is_staff %}
+      Today, only staff see how many uploads wait on platforms you do not moderate.
+    {% elif elsewhere %}
       {{ elsewhere }} upload{{ elsewhere|pluralize:" waits,s wait" }} on
       {% if elsewhere == 1 %}
         a platform

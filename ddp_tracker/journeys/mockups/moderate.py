@@ -12,6 +12,7 @@ from django.http import HttpRequest, HttpResponse
 from ddp_tracker.ddps.models import Platform, Upload
 from ddp_tracker.journeys.mockups import DEMO_PLATFORMS, find_platform, render_mockup
 from ddp_tracker.proposals.models import Proposal
+from ddp_tracker.proposals.services import ANNOTATION_KINDS
 from ddp_tracker.representations.eligibility import eligible
 from ddp_tracker.schemas.models import ITEM
 
@@ -72,20 +73,27 @@ CONTRIBUTORS: tuple[Contributor, ...] = (
 # --- view -------------------------------------------------------------------------------------
 
 
-def _queues(platform: Platform) -> dict[str, Any]:
-    """What waits on a platform, counted as the explorer and the queues count it."""
+def _queues(platform: Platform, *, staff: bool) -> dict[str, Any]:
+    """What waits on a platform, counted as the explorer and the queues count it. The explorer
+    shows only the most common request format by default, so for a platform whose uploads have
+    several formats its figures can differ from these (which count every format).
+
+    How many uploads wait for approval is for staff only, as on the rest of the site (the
+    header's ``approvals_waiting``): ``None`` for everyone else."""
     points = platform.locations.filter(
         observations__is_data_point=True, observations__upload__registered_at__isnull=False
     ).distinct()
     open_points = points.filter(annotation__isnull=True, ignored=False)
     lists = platform.locations.filter(path__endswith=ITEM, representations__isnull=True)
+    waiting = platform.uploads.filter(plausibility=Upload.Plausibility.AWAITING)
     return {
         "data_points": points.count(),
         "untriaged": open_points.count(),
+        # as the staff's annotations queue counts them (proposals:annotations)
         "suggestions": Proposal.objects.filter(
-            platform=platform, status=Proposal.Status.OPEN
+            platform=platform, status=Proposal.Status.OPEN, kind__in=ANNOTATION_KINDS
         ).count(),
-        "approvals": platform.uploads.filter(plausibility=Upload.Plausibility.AWAITING).count(),
+        "approvals": waiting.count() if staff else None,
         "unrepresented": len(eligible(lists)),
         # the open data points that the most uploads have: annotate these first
         "next": list(
@@ -98,6 +106,7 @@ def _queues(platform: Platform) -> dict[str, Any]:
 
 def dashboard(request: HttpRequest) -> HttpResponse:
     """M9: what waits on the platforms a moderator looks after."""
+    staff = request.user.is_staff
     panels = []
     for slug in ASSIGNED:
         name, platform = find_platform(slug)
@@ -106,13 +115,16 @@ def dashboard(request: HttpRequest) -> HttpResponse:
                 "slug": slug,
                 "name": name,
                 "platform": platform,
-                "queues": _queues(platform) if platform is not None else None,
+                "queues": _queues(platform, staff=staff) if platform is not None else None,
             }
         )
+    # uploads waiting on platforms that are not "yours" (staff only, like the figures above)
     elsewhere = (
         Upload.objects.filter(plausibility=Upload.Plausibility.AWAITING)
         .exclude(platform__slug__in=ASSIGNED)
         .count()
+        if staff
+        else None
     )
     context = {
         "panels": panels,
