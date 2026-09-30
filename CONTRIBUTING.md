@@ -31,6 +31,7 @@ A maintenance command works on already stored schema documents (no re-upload nee
 
 ```bash
 uv run manage.py refresh_observations   # re-apply the parser's current rules (e.g. which nodes are data points)
+uv run manage.py renormalize [--platform SLUG] [--dry-run]   # apply path rules / wrapper check to stored uploads
 ```
 
 In production, run this daily (e.g. from cron): it deletes the uploaders' own values whose retention

@@ -13,8 +13,6 @@ from io import BytesIO
 from pathlib import PurePosixPath
 from typing import TypedDict
 
-import msgspec
-
 from ddp_parser.errors import LimitExceededError, ParseError
 from ddp_parser.model import (
     ContainerNode,
@@ -29,7 +27,7 @@ from ddp_parser.model import (
     UnmatchedNode,
     UnmatchedReason,
 )
-from ddp_parser.normalize import normalize
+from ddp_parser.normalize import normalize, rename_warnings, wrapper_warning
 from ddp_parser.options import Options
 from ddp_parser.parsers import Parsed, Parser, parser_for
 from ddp_parser.schematize import NodeBuilder, data_fields
@@ -95,7 +93,7 @@ def parse(data: InputData, options: Options | None = None, *, name: str | None =
         created_at=datetime.now(UTC),
         source=Source(source.name, source.size, source.sha256),
         options=run.options.to_dict(),
-        warnings=_renamed(run.warnings, normalized.renames),
+        warnings=rename_warnings(run.warnings, normalized.renames),
         root=normalized.root,
     )
 
@@ -122,13 +120,7 @@ class _Run:
     ) -> ContainerNode:
         entries, unwrapped = unwrap(read_zip(archive, self.options, self.warnings, path=path), name)
         if unwrapped:
-            self.warnings.append(
-                ParseWarning(
-                    code="wrapper_folder",
-                    message="removed the top-level folder named like the zip",
-                    path=path or None,
-                )
-            )
+            self.warnings.append(wrapper_warning(path))
         tree = plan(entries, self.options, name=name, path=path)
         return ContainerNode(
             name=name,
@@ -275,19 +267,6 @@ class _Run:
     @property
     def _max_samples(self) -> int:
         return self.options.max_samples if self.options.samples else 0
-
-
-def _renamed(warnings: list[ParseWarning], renames: dict[str, str]) -> tuple[ParseWarning, ...]:
-    """``warnings`` with the paths of renamed keys (spec 3.6), once each: the old paths can
-    hold personal data, and merged keys may have warned alike.
-    """
-    renamed = (
-        msgspec.structs.replace(warning, path=renames.get(warning.path, warning.path))
-        if warning.path is not None
-        else warning
-        for warning in warnings
-    )
-    return tuple(dict.fromkeys(renamed))
 
 
 def _files(planned: PlannedFile) -> int | None:

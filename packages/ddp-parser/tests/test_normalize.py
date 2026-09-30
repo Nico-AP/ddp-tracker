@@ -1,10 +1,12 @@
 import json
 from unittest import TestCase
 
-from ddp_parser import Options, normalize, parse
-from ddp_parser.model import ContainerNode, DataNode, FileNode, JsonType, Stats, walk
+import msgspec
+
+from ddp_parser import Options, normalize, parse, renormalize
+from ddp_parser.model import SPEC_VERSION, ContainerNode, DataNode, FileNode, JsonType, Stats, walk
 from ddp_parser.normalize import is_variable_key
-from tests.test_pipeline import make_zip
+from tests.test_pipeline import PNG, make_zip
 
 NAME = "user_data_tiktok.json"
 
@@ -259,3 +261,70 @@ class RawTreeTests(TestCase):
 
 def at_path(node, path: str):
     return next(n for n in walk(node) if n.path == path)
+
+
+class RenormalizeTests(TestCase):
+    """``renormalize`` on a stored document: wrapper folders lifted, rules applied later."""
+
+    def stored(self):
+        """A document parsed before its zip was known under the wrapper's name."""
+        data = {"ChatHistory": {"Chat History with anna": chat("x")}}
+        members = {
+            "export-johndoe/": b"",
+            f"export-johndoe/{NAME}": json.dumps(data).encode(),
+            "__MACOSX/export-johndoe/._x": b"",
+        }
+        options = Options(keep_ignored=True)
+        document = parse(make_zip(members), options, name="other.zip")
+        root = msgspec.structs.replace(document.root, name="export-johndoe (1).zip")
+        return msgspec.structs.replace(document, root=root)
+
+    def test_lifts_the_wrapper_and_applies_rules(self):
+        document = self.stored()
+        rule = f"/{NAME}/ChatHistory/Chat History with *"
+        result = renormalize(document, Options(variable_keys=(rule,)))
+        new = {node.path for node in walk(result.document.root)}
+        self.assertIn(f"/{NAME}/ChatHistory/Chat History with {{*}}/[]/Content", new)
+        self.assertIn("/__MACOSX", new)  # OS junk stays where it was
+        self.assertNotIn("/export-johndoe", new)
+        self.assertEqual(result.renames["/export-johndoe"], "")
+        self.assertEqual(
+            result.renames[f"/export-johndoe/{NAME}/ChatHistory/Chat History with anna/[]"],
+            f"/{NAME}/ChatHistory/Chat History with {{*}}/[]",
+        )
+        self.assertEqual(result.document.options["variable_keys"], [rule])
+        self.assertEqual(result.document.spec_version, SPEC_VERSION)
+        self.assertEqual(
+            [(w.code, w.path) for w in result.document.warnings][-1:], [("wrapper_folder", None)]
+        )
+
+    def test_nothing_to_do(self):
+        document = parse(json.dumps({"a": 1}).encode(), name=NAME)
+        result = renormalize(document, Options())
+        self.assertEqual(result.renames, {})
+        self.assertEqual(result.document.root, document.root)
+
+    def test_wrapper_named_differently_stays(self):
+        document = self.stored()
+        root = msgspec.structs.replace(document.root, name="takeout.zip")
+        result = renormalize(msgspec.structs.replace(document, root=root), Options())
+        self.assertEqual(result.renames, {})
+
+    def test_nested_wrappers_and_warnings(self):
+        inner = make_zip({"inner/a.json": b'{"7637478253594217238": {"x": 1}}'})
+        document = parse(make_zip({"outer/inner.zip": inner}), name="x.zip")
+        # stored as if parsed before wrappers were dropped, from a zip named "outer.zip"
+        lifted = msgspec.structs.replace(document.root, name="outer.zip")
+        result = renormalize(msgspec.structs.replace(document, root=lifted), Options())
+        paths_after = {node.path for node in walk(result.document.root)}
+        self.assertIn("/inner.zip/a.json/{*}/x", paths_after)
+
+    def test_media_moves_with_the_wrapper(self):
+        document = parse(make_zip({"export/photo.png": PNG}), name="x.zip")
+        root = msgspec.structs.replace(document.root, name="export.zip")
+        result = renormalize(msgspec.structs.replace(document, root=root), Options())
+        self.assertEqual(result.renames["/export/photo.png"], "/photo.png")
+
+    def test_a_single_file_is_no_wrapper(self):
+        document = parse(make_zip({"export": b"{}"}), name="export.zip")
+        self.assertEqual(renormalize(document, Options()).renames, {})

@@ -5,8 +5,8 @@ chat partner's username (``ChatHistory/Chat History with johndoe``). Kept as the
 put personal data into paths, and no two exports share the paths below them. Like look-alike
 folders (spec 3.5), such keys are renamed to a segment with ``{*}`` and their nodes merged.
 
-This runs on a built tree, so the same code normalizes a fresh parse and a stored document (with
-rules added later). Per object, the first of these that applies to a key decides:
+This runs on a built tree, so the same code normalizes a fresh parse and, through
+``renormalize``, a stored document (with rules added later). Per object, the first of these that applies to a key decides:
 
 1. rules: ``Options.keep_keys`` keeps a key, ``Options.variable_keys`` renames it;
 2. the key's shape: digits only, a UUID, email address, URL, date, time, unix timestamp, or a
@@ -24,14 +24,21 @@ from functools import reduce
 
 import msgspec
 
+from ddp_parser.compare import within
 from ddp_parser.merge import merge_data
 from ddp_parser.model import (
+    SPEC_VERSION,
     ContainerNode,
     DataNode,
+    Document,
     FileNode,
     FilesystemNode,
     FolderNode,
+    Node,
+    ParseWarning,
     Shape,
+    UnmatchedNode,
+    UnmatchedReason,
     walk,
 )
 from ddp_parser.model.paths import ITEMS, ROOT, join, matches, split, unescape
@@ -39,6 +46,7 @@ from ddp_parser.options import Options
 from ddp_parser.schematize.shapes import classify_string
 from ddp_parser.similarity import look_alike
 from ddp_parser.source.grouping import mask_name
+from ddp_parser.source.unwrap import same_name
 
 VARIABLE = "{*}"
 
@@ -69,6 +77,143 @@ def normalize(root: FilesystemNode, options: Options) -> Normalized:
         if new != node.path:
             renames[node.path] = new
     return Normalized(normalized, renames)
+
+
+@dataclass(frozen=True, slots=True)
+class Renormalized:
+    document: Document
+    renames: dict[str, str]  # old path → new path, for every node whose path changed
+
+
+def renormalize(document: Document, options: Options) -> Renormalized:
+    """``document`` (e.g. stored before a rule was added) with ``options``' rules applied: a
+    wrapper folder named like its zip lifted into it (spec 5) and variable keys renamed (spec
+    3.6). ``options`` only contributes its key rules; they are recorded in ``document.options``.
+    """
+    lifted = lift_wrappers(document.root)
+    normalized = normalize(lifted.root, options)
+    renames = {}
+    for node in walk(document.root):
+        step = lifted.renames.get(node.path, node.path)
+        new = normalized.renames.get(step, step)
+        if new != node.path:
+            renames[node.path] = new
+    warnings = list(document.warnings)
+    for old, new in lifted.renames.items():
+        if new == old.rsplit("/", 1)[0]:  # a wrapper: its contents keep their names
+            warnings.append(wrapper_warning(new))
+    recorded = {
+        **document.options,
+        "variable_keys": list(options.variable_keys),
+        "keep_keys": list(options.keep_keys),
+    }
+    renormalized = msgspec.structs.replace(
+        document,
+        spec_version=SPEC_VERSION,
+        options=recorded,
+        warnings=rename_warnings(warnings, renames),
+        root=normalized.root,
+    )
+    return Renormalized(renormalized, renames)
+
+
+def rename_warnings(
+    warnings: list[ParseWarning], renames: dict[str, str]
+) -> tuple[ParseWarning, ...]:
+    """``warnings`` with the paths of renamed nodes, once each: the old paths can hold personal
+    data, and merged keys may have warned alike.
+    """
+    renamed = (
+        msgspec.structs.replace(warning, path=renames.get(warning.path, warning.path))
+        if warning.path is not None
+        else warning
+        for warning in warnings
+    )
+    return tuple(dict.fromkeys(renamed))
+
+
+def lift_wrappers(root: FilesystemNode) -> Normalized:
+    """``root`` with the contents of every wrapper folder named like its zip moved up into the
+    zip, as the parser does since spec 1.1 (``source/unwrap.py``). The folder's own path maps to
+    its zip's.
+    """
+    lifts: list[tuple[str, str]] = []  # (wrapper path, container path), outer ones first
+
+    def visit(node: FilesystemNode) -> FilesystemNode:
+        match node:
+            case ContainerNode():
+                children = node.children
+                wrapper = _wrapper(node)
+                if wrapper is not None:
+                    lifts.append((wrapper.path, node.path))
+                    moved = tuple(
+                        _moved(child, wrapper.path, node.path) for child in wrapper.children
+                    )
+                    others = tuple(child for child in children if child is not wrapper)
+                    children = tuple(sorted(moved + others, key=lambda child: child.name or ""))
+                return msgspec.structs.replace(node, children=tuple(map(visit, children)))
+            case FolderNode():
+                return msgspec.structs.replace(node, children=tuple(map(visit, node.children)))
+            case _:
+                return node
+
+    lifted = visit(root)
+    renames = {}
+    for node in walk(root):
+        path = node.path
+        for wrapper, container in lifts:
+            if within(path, wrapper):
+                path = container + path[len(wrapper) :]
+        if path != node.path:
+            renames[node.path] = path
+    return Normalized(lifted, renames)
+
+
+def _wrapper(container: ContainerNode) -> FolderNode | None:
+    """The container's only folder (OS junk aside) if it is named like the container."""
+    content = [child for child in container.children if not _is_junk(child)]
+    if len(content) != 1 or container.name is None:
+        return None
+    folder = content[0]
+    if isinstance(folder, FolderNode) and folder.children and folder.name is not None:
+        return folder if same_name(folder.name, container.name) else None
+    return None
+
+
+def _is_junk(node: FilesystemNode) -> bool:
+    """OS junk kept with ``Options.keep_ignored``: ignored files, or folders holding only them."""
+    files = [below for below in walk(node) if not isinstance(below, FolderNode)]
+    return bool(files) and all(
+        isinstance(below, UnmatchedNode) and below.reason == UnmatchedReason.IGNORED
+        for below in files
+    )
+
+
+def _moved[N: Node](node: N, old: str, new: str) -> N:
+    """``node`` and its subtree with the path prefix ``old`` replaced by ``new``."""
+    path = new + node.path[len(old) :]
+    match node:
+        case ContainerNode() | FolderNode():
+            children = tuple(_moved(child, old, new) for child in node.children)
+            return msgspec.structs.replace(node, path=path, children=children)
+        case FileNode() | DataNode():
+            properties = (
+                {key: _moved(child, old, new) for key, child in node.properties.items()}
+                if node.properties is not None
+                else None
+            )
+            items = _moved(node.items, old, new) if node.items is not None else None
+            return msgspec.structs.replace(node, path=path, properties=properties, items=items)
+        case _:
+            return msgspec.structs.replace(node, path=path)
+
+
+def wrapper_warning(path: str) -> ParseWarning:
+    return ParseWarning(
+        code="wrapper_folder",
+        message="removed the top-level folder named like the zip",
+        path=path or None,
+    )
 
 
 def is_variable_key(key: str) -> bool:

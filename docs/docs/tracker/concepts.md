@@ -16,6 +16,26 @@
 | **Annotation**  | A data point (e.g. "watched videos") and what is known about it: name, description, note, and whether it is personally identifiable information (PII). It has one or more locations: moved or renamed keys, keys named differently in exports of another language. A location belongs to at most one annotation. Example values are kept per location, since they can differ between them.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | **Data point**  | A location that carries meaning of its own, and so is open for annotation: a **value**, a **list**, a **list's item** (`<item>`, path `…/[]`), or a **media** file. The item carries the meaning ("ID", "watched video"): its examples, format and representations; its fields (`VideoList[]/<item>/Date`) are data points of their own. List and item each get their own annotation; the list is annotated in its own step after the item, its name suggested from the item's ("List of …"). An item isn't *missing* from an upload whose list is present but empty. A parsed file whose content is a list (a JSON array, a CSV's rows) *is* that list. Objects only group keys (e.g. `profile`, `user`) unless they are a list's item, and other files, unmatched files, folders, zip containers and the root only describe where data lies: they are never annotated. A location is a data point in a view if any of its observations in the view is one. |
 
+## Variable keys and path rules
+
+Some exports key objects by data: an ID, a date, a chat partner's username. The parser renames
+such keys to `{*}` and merges them ([parser spec §3.6](../ddp_parser/index.md#36-variable-keys)),
+so paths hold no personal data and match across uploads. Its heuristics can't recognise a single
+username among field names; for those, staff add a **path rule** to the platform in the admin
+(`PathRule`, `ddps/rules.py`): a *variable key* pattern such as
+`/user_data_tiktok.json/Direct Message/Direct Messages/ChatHistory/Chat History with *`, or a
+*keep key* pattern for a key the heuristics would rename wrongly.
+
+Rules apply to every upload parsed afterwards. Saving a rule also **re-normalizes** the
+platform's stored uploads in the background (`schemas/renormalize.py`; by hand:
+`manage.py renormalize [--platform SLUG] [--dry-run]`): their documents are renamed, registered
+uploads re-registered, and each renamed location's curation (annotation, "not a data point",
+examples, representations, metadata links, suggestions) moves to its new location, which keeps
+its own annotation if it has one (reported as a conflict). The same run drops a wrapper folder
+named like its zip from uploads stored before the parser did so. Renaming can't be undone:
+deleting a rule only affects uploads parsed afterwards. The uploader's sealed values keep the old
+paths, so values of renamed paths stop showing until they expire.
+
 ## Upload checks
 
 To keep wrong or spam files out of the public schema, an upload only **counts** (is registered:

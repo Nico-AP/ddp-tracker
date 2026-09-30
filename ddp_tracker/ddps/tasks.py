@@ -1,4 +1,4 @@
-"""Background parsing of uploads (django-tasks)."""
+"""Background tasks (django-tasks): parsing uploads, re-normalizing a platform's uploads."""
 
 import logging
 from pathlib import Path
@@ -10,7 +10,8 @@ from django_tasks import task
 
 from ddp_parser import ParseError, parse, to_dict
 from ddp_tracker.ddps.checks import decide
-from ddp_tracker.ddps.models import Upload
+from ddp_tracker.ddps.models import Platform, Upload
+from ddp_tracker.ddps.rules import options_for
 from ddp_tracker.ddps.values import keep, parse_options, split_values
 from ddp_tracker.schemas.services import get_format_of
 
@@ -29,7 +30,8 @@ def parse_upload(upload_id: int, path: str, public_key: str = "") -> None:
         upload.status = Upload.Status.PARSING
         upload.save(update_fields=["status"])
         try:
-            options = parse_options() if public_key else None
+            platform = upload.platform_id
+            options = parse_options(platform) if public_key else options_for(platform)
             document = parse(Path(path), options, name=upload.file_name)
         except (ParseError, OSError) as exc:
             _fail(upload, str(exc))
@@ -64,6 +66,26 @@ def parse_upload(upload_id: int, path: str, public_key: str = "") -> None:
                 raise
     finally:
         Path(path).unlink(missing_ok=True)
+
+
+@task()
+def renormalize_platform(platform_id: int) -> None:
+    """Apply the platform's current path rules to its stored uploads (``schemas/renormalize.py``),
+    e.g. after a rule was added in the admin.
+    """
+    from ddp_tracker.schemas.renormalize import renormalize  # noqa: PLC0415 - schemas imports ddps
+
+    platform = Platform.objects.get(pk=platform_id)
+    report = renormalize(platform)
+    logger.info(
+        "re-normalized %s: %d uploads changed, %d locations moved, %d conflicts",
+        platform,
+        report.uploads,
+        report.moved,
+        len(report.conflicts),
+    )
+    for conflict in report.conflicts:
+        logger.warning("re-normalizing %s: %s", platform, conflict)
 
 
 def _fail(upload: Upload, error: str) -> None:

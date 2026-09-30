@@ -82,7 +82,8 @@ packages/ddp-parser/
     errors.py          # LimitExceeded, ParseError, UnsafePath, …
     merge.py           # merge(documents): one tree + presence per path (spec 9.1)
     compare.py         # compare(base, new): added / removed / moved / changed (spec 9.2)
-    normalize.py       # normalize(root, options): variable object keys → {*} (spec 3.6)
+    normalize.py       # normalize(root, options): variable object keys → {*} (spec 3.6);
+                       # renormalize(document, options): the same, plus wrapper folders, for stored documents
     similarity.py      # look_alike(): shared by folder collapsing and variable keys
     __main__.py        # dev CLI: python -m ddp_parser export.zip > schema.json
 

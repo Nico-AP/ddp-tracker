@@ -27,7 +27,7 @@ from ddp_parser.model import (
     to_json,
     walk,
 )
-from ddp_parser.normalize import Normalized, normalize
+from ddp_parser.normalize import Normalized, Renormalized, normalize, renormalize
 from ddp_parser.options import Options
 from ddp_parser.pipeline import parse
 from ddp_parser.schematize.samples import mask
@@ -45,6 +45,7 @@ __all__ = [
     "Normalized",
     "Options",
     "ParseError",
+    "Renormalized",
     "Status",
     "Summary",
     "__version__",
@@ -61,6 +62,7 @@ __all__ = [
     "node_to_dict",
     "normalize",
     "parse",
+    "renormalize",
     "same_name",
     "suggest",
     "to_dict",

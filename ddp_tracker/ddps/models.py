@@ -184,3 +184,46 @@ class UploadValues(models.Model):
 
     def __str__(self) -> str:
         return f"Values of upload {self.upload_id}"
+
+
+class PathRule(models.Model):
+    """How the parser names a platform's variable object keys (``ddp_parser`` spec 3.6), for
+    keys no heuristic can tell from field names, such as a single username.
+
+    Rules apply to uploads parsed from then on (``rules.options_for``) and, through
+    ``schemas.renormalize``, to the stored ones: saving or deleting a rule in the admin
+    re-normalizes the platform's uploads in the background.
+    """
+
+    class Kind(models.TextChoices):
+        VARIABLE_KEY = "variable_key", "Variable key: rename matching keys"
+        KEEP_KEY = "keep_key", "Keep key: never rename matching keys"
+
+    platform = models.ForeignKey(Platform, on_delete=models.CASCADE, related_name="path_rules")
+    kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.VARIABLE_KEY)
+    pattern = models.TextField(
+        help_text=(
+            "A key path as the tracker shows it; * matches any one segment, and in the last "
+            "segment (the key) becomes {*}: "
+            "/user_data_tiktok.json/Direct Message/Direct Messages/ChatHistory/Chat History with *"
+        )
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="path_rules",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["platform", "kind", "pattern"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["platform", "kind", "pattern"], name="unique_path_rule"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.platform}: {self.get_kind_display()} {self.pattern}"

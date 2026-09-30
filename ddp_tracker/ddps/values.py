@@ -10,6 +10,10 @@ them (docs/docs/tracker/concepts.md, "The uploader's values"). They can hold per
   dump alone reveals nothing;
 - reading them needs the cookie, the uploader's login and an unexpired row (``own_values``).
   Logging out deletes the cookies, which leaves the values unreadable; expired rows are purged.
+
+They are keyed by the paths at parse time. When a rule added later renames paths
+(``schemas/renormalize.py``), the sealed values can't be rewritten without the uploader's key: the
+values of renamed paths stop showing until the row expires.
 """
 
 import json
@@ -27,7 +31,8 @@ from nacl.exceptions import CryptoError
 from nacl.public import PrivateKey, PublicKey, SealedBox
 
 from ddp_parser import Options, mask
-from ddp_tracker.ddps.models import Upload, UploadValues
+from ddp_tracker.ddps.models import Platform, Upload, UploadValues
+from ddp_tracker.ddps.rules import options_for
 
 COOKIE_PREFIX = "ddp_values_"
 COOKIE_SALT = "ddp_tracker.ddps.values"
@@ -38,9 +43,13 @@ type Value = str | int | float | bool
 type Values = dict[str, list[Value]]
 
 
-def parse_options() -> Options:
-    return Options(
-        samples=True, max_samples=settings.DDP_VALUES_PER_POINT, masked_shapes=MASKED_SHAPES
+def parse_options(platform: Platform | int) -> Options:
+    """The platform's options (``rules.py``), with samples for the uploader's values."""
+    return options_for(
+        platform,
+        samples=True,
+        max_samples=settings.DDP_VALUES_PER_POINT,
+        masked_shapes=MASKED_SHAPES,
     )
 
 
