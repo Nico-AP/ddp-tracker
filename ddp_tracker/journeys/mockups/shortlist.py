@@ -13,8 +13,13 @@ from typing import Any
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
-from django.shortcuts import redirect
+from django.http import (
+    HttpRequest,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseRedirect,
+    JsonResponse,
+)
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
@@ -228,28 +233,34 @@ def shortlist(request: HttpRequest) -> HttpResponse:
         "codebook": codebook_csv(found),
         "blueprint": json.dumps(blueprints(found), indent=2),
         "example_query": urlencode([("c", slug) for slug in EXAMPLE]),
-        "has_data": bool(found),
+        "max_note": MAX_NOTE,
     }
     return render_mockup(request, "shortlist", "journeys/prototype/shortlist.html", context)
 
 
 def _back(request: HttpRequest) -> HttpResponse:
-    """To where the visitor was (``next``), if that is on this site; else to the shortlist."""
+    """To where the visitor was (``next``), if that is a path on this site; else to the
+    shortlist. Only a path: a bare word would be taken for the name of a URL."""
     target = request.POST.get("next", "")
-    if not url_has_allowed_host_and_scheme(
-        target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    if not (
+        target.startswith("/")
+        and url_has_allowed_host_and_scheme(
+            target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        )
     ):
         target = reverse("journeys:shortlist")
-    return redirect(target)
+    return HttpResponseRedirect(target)
 
 
 @require_POST
 def add(request: HttpRequest) -> HttpResponse:
-    """Add concepts to the visitor's shortlist; with a ``note`` field, set their note."""
+    """Add concepts to the visitor's shortlist; with a ``note`` field, set their note (the
+    "Save note" form posts here too)."""
     slugs = request.POST.getlist("concept")
     if not slugs or any(slug not in CONCEPTS_BY_SLUG for slug in slugs):
         return HttpResponseBadRequest("Unknown concept.")
     entries = {entry.concept.slug: entry for entry in stored(request)}
+    only_a_note = "note" in request.POST and all(slug in entries for slug in slugs)
     for slug in slugs:
         note = entries[slug].note if slug in entries else ""
         if "note" in request.POST:
@@ -257,7 +268,10 @@ def add(request: HttpRequest) -> HttpResponse:
         entries[slug] = Entry(CONCEPTS_BY_SLUG[slug], note)
     _save(request, list(entries.values()))
     names = ", ".join(CONCEPTS_BY_SLUG[slug].name for slug in dict.fromkeys(slugs))
-    messages.success(request, f"Added to your shortlist: {names}.")
+    if only_a_note:
+        messages.success(request, f"Note saved for {names}.")
+    else:
+        messages.success(request, f"Added to your shortlist: {names}.")
     return _back(request)
 
 
@@ -277,10 +291,11 @@ def clear(request: HttpRequest) -> HttpResponse:
 
 
 def codebook(request: HttpRequest) -> HttpResponse:
-    """The shortlist as a codebook (CSV), to download."""
+    """The shortlist as a codebook (CSV), to download. It starts with a byte order mark, so
+    that Excel on Windows reads it as UTF-8 (and shows accented letters as they are)."""
     name = "ddp-tracker-codebook-prototype.csv"
     return HttpResponse(
-        codebook_csv(rows(_chosen(request))),
+        codebook_csv(rows(_chosen(request))).encode("utf-8-sig"),
         content_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{name}"'},
     )

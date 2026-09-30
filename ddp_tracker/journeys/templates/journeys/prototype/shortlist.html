@@ -11,7 +11,7 @@
           {% for entry in entries %}
             <input type="hidden" name="concept" value="{{ entry.concept.slug }}">
           {% endfor %}
-          <button type="submit" class="btn btn-primary btn-sm">Save it as my shortlist</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add these to my shortlist</button>
         </form>
       {% endif %}
     </div>
@@ -24,7 +24,7 @@
     {% endif %}
     <p>
       Choose concepts in the <a href="{% url 'journeys:concepts' %}">concept view</a>, or
-      <a href="?{{ example_query }}">Load an example shortlist</a>.
+      <a href="?{{ example_query }}">load an example shortlist</a>.
     </p>
   {% else %}
     <h2>Chosen concepts</h2>
@@ -41,13 +41,12 @@
               {% csrf_token %}
               <input type="hidden" name="concept" value="{{ entry.concept.slug }}">
               <div>
-                <label class="form-label"
-                       for="note-{{ entry.concept.slug }}">Why this study needs it</label>
+                <label class="form-label" for="note-{{ entry.concept.slug }}">Why this study needs it<span class="visually-hidden"> ({{ entry.concept.name }})</span></label>
                 <input class="form-control"
                        type="text"
                        id="note-{{ entry.concept.slug }}"
                        name="note"
-                       maxlength="300"
+                       maxlength="{{ max_note }}"
                        value="{{ entry.note }}">
               </div>
               <button type="submit" class="btn btn-secondary btn-sm">

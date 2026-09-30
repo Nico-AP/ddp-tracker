@@ -1,6 +1,7 @@
 """M3, the study shortlist: kept in the session, shared as a link, downloaded as a codebook and
 as File Blueprints (mockups/shortlist.py)."""
 
+import codecs
 import csv
 import io
 import json
@@ -88,10 +89,29 @@ class ShortlistTests(TestCase):
         self.assertRedirects(response, back)
         response = self.client.post(ADD, {"concept": "searched", "next": "https://example.org/"})
         self.assertRedirects(response, PAGE)
+        for word in ("foo", "logout"):  # not a URL name either
+            with self.subTest(next=word):
+                response = self.client.post(ADD, {"concept": "searched", "next": word})
+                self.assertRedirects(response, PAGE)
 
     def test_adding_says_so(self) -> None:
         response = self.client.post(ADD, {"concept": "searched"}, follow=True)
         self.assertContains(response, "Added to your shortlist: Searched.")
+
+    def test_saving_a_note_says_so(self) -> None:
+        self.client.post(ADD, {"concept": "searched"}, follow=True)  # its message shown
+        response = self.client.post(ADD, {"concept": "searched", "note": "News"}, follow=True)
+        self.assertContains(response, "Note saved for Searched.")
+        self.assertNotContains(response, "Added to your shortlist")
+        # a note for a concept not on the list yet: it is added
+        response = self.client.post(ADD, {"concept": "logged-in", "note": "Time"}, follow=True)
+        self.assertContains(response, "Added to your shortlist: Logged in.")
+
+    def test_the_note_field_names_its_concept(self) -> None:
+        self.client.post(ADD, {"concept": "searched"})
+        response = self.client.get(PAGE)
+        self.assertContains(response, '<span class="visually-hidden"> (Searched)</span>')
+        self.assertContains(response, 'maxlength="300"')
 
     def test_a_shared_link_shows_its_own_list_and_leaves_mine_alone(self) -> None:
         self.client.post(ADD, {"concept": "logged-in"})
@@ -101,7 +121,7 @@ class ShortlistTests(TestCase):
         self.assertContains(response, 'href="/prototype/concepts/searched/"')
         self.assertNotContains(response, "Save note")  # read-only
         self.assertNotContains(response, "Clear my shortlist")
-        self.assertContains(response, "Save it as my shortlist")
+        self.assertContains(response, "Add these to my shortlist")
         self.assertEqual([entry["concept"] for entry in self.chosen()], ["logged-in"])
 
     def test_a_shared_shortlist_can_be_saved(self) -> None:
@@ -150,7 +170,8 @@ class ShortlistWithDataTests(SeededTestCase):
         self.assertIn(
             'filename="ddp-tracker-codebook-prototype.csv"', response["Content-Disposition"]
         )
-        rows = list(csv.DictReader(io.StringIO(response.content.decode())))
+        self.assertTrue(response.content.startswith(codecs.BOM_UTF8))  # a BOM, for Excel
+        rows = list(csv.DictReader(io.StringIO(response.content.decode("utf-8-sig"))))
         self.assertEqual(
             list(rows[0]),
             [
@@ -183,7 +204,9 @@ class ShortlistWithDataTests(SeededTestCase):
 
     def test_the_codebook_of_my_own_shortlist_has_my_notes(self) -> None:
         self.client.post(ADD, {"concept": "sent-message", "note": "Social support"})
-        rows = list(csv.DictReader(io.StringIO(self.client.get(CODEBOOK).content.decode())))
+        rows = list(
+            csv.DictReader(io.StringIO(self.client.get(CODEBOOK).content.decode("utf-8-sig")))
+        )
         self.assertEqual({row["note"] for row in rows}, {"Social support"})
         self.assertEqual({row["personal_data"] for row in rows}, {"yes"})
 
