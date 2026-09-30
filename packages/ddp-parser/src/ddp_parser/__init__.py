@@ -27,9 +27,11 @@ from ddp_parser.model import (
     to_json,
     walk,
 )
+from ddp_parser.normalize import Normalized, normalize
 from ddp_parser.options import Options
 from ddp_parser.pipeline import parse
 from ddp_parser.schematize.samples import mask
+from ddp_parser.source import same_name
 
 __version__ = version("ddp-parser")
 
@@ -40,6 +42,7 @@ __all__ = [
     "Document",
     "InvalidDocumentError",
     "Merged",
+    "Normalized",
     "Options",
     "ParseError",
     "Status",
@@ -56,7 +59,9 @@ __all__ = [
     "merge_trees",
     "node_from_dict",
     "node_to_dict",
+    "normalize",
     "parse",
+    "same_name",
     "suggest",
     "to_dict",
     "to_json",

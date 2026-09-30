@@ -41,7 +41,9 @@ input (path | bytes | IO)
   ▼ 6. BUILD      builder.build() → frozen DataNode (a file's inline fields): count derived
   │               from parent, dominant shape vs threshold / mixed, format / formats /
   │               ambiguity warning, type unions, samples
-  ▼ 7. ASSEMBLE   Document(spec_version, parser_version, created_at, source, options,
+  ▼ 7. NORMALIZE  normalize(root): variable object keys → {*}, their nodes merged
+  │               (rules, key shape, shared words, look-alike values); warning paths renamed
+  ▼ 8. ASSEMBLE   Document(spec_version, parser_version, created_at, source, options,
                   warnings, root)  →  to_dict / to_json / from_dict
 ```
 
@@ -76,14 +78,16 @@ packages/ddp-parser/
     __init__.py        # public API: parse(source, options=None) -> Document; Options; Document
     py.typed
     options.py         # Options: samples, max_samples, masked_shapes, shape_threshold, max_depth, limits, …
-    pipeline.py        # orchestrates steps 1–7; the only module that knows the whole flow
+    pipeline.py        # orchestrates steps 1–8; the only module that knows the whole flow
     errors.py          # LimitExceeded, ParseError, UnsafePath, …
     merge.py           # merge(documents): one tree + presence per path (spec 9.1)
     compare.py         # compare(base, new): added / removed / moved / changed (spec 9.2)
+    normalize.py       # normalize(root, options): variable object keys → {*} (spec 3.6)
+    similarity.py      # look_alike(): shared by folder collapsing and variable keys
     __main__.py        # dev CLI: python -m ddp_parser export.zip > schema.json
 
     model/             # output contract (pure data, no I/O)
-      paths.py         #   JSON Pointer paths: escape / join / split
+      paths.py         #   JSON Pointer paths: escape / join / split; matches() for rules
       nodes.py         #   Kind, Shape, …; Container/Folder/File/Media/Unmatched/DataNode
       document.py      #   Document, Source, ParseWarning
       walk.py          #   walk(node): a node and all its descendants

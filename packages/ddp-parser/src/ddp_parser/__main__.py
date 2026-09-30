@@ -27,9 +27,27 @@ def main(argv: list[str] | None = None) -> int:
         metavar="PATH",
         help="never collapse this folder's subfolders",
     )
+    arguments.add_argument(
+        "--variable-key",
+        action="append",
+        default=[],
+        metavar="PATTERN",
+        help="rename keys matching this path pattern ('*' becomes '{*}')",
+    )
+    arguments.add_argument(
+        "--keep-key",
+        action="append",
+        default=[],
+        metavar="PATTERN",
+        help="never rename keys matching this path pattern",
+    )
     args = arguments.parse_args(argv)
     options = Options(
-        samples=args.samples, collapse_folders=tuple(args.collapse), keep_folders=tuple(args.keep)
+        samples=args.samples,
+        collapse_folders=tuple(args.collapse),
+        keep_folders=tuple(args.keep),
+        variable_keys=tuple(args.variable_key),
+        keep_keys=tuple(args.keep_key),
     )
     try:
         document = parse(args.input, options)

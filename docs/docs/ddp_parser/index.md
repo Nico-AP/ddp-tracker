@@ -59,6 +59,9 @@ schema tree the node sits. It is a string in
   its name pattern, e.g. `/message_{n}.json`.
 - Collapsed look-alike folders (see [Collapsed folders](#35-collapsed-folders))
   appear as `/{*}`, e.g. `/messages/inbox/{*}/message_{n}.json`.
+- Variable object keys (see [Variable keys](#36-variable-keys)) appear with
+  `{*}` in place of the data they held, e.g. `/WatchLiveMap/{*}` or
+  `/ChatHistory/Chat History with {*}`.
 
 Folder entries and object keys need no separate markers: a folder or zip only
 ever contains entries, and a parsed file or object only ever contains keys, so
@@ -116,6 +119,7 @@ exactly what a diff should report.
 | `range`      | `integer`, `number` | `{min, max}` of observed values. Omitted unless samples are enabled (can be identifying). |
 | `properties` | `object`            | Map of key name → child `data` node.                                                      |
 | `items`      | `array`             | **One** `data` node that describes all items, unified.                                    |
+| `keys`       | variable keys       | How many object keys were merged into this node (see [§3.6](#36-variable-keys)).          |
 | `stats`      | all                 | Observation counts (see below).                                                           |
 | `samples`    | scalars             | Opt-in only (see [Samples](#samples)).                                                    |
 
@@ -294,6 +298,55 @@ below them. Such **look-alike sibling folders are collapsed** into one folder:
    subfolders make up, on average, at least half of each subfolder's names.
    Conversation folders all share `message_{n}.json`; category folders such as
    `ads/` and `posts/` share nothing, so they stay as they are.
+
+### 3.6 Variable keys
+
+Some exports key objects by data instead of by field name: a live stream's ID
+(`WatchLiveMap/7637478253594217238`), a chat partner's username
+(`ChatHistory/Chat History with johndoe`), a date. Kept as they are, these keys
+put personal data into paths, and no two exports share the paths below them.
+Like look-alike folders, such **variable keys are renamed and merged**:
+
+- The key's path segment gets `{*}` in place of the data: the whole key
+  (`/WatchLiveMap/{*}`), or only its variable part
+  (`/ChatHistory/Chat History with {*}`).
+- Its `name` is a mask of the original keys' variable parts, as for folders
+  (`Chat History with xsx0`; the most common mask wins).
+- `keys` counts how many keys were merged.
+- Their nodes are unified as in [§3.4](#34-unification): `stats` are summed
+  (so `count` is the number of merged keys times the objects they were seen in),
+  and a key below that only some of them had is optional.
+
+```json
+{"kind": "data", "name": "0", "path": "/user_data_tiktok.json/Tiktok Live/Watch Live History/WatchLiveMap/{*}", "keys": 12, "type": "object", "…": "…"}
+```
+
+**Which keys are variable.** For every object, top-down (so rules and
+heuristics see the already renamed paths of its parents), the first of these
+that applies decides:
+
+1. **Rules.** `options.keep_keys` lists key paths that are never renamed.
+   `options.variable_keys` lists key paths whose last segment is a glob on the
+   key; `*` matches any one path segment before it, and becomes `{*}` in the
+   key: `/user_data_tiktok.json/Direct Message/Direct Messages/ChatHistory/Chat History with *`
+   renames `Chat History with johndoe` to `Chat History with {*}`. They let a
+   platform-specific layer handle keys no heuristic can tell from field names,
+   such as a single username.
+2. **The key's shape.** Digits only, a UUID, email address, URL, date, datetime
+   or time (as in [§3.3](#33-shapes)), or a hash-like token (letters and digits,
+   at least 16 characters) → `{*}`. This applies to a single key too.
+3. **Shared words.** Two or more keys that differ only in their first or last
+   word, and hold lists or objects that look alike inside (on average, at least
+   80% of each one's sub-paths are shared by more than half of them) →
+   `Chat History with {*}`. `Favorite Videos` and `Favorite Sounds` hold
+   different lists, so they stay.
+4. **Look-alike values.** Three or more keys, all the ones left, holding lists or
+   objects that look alike inside (same measure) → `{*}`. Settings sections
+   share nothing and stay.
+
+Single values are never merged by heuristics 3 and 4, and a single key with a
+username needs a rule. The renaming works on a finished tree, so a platform can
+add rules later and apply them to documents stored earlier.
 
 ---
 
@@ -489,7 +542,7 @@ timestamp,action,device
 
 ```json
 {
-  "spec_version": "1.0",
+  "spec_version": "1.1",
   "parser_version": "0.1.0",
   "created_at": "2026-09-24T10:00:00+02:00",
   "source": {
@@ -514,7 +567,9 @@ timestamp,action,device
     "max_total_size": 4294967296,
     "keep_ignored": false,
     "collapse_folders": [],
-    "keep_folders": []
+    "keep_folders": [],
+    "variable_keys": [],
+    "keep_keys": []
   },
   "warnings": [],
   "root": {
@@ -771,7 +826,7 @@ same platform, into one tree: the basis of an *accepted* schema version. Nodes a
 are unified with the rules of [§3.4](#34-unification): `stats` and `shapes` are summed, types
 form a union, the dominant `shape` and `format` are recomputed, `length` and `range` widen,
 and a key missing from one document still counts that document's objects, so it shows as
-optional. `files` and `folders` add up; `size_bytes` is summed and `modified` is the newest.
+optional. `files`, `folders` and `keys` add up; `size_bytes` is summed and `modified` is the newest.
 
 When the same path has different kinds in different documents, the more informative one is
 kept, in this order: `file`, `container`, `folder`, `media`, `unmatched` (a file one export

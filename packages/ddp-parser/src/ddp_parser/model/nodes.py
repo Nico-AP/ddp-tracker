@@ -121,10 +121,13 @@ class _FilesystemBase(_NodeBase, frozen=True, kw_only=True, omit_defaults=True):
 
 
 class DataNode(_NodeBase, frozen=True, kw_only=True, omit_defaults=True, tag="data"):
-    """A value position inside parsed content."""
+    """A value position inside parsed content. ``keys`` is set when variable object keys were
+    merged into this one (path segment with ``{*}``, ``name`` a masked form; spec 3.6).
+    """
 
     kind: ClassVar[Kind] = Kind.DATA
 
+    keys: int | None = None
     type: JsonType | tuple[JsonType, ...]  # a union is a sorted tuple
     shape: Shape | None = None
     format: str | None = None

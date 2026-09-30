@@ -202,5 +202,5 @@ def dominant_shape(shapes: Counter[Shape], threshold: float) -> Shape | None:
 def data_fields(node: DataNode) -> dict[str, Any]:
     """The schema fields of ``node``, for building a ``FileNode`` that carries them inline."""
     fields = msgspec.structs.asdict(node)
-    del fields["name"], fields["path"]
+    del fields["name"], fields["path"], fields["keys"]
     return fields

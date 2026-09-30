@@ -10,7 +10,7 @@ import msgspec
 
 from ddp_parser.model.nodes import FilesystemNode, NodePath
 
-SPEC_VERSION = "1.0"
+SPEC_VERSION = "1.1"
 
 type OptionValue = str | int | float | bool | list[str] | None
 

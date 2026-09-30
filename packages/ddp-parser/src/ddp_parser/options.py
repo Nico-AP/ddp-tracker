@@ -32,6 +32,13 @@ class Options(msgspec.Struct, frozen=True, kw_only=True):
     collapse_folders: tuple[str, ...] = ()
     keep_folders: tuple[str, ...] = ()
 
+    # Variable object keys (spec 3.6): keys that hold data (a username, an ID) rather than name a
+    # field. Each rule is a key path whose last segment is a glob on the key; its ``*`` becomes
+    # ``{*}`` in the path, e.g. ``/data.json/Chats/Chat with *`` → ``/data.json/Chats/Chat with
+    # {*}``. ``keep_keys`` are key paths that are never renamed. Without a rule, heuristics decide.
+    variable_keys: tuple[str, ...] = ()
+    keep_keys: tuple[str, ...] = ()
+
     def to_dict(self) -> dict[str, OptionValue]:
         """Plain JSON data (tuples become lists), as recorded in ``Document.options``."""
         data: dict[str, OptionValue] = msgspec.json.decode(msgspec.json.encode(self))

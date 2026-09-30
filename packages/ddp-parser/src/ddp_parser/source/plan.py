@@ -9,10 +9,10 @@ from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
-from fnmatch import fnmatchcase
 
-from ddp_parser.model.paths import join
+from ddp_parser.model.paths import join, matches
 from ddp_parser.options import Options
+from ddp_parser.similarity import look_alike
 from ddp_parser.source.entry import Entry
 from ddp_parser.source.grouping import group_names, mask_name, pattern_of
 
@@ -76,9 +76,9 @@ def _finish(folder: PlannedFolder, path: str, options: Options) -> None:
 
 
 def _should_collapse(folder: PlannedFolder, options: Options) -> bool:
-    if _matches(folder.path, options.keep_folders):
+    if matches(folder.path, options.keep_folders):
         return False
-    if _matches(folder.path, options.collapse_folders):
+    if matches(folder.path, options.collapse_folders):
         return True
     return not folder.loose and len(folder.folders) >= 2 and _look_alike(folder.folders.values())  # noqa: PLR2004 - two is the smallest set of siblings
 
@@ -87,13 +87,7 @@ def _look_alike(folders: Iterable[PlannedFolder]) -> bool:
     """True if, on average, at least half of each folder's child names (digits as ``{n}``) are
     shared by more than half of the folders.
     """
-    signatures = [_signature(folder) for folder in folders]
-    if not all(signatures):
-        return False
-    counts = Counter(name for signature in signatures for name in signature)
-    common = {name for name, count in counts.items() if count * 2 > len(signatures)}
-    shares = [len(signature & common) / len(signature) for signature in signatures]
-    return sum(shares) / len(shares) >= 0.5  # noqa: PLR2004 - "at least half"
+    return look_alike([_signature(folder) for folder in folders], 0.5)
 
 
 def _signature(folder: PlannedFolder) -> set[str]:
@@ -125,15 +119,6 @@ def _merge(folders: list[PlannedFolder], name: str | None) -> PlannedFolder:
     if len(folders) == 1:
         merged.modified = folders[0].modified
     return merged
-
-
-def _matches(path: str, rules: tuple[str, ...]) -> bool:
-    segments = path.split("/")
-    for rule in rules:
-        pattern = rule.split("/")
-        if len(pattern) == len(segments) and all(map(fnmatchcase, segments, pattern)):
-            return True
-    return False
 
 
 def _group(folder_path: str, entries: list[Entry]) -> list[PlannedFile]:

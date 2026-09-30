@@ -97,7 +97,8 @@ def merge_filesystem(a: FilesystemNode, b: FilesystemNode, threshold: float) -> 
 
 
 def merge_data(a: DataNode, b: DataNode, threshold: float) -> DataNode:
-    return msgspec.structs.replace(a, **merge_fields(a, b, threshold))
+    keys = _add_counts(a.keys, b.keys)
+    return msgspec.structs.replace(a, keys=keys, **merge_fields(a, b, threshold))
 
 
 def merge_fields(a: FileNode | DataNode, b: FileNode | DataNode, threshold: float) -> Fields:
@@ -230,7 +231,7 @@ def _merge_samples(a: Samples | None, b: Samples | None) -> Samples | None:
 
 
 def _add_counts(a: int | None, b: int | None) -> int | None:
-    """Sum of two optional amounts (sizes); ``None`` only if both are unknown."""
+    """Sum of two optional amounts (sizes, merged keys); ``None`` only if both are unknown."""
     if a is None and b is None:
         return None
     return (a or 0) + (b or 0)

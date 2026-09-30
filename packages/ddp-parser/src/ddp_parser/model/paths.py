@@ -6,6 +6,7 @@ item node of an array.
 """
 
 import re
+from fnmatch import fnmatchcase
 
 from ddp_parser.errors import InvalidPathError
 
@@ -42,3 +43,15 @@ def split(path: str) -> list[str]:
         msg = f"path must be empty or start with '/': {path!r}"
         raise InvalidPathError(msg)
     return [unescape(token) for token in path[1:].split("/")]
+
+
+def matches(path: str, patterns: tuple[str, ...]) -> bool:
+    """True if ``path`` matches one of ``patterns``: paths of the same length where each segment
+    is a glob on one segment (``*`` matches any one name, e.g. ``/messages/*``).
+    """
+    segments = path.split("/")
+    for pattern in patterns:
+        parts = pattern.split("/")
+        if len(parts) == len(segments) and all(map(fnmatchcase, segments, parts)):
+            return True
+    return False

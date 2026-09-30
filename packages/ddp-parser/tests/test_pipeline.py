@@ -271,11 +271,18 @@ class CliTests(TestCase):
             path.write_bytes(b'{"a": 1}')
             out = io.StringIO()
             with redirect_stdout(out):
-                code = main([str(path), "--samples", "--collapse", "/x", "--keep", "/y"])
+                code = main(
+                    [
+                        *(str(path), "--samples", "--collapse", "/x", "--keep", "/y"),
+                        *("--variable-key", "/a/*", "--keep-key", "/b"),
+                    ]
+                )
         document = json.loads(out.getvalue())
         self.assertEqual(code, 0)
         self.assertEqual(document["root"]["name"], "a.json")
         self.assertEqual(document["options"]["collapse_folders"], ["/x"])
+        self.assertEqual(document["options"]["variable_keys"], ["/a/*"])
+        self.assertEqual(document["options"]["keep_keys"], ["/b"])
 
     def test_missing_input(self):
         err = io.StringIO()

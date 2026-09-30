@@ -1,5 +1,5 @@
 """Orchestration of the pipeline steps (source → plan → classify → parse → observe → build →
-assemble).
+normalize → assemble).
 
 The only module that knows the whole flow; every other module does one step and does not know
 what runs before or after it.
@@ -12,6 +12,8 @@ from importlib.metadata import version
 from io import BytesIO
 from pathlib import PurePosixPath
 from typing import TypedDict
+
+import msgspec
 
 from ddp_parser.errors import LimitExceededError, ParseError
 from ddp_parser.model import (
@@ -27,6 +29,7 @@ from ddp_parser.model import (
     UnmatchedNode,
     UnmatchedReason,
 )
+from ddp_parser.normalize import normalize
 from ddp_parser.options import Options
 from ddp_parser.parsers import Parsed, Parser, parser_for
 from ddp_parser.schematize import NodeBuilder, data_fields
@@ -86,13 +89,14 @@ def parse(data: InputData, options: Options | None = None, *, name: str | None =
             root = run.file(PlannedFile(name=source.name or "", path="", entries=[entry]), depth=0)
     finally:
         source.close()
+    normalized = normalize(root, run.options)
     return Document(
         parser_version=version("ddp-parser"),
         created_at=datetime.now(UTC),
         source=Source(source.name, source.size, source.sha256),
         options=run.options.to_dict(),
-        warnings=tuple(run.warnings),
-        root=root,
+        warnings=_renamed(run.warnings, normalized.renames),
+        root=normalized.root,
     )
 
 
@@ -271,6 +275,19 @@ class _Run:
     @property
     def _max_samples(self) -> int:
         return self.options.max_samples if self.options.samples else 0
+
+
+def _renamed(warnings: list[ParseWarning], renames: dict[str, str]) -> tuple[ParseWarning, ...]:
+    """``warnings`` with the paths of renamed keys (spec 3.6), once each: the old paths can
+    hold personal data, and merged keys may have warned alike.
+    """
+    renamed = (
+        msgspec.structs.replace(warning, path=renames.get(warning.path, warning.path))
+        if warning.path is not None
+        else warning
+        for warning in warnings
+    )
+    return tuple(dict.fromkeys(renamed))
 
 
 def _files(planned: PlannedFile) -> int | None:

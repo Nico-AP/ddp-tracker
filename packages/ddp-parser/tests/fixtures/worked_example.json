@@ -1,5 +1,5 @@
 {
-  "spec_version": "1.0",
+  "spec_version": "1.1",
   "parser_version": "0.1.0",
   "created_at": "2026-09-24T10:00:00+02:00",
   "source": {
@@ -24,7 +24,9 @@
     "max_total_size": 4294967296,
     "keep_ignored": false,
     "collapse_folders": [],
-    "keep_folders": []
+    "keep_folders": [],
+    "variable_keys": [],
+    "keep_keys": []
   },
   "warnings": [],
   "root": {

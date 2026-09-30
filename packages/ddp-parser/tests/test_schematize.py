@@ -237,5 +237,7 @@ class OptionsTests(TestCase):
                 "keep_ignored",
                 "collapse_folders",
                 "keep_folders",
+                "variable_keys",
+                "keep_keys",
             },
         )
