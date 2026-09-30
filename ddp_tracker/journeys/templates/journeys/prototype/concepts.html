@@ -46,6 +46,9 @@
     The demo data is in English only, so there is no language filter. Looking for every path and
     type? Open the <a href="{% url 'schemas:platforms' %}">full structure in the explorer</a>.
   </p>
+  <p>
+    <a href="{% url 'journeys:shortlist' %}">Open the study shortlist</a>
+  </p>
   {% if not has_data %}
     <p class="message message--info">
       No demo data in this database yet, so the concepts come without dates and paths. Create
@@ -90,6 +93,15 @@
             {{ card.availability.uploads }} upload{{ card.availability.uploads|pluralize }}
           </p>
         {% endif %}
+        <form method="post"
+              action="{% url 'journeys:shortlist-add' %}"
+              class="inline-form mt-auto">
+          {% csrf_token %}
+          <input type="hidden" name="concept" value="{{ card.concept.slug }}">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit"
+                  class="btn btn-secondary btn-sm">Add {{ card.concept.name }} to the shortlist</button>
+        </form>
       </li>
     {% endfor %}
   </ul>

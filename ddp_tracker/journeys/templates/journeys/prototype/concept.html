@@ -1,6 +1,18 @@
 {% extends "journeys/prototype/base.html" %}
 {% block heading %}{{ concept.name }}{% endblock %}
 {% block mockup %}
+  <div class="proto-toolbar">
+    <form method="post"
+          action="{% url 'journeys:shortlist-add' %}"
+          class="inline-form">
+      {% csrf_token %}
+      <input type="hidden" name="concept" value="{{ concept.slug }}">
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button type="submit"
+              class="btn btn-secondary btn-sm">Add {{ concept.name }} to the shortlist</button>
+    </form>
+    <a href="{% url 'journeys:shortlist' %}">Open the study shortlist</a>
+  </div>
   <p>{{ concept.description }}</p>
   <p>
     <code>{{ concept.statement }}</code>
