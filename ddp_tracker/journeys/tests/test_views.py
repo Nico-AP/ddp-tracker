@@ -156,3 +156,44 @@ class SeededJourneyPageTests(SeededTestCase):
         self.assertEqual(self.client.get(url).status_code, 200)
         # the curator's uploads are their own: no review of the admin's TikTok upload
         self.assertNotContains(response, "Open the review of the demo TikTok upload")
+
+
+class NavigationTests(TestCase):
+    """The header of every page: what exists in the main row, the mock-ups in a strip below."""
+
+    def nav(self, response, css_class: str) -> str:
+        return response.content.decode().split(f'<nav class="{css_class}"')[1].split("</nav>")[0]
+
+    def test_the_brand_and_home_lead_to_the_landing_page(self):
+        response = self.client.get(reverse("schemas:platforms"))
+        self.assertContains(response, '<a class="site-header__brand" href="/">')
+        self.assertContains(response, '<a href="/">Home</a>', html=True)
+
+    def test_the_main_row_has_only_what_exists(self):
+        main = self.nav(self.client.get("/"), "site-nav")
+        for text in ("Home", "Explore", "Docs", "Contribute", "Log in"):
+            self.assertIn(text, main)
+        self.assertIn(f'href="{reverse("journeys:journey", args=["contributor"])}"', main)
+        for text in ("Concepts", "Compare", "API", "prototype"):
+            self.assertNotIn(text, main)
+
+    def test_the_mockups_are_in_a_strip_of_their_own(self):
+        strip = self.nav(self.client.get(reverse("schemas:platforms")), "prototype-nav")
+        self.assertIn('aria-label="Prototype pages"', strip)
+        self.assertIn("Prototype previews", strip)
+        for name in ("journeys:concepts", "journeys:compare", "journeys:api"):
+            self.assertIn(f'href="{reverse(name)}"', strip)
+        self.assertNotIn("Curate", strip)  # staff only
+
+    def test_staff_also_get_the_moderator_dashboard(self):
+        self.client.force_login(User.objects.create_user("staff@example.org", is_staff=True))
+        strip = self.nav(self.client.get("/"), "prototype-nav")
+        self.assertIn(f'href="{reverse("journeys:moderate")}"', strip)
+        self.assertIn("Curate", strip)
+
+    def test_signed_in_people_keep_their_items(self):
+        self.client.force_login(User.objects.create_user("someone@example.org"))
+        main = self.nav(self.client.get("/"), "site-nav")
+        for text in ("My uploads", "My suggestions", "Upload a DDP", "Log out"):
+            self.assertIn(text, main)
+        self.assertNotIn("Contribute", main)  # they have the upload button

@@ -1,0 +1,8 @@
+{# Mock-ups of planned features, kept apart from the pages that exist (journeys/mockups). #}
+<nav class="prototype-nav" aria-label="Prototype pages">
+  <span class="prototype-nav__label">Prototype previews</span>
+  <a href="{% url 'journeys:concepts' %}">Concepts</a>
+  <a href="{% url 'journeys:compare' %}">Compare</a>
+  <a href="{% url 'journeys:api' %}">API</a>
+  {% if user.is_staff %}<a href="{% url 'journeys:moderate' %}">Curate</a>{% endif %}
+</nav>

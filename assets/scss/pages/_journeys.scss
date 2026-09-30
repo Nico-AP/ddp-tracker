@@ -1,0 +1,384 @@
+// The user journeys prototype: the landing page, the journey pages and the mock-up pages
+// (ddp_tracker/journeys). Everything the prototype adds is in this one partial.
+@use "sass:color";
+@use "../abstracts/variables" as *;
+
+// The header wraps on narrow screens: the landing page has to work at phone width.
+.site-header,
+.site-nav {
+  flex-wrap: wrap;
+}
+
+.site-header {
+  gap: $spacing-unit ($spacing-unit * 2);
+}
+
+// --- what marks a prototype ----------------------------------------------------------------------
+
+// the strip under the header with the mock-up pages (journeys/_prototype_nav.html)
+.prototype-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ($spacing-unit * 0.5) ($spacing-unit * 2);
+  border-bottom: 1px solid $color-border;
+  padding: ($spacing-unit * 0.5) ($spacing-unit * 2);
+  background: color.scale($color-warning, $lightness: 92%);
+  font-size: $font-size-small;
+}
+
+.prototype-nav__label {
+  color: $color-warning;
+  font-weight: 700;
+}
+
+// the banner on every mock-up page (with Bootstrap's .alert.alert-warning)
+.prototype-banner {
+  margin-bottom: $spacing-unit * 2;
+}
+
+// "Where this fits", at the bottom of a mock-up page
+.prototype-footer {
+  margin-top: $spacing-unit * 5;
+  border-top: 1px solid $color-border;
+  font-size: $font-size-small;
+
+  h2 {
+    font-size: 1.1rem;
+  }
+}
+
+@mixin pill($color) {
+  background: color.scale($color, $lightness: 85%);
+  color: $color;
+}
+
+.badge--available,
+.badge--exists {
+  @include pill($color-success);
+}
+
+.badge--prototype,
+.badge--partial {
+  @include pill($color-warning);
+}
+
+.badge--gap {
+  @include pill($color-danger);
+}
+
+.badge--official,
+.badge--fictional {
+  @include pill($color-info);
+}
+
+// --- the landing page ----------------------------------------------------------------------------
+
+.landing-hero {
+  max-width: 70ch;
+  margin-bottom: $spacing-unit * 3;
+}
+
+.role-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.role-card__line {
+  color: $color-text;
+}
+
+// the last line sits at the bottom, whatever the length of the text above it (two classes, to
+// win over `.card p`)
+.role-card .role-card__meta {
+  margin-top: auto;
+  padding-top: $spacing-unit;
+}
+
+.how-it-works {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $spacing-unit * 2;
+  padding: 0;
+  list-style: none;
+  counter-reset: how;
+
+  li {
+    border-top: 3px solid $color-primary;
+    padding-top: $spacing-unit;
+    counter-increment: how;
+  }
+
+  strong::before {
+    content: counter(how) ". ";
+  }
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: $spacing-unit * 2;
+  padding: 0;
+  list-style: none;
+}
+
+.stat-tile {
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: $spacing-unit * 2;
+  background: $color-surface;
+}
+
+.stat-tile__value {
+  display: block;
+  color: $color-primary;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.stat-tile__label {
+  color: $color-text-muted;
+  font-size: $font-size-small;
+}
+
+// --- a journey -----------------------------------------------------------------------------------
+
+.journey-steps {
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.journey-step {
+  position: relative;
+  margin-bottom: $spacing-unit * 2;
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: ($spacing-unit * 2) ($spacing-unit * 2) ($spacing-unit * 2) ($spacing-unit * 8);
+  counter-increment: step;
+
+  // the step's number
+  &::before {
+    content: counter(step);
+    position: absolute;
+    top: $spacing-unit * 2;
+    left: $spacing-unit * 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: $spacing-unit * 4;
+    height: $spacing-unit * 4;
+    border-radius: 50%;
+    background: $color-primary;
+    color: #fff;
+    font-weight: 700;
+  }
+}
+
+// a step that leads to a mock-up: a dashed frame, next to its "Prototype" badge
+.journey-step--prototype {
+  border-style: dashed;
+
+  &::before {
+    background: $color-warning;
+  }
+}
+
+.journey-step__title {
+  margin: 0 0 $spacing-unit;
+  font-size: 1.1rem;
+}
+
+.journey-step__missing {
+  margin-bottom: 0;
+  font-size: $font-size-small;
+}
+
+.role-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-unit ($spacing-unit * 2);
+  padding: 0;
+  list-style: none;
+}
+
+// --- parts the mock-up pages share -----------------------------------------------------------------
+
+// a small label: a platform a concept is available on, a theme to filter by
+.chip {
+  display: inline-block;
+  margin: 0 ($spacing-unit * 0.5) ($spacing-unit * 0.5) 0;
+  border: 1px solid $color-border;
+  border-radius: 999px;
+  padding: 0 $spacing-unit;
+  background: $color-surface;
+  color: $color-text;
+  font-size: $font-size-small;
+}
+
+.chip--on {
+  border-color: transparent;
+
+  @include pill($color-success);
+}
+
+.chip--off {
+  color: $color-text-muted;
+}
+
+// the chosen filter
+a.chip--active,
+.chip--active {
+  border-color: $color-primary;
+  background: $color-primary;
+  color: #fff;
+}
+
+// panels side by side, one below the other on a narrow screen
+.proto-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: $spacing-unit * 2;
+  margin-bottom: $spacing-unit * 2;
+}
+
+.proto-panel {
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: $spacing-unit * 2;
+  background: $color-surface;
+
+  > :first-child {
+    margin-top: 0;
+  }
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+}
+
+// filters and buttons in a row that wraps
+.proto-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: $spacing-unit ($spacing-unit * 2);
+  margin-bottom: $spacing-unit * 2;
+}
+
+// a wide table scrolls sideways in its own box, the page never does
+.table-scroll {
+  overflow-x: auto;
+}
+
+// concepts by platforms
+.matrix {
+  th[scope="col"],
+  td {
+    text-align: center;
+  }
+
+  th[scope="row"] {
+    font-weight: 400;
+    text-align: left;
+  }
+}
+
+.matrix__yes {
+  color: $color-success;
+  font-weight: 700;
+}
+
+.matrix__no {
+  color: $color-text-muted;
+}
+
+// a changelog: newest first, along a line
+.timeline {
+  margin-left: $spacing-unit;
+  border-left: 3px solid $color-border;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline__entry {
+  position: relative;
+  padding: 0 0 ($spacing-unit * 3) ($spacing-unit * 3);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: -9px;
+    width: 15px;
+    height: 15px;
+    border: 3px solid $color-bg;
+    border-radius: 50%;
+    background: $color-primary;
+  }
+}
+
+.timeline__date {
+  margin: 0 0 $spacing-unit;
+  font-size: 1.1rem;
+}
+
+// JSON, CSV, a command: as typed, scrolling sideways in its own box
+.code-sample {
+  overflow-x: auto;
+  margin: 0 0 $spacing-unit;
+  border: 1px solid $color-border;
+  border-radius: $radius-base;
+  padding: $spacing-unit;
+  background: $color-surface;
+  color: $color-text;
+  font-family: $font-family-mono;
+  font-size: $font-size-small;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.endpoint {
+  margin-top: $spacing-unit * 3;
+  border-top: 1px solid $color-border;
+  padding-top: $spacing-unit;
+}
+
+.endpoint__method {
+  color: $color-success;
+  font-family: $font-family-mono;
+  font-weight: 700;
+}
+
+.cite-box {
+  margin-bottom: $spacing-unit;
+  border-left: 4px solid $color-primary;
+  padding: $spacing-unit ($spacing-unit * 2);
+  background: $color-surface;
+  color: $color-text;
+}
+
+// questions that open to show their answer (native <details>)
+.quiz {
+  details {
+    margin-bottom: $spacing-unit;
+    border: 1px solid $color-border;
+    border-radius: $radius-base;
+    padding: $spacing-unit ($spacing-unit * 2);
+  }
+
+  summary {
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  details p {
+    margin: $spacing-unit 0 0;
+  }
+}
+
+// a button that copies its data-copy value (static/js/journeys.js) and says so for a moment
+.copy-button.is-copied::after {
+  content: " (copied)";
+}
