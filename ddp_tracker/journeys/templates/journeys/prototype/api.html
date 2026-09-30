@@ -1,0 +1,109 @@
+{% extends "journeys/prototype/base.html" %}
+{% block mockup %}
+  <p>
+    A read-only API would let a script, another tool or a language model read what the tracker
+    knows. No account is needed to read, and every answer is JSON. django-ninja is already a
+    dependency of the tracker and would also generate the interactive documentation (OpenAPI).
+  </p>
+  <p>
+    Base address: <code class="text-break">{{ base }}</code>
+    <span class="badge badge--fictional">fictional</span>
+  </p>
+  <nav aria-labelledby="api-contents">
+    <h2 id="api-contents" class="h6">On this page</h2>
+    <ul>
+      <li>
+        <a href="#endpoints">Endpoints</a>
+        <ul>
+          {% for endpoint in endpoints %}
+            <li>
+              <a href="#{{ endpoint.anchor }}">{{ endpoint.method }} {{ endpoint.path }}</a>
+            </li>
+          {% endfor %}
+        </ul>
+      </li>
+      <li>
+        <a href="#exports">Exports</a>
+      </li>
+      <li>
+        <a href="#llm">For language models</a>
+      </li>
+      <li>
+        <a href="#licence">Licence</a>
+      </li>
+    </ul>
+  </nav>
+  <h2 id="endpoints">Endpoints</h2>
+  <p class="muted">
+    The requests and answers below are examples: the answers are shortened, and the figures in
+    them are made up.
+  </p>
+  {% for endpoint in endpoints %}
+    <section class="endpoint" id="{{ endpoint.anchor }}">
+      <h3>
+        <span class="endpoint__method">{{ endpoint.method }}</span> <code class="text-break">{{ endpoint.path }}</code>
+      </h3>
+      <p>{{ endpoint.summary }}</p>
+      <h4 class="h6">Request</h4>
+      <pre class="code-sample">{{ endpoint.request }}</pre>
+      <h4 class="h6">Response</h4>
+      <pre class="code-sample">{{ endpoint.response }}</pre>
+    </section>
+  {% endfor %}
+  <h2 id="exports">Exports</h2>
+  <p>A platform's knowledge as a file, in a form other tools already read.</p>
+  <div class="table-scroll">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Address</th>
+          <th scope="col">For</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for export in exports %}
+          <tr>
+            <td>{{ export.name }}</td>
+            <td class="text-break">
+              <code>{{ base }}{{ export.path }}</code>
+            </td>
+            <td class="text-break">{{ export.for_whom }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    The <a href="{% url 'journeys:shortlist' %}">study shortlist</a> already offers the codebook
+    and the DDM File Blueprints for the concepts you pick, as a mock-up.
+  </p>
+  <h2 id="llm">For language models</h2>
+  <p>
+    An <code>llms.txt</code> file is a short page in plain text, at a site's root, that tells a
+    language model what the site holds and where to find it. The tracker's could read:
+  </p>
+  <pre class="code-sample">{{ llms_txt }}</pre>
+  <p>An MCP server over the API would offer these tools:</p>
+  <dl>
+    {% for name, description in mcp_tools %}
+      <dt>
+        <code>{{ name }}</code>
+      </dt>
+      <dd>
+        {{ description }}
+      </dd>
+    {% endfor %}
+  </dl>
+  <p>
+    With these, an assistant can answer a question such as "which platform tells me what people
+    searched for?" from the tracker's own data, instead of guessing from what it once read.
+  </p>
+  <h2 id="snapshots">Snapshots</h2>
+  <p>
+    To cite the knowledge as it was on a given day, a study would use a fixed snapshot rather than
+    the live API: see <a href="{% url 'journeys:snapshots' %}">dated snapshots to cite</a>.
+  </p>
+  <h2 id="licence">Licence</h2>
+  <p>{{ licence }}</p>
+{% endblock %}

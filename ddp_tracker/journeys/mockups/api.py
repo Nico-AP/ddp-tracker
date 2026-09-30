@@ -207,8 +207,17 @@ LICENCE = (
     "others reuse and cite it. This is an open question for the track."
 )
 
-# --- view (placeholder; task 3.5 replaces it) -----------------------------------------------
+# --- view ------------------------------------------------------------------------------------
 
 
 def api_overview(request: HttpRequest) -> HttpResponse:
-    return render_mockup(request, "api", "journeys/prototype/placeholder.html")
+    """M6: what a read-only API could offer."""
+    context = {
+        "base": BASE,
+        "endpoints": ENDPOINTS,
+        "exports": EXPORTS,
+        "llms_txt": LLMS_TXT,
+        "mcp_tools": MCP_TOOLS,
+        "licence": LICENCE,
+    }
+    return render_mockup(request, "api", "journeys/prototype/api.html", context)
