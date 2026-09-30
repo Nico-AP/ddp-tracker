@@ -24,7 +24,9 @@ so paths hold no personal data and match across uploads. Its heuristics can't re
 username among field names; for those, staff add a **path rule** to the platform in the admin
 (`PathRule`, `ddps/rules.py`): a *variable key* pattern such as
 `/user_data_tiktok.json/Direct Message/Direct Messages/ChatHistory/Chat History with *`, or a
-*keep key* pattern for a key the heuristics would rename wrongly.
+*keep key* pattern for a key the heuristics would rename wrongly. Media file names need no rule:
+they are always replaced, one `{*}.jpg`-like node per extension and folder
+([§3.7](../ddp_parser/index.md#37-media-file-names)).
 
 Rules apply to every upload parsed afterwards. Saving a rule also **re-normalizes** the
 platform's stored uploads in the background (`schemas/renormalize.py`; by hand:
