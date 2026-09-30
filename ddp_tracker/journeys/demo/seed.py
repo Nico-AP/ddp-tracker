@@ -2,8 +2,8 @@
 through the same code as the site uses (the parse task, the plausibility checks, the curating
 services), so the demo is what real uploads and real curation would give.
 
-Everything is looked up before it is created: seeding twice creates nothing twice, and what a
-person changed in between stays as it is.
+Everything is looked up before it is created: seeding twice creates nothing twice. What a
+person edited in between stays as it is; what a person deleted is made again.
 """
 
 import uuid
@@ -243,10 +243,10 @@ def reset() -> Counter[str]:
     removed: Counter[str] = Counter()
     users = User.objects.filter(email__in=(ADMIN_EMAIL, CURATOR_EMAIL))
     removed["suggestions"] = _delete(Proposal.objects.filter(proposed_by__in=users))
+    removed["representations"] = _delete(Representation.objects.filter(updated_by__in=users))
     removed["suggested terms"] = _delete(
         ActivityType.objects.filter(created_by__in=users, representations__isnull=True)
     )
-    removed["representations"] = _delete(Representation.objects.filter(updated_by__in=users))
     removed["annotations"] = _delete(Annotation.objects.filter(updated_by__in=users))
     removed["uploads"] = _delete(Upload.objects.filter(uploaded_by__in=users))
     for slug, _ in PLATFORMS:

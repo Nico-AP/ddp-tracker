@@ -51,5 +51,10 @@ class Command(BaseCommand):
             )
 
     def _report(self, verb: str, counts: Counter[str]) -> None:
-        found = [f"{count} {kind}" for kind, count in counts.items() if count]
+        # every kind is a plural ending in "s": one of a kind drops it ("1 suggestion")
+        found = [
+            f"{count} {kind.removesuffix('s') if count == 1 else kind}"
+            for kind, count in counts.items()
+            if count
+        ]
         self.stdout.write(f"{verb}: {', '.join(found)}." if found else f"{verb}: nothing.")

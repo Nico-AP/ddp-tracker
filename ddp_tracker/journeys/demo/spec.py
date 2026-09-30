@@ -179,7 +179,7 @@ ANNOTATIONS: tuple[AnnotationSpec, ...] = (
         "tiktok",
         "Likes received",
         (f"{T}/Profile And Settings/Profile Info/ProfileMap/likesReceived",),
-        "How many likes the user's own videos received in total?",
+        "How many likes the user's own videos received in total.",
         note="Last seen in the package requested in March 2026.",
     ),
     # Instagram

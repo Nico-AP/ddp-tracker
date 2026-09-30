@@ -1,6 +1,9 @@
 """``manage.py seed_demo``: an empty database becomes a demo, through the site's own code."""
 
+import tempfile
 from datetime import date
+from pathlib import Path
+from unittest import mock
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -19,6 +22,7 @@ from ddp_tracker.journeys.demo.spec import (
     EXAMPLES,
     REPRESENTATIONS,
     SUGGESTION_PATH,
+    ExampleSpec,
 )
 from ddp_tracker.journeys.tests.utils import SeededTestCase, seed_demo
 from ddp_tracker.proposals.models import Proposal
@@ -153,8 +157,21 @@ class SeedDemoCommandTests(TestCase):
     def test_says_what_it_created_and_how_to_log_in(self):
         output = seed_demo()  # the helper also checks that no package file is left behind
         self.assertIn("Created: 2 users, 4 platforms, 5 uploads, 28 annotations", output)
+        self.assertIn("1 suggested term, 1 suggestion.", output)  # one of a kind: singular
         self.assertIn(ADMIN_EMAIL, output)
         self.assertIn("Password", output)
+
+    def test_a_path_that_does_not_exist_stops_it_and_changes_nothing(self):
+        wrong = (ExampleSpec("tiktok", "/no/such/path", ("x",)),)
+        with (
+            mock.patch("ddp_tracker.journeys.demo.seed.EXAMPLES", wrong),
+            tempfile.TemporaryDirectory() as incoming,
+            override_settings(DDP_INCOMING_DIR=incoming),
+        ):
+            with self.assertRaisesMessage(CommandError, "/no/such/path"):
+                call_command("seed_demo", force=True)
+            self.assertEqual(list(Path(incoming).iterdir()), [])  # no package file kept
+        self.assertFalse(Platform.objects.exists())  # all of it rolled back
 
     def test_running_it_again_creates_nothing(self):
         seed_demo()
