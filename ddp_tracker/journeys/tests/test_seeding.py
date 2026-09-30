@@ -26,7 +26,8 @@ class SeedingPageTests(TestCase):
             self.assertEqual(response.context["source"], "docs")
             self.assertContains(response, "Documented but not observed")
             self.assertContains(response, "Observed but not documented")
-            self.assertContains(response, 'aria-current="page"', count=1)
+            # the chosen tab, and the last item of the breadcrumb trail
+            self.assertContains(response, 'aria-current="page"', count=2)
         self.assertEqual(
             response.context["doc_summary"],
             [

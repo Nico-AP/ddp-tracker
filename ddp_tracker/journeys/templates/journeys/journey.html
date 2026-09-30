@@ -1,9 +1,17 @@
 {% extends "base.html" %}
 {% block title %}{{ role.name }} · DDP Tracker{% endblock %}
 {% block content %}
-  <p class="breadcrumbs">
-    <a href="{% url 'journeys:index' %}">Home</a> / journeys / {{ role.name }}
-  </p>
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{% url 'journeys:index' %}">Home</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'journeys:index' %}#roles">Journeys</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">{{ role.name }}</li>
+    </ol>
+  </nav>
   <h1>{{ role.name }}</h1>
   <dl class="facts">
     <dt>Aim</dt>

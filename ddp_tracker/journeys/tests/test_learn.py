@@ -40,7 +40,7 @@ class LearnWithoutDataTests(TestCase):
     def test_it_explains_the_package_in_plain_words(self) -> None:
         content = text(self.client.get(page("facebook")).content)
         self.assertIn("When you ask Facebook for your data, you get a package", content)
-        self.assertIn("Click a question to see its answer", content)
+        self.assertIn("Open a question to see its answer", content)
 
     def test_the_summary_leaves_out_the_repeated_name(self) -> None:
         summaries = [category.summary for category in CATEGORIES["tiktok"]]

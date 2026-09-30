@@ -26,7 +26,7 @@
         {% for snapshot in snapshots %}
           <tr>
             <td>{{ snapshot.version }}</td>
-            <td>{{ snapshot.released|date:"j F Y" }}</td>
+            <td class="text-nowrap">{{ snapshot.released|date:"j F Y" }}</td>
             <td>{{ snapshot.platforms }}</td>
             <td>{{ snapshot.data_points }}</td>
             <td>{{ snapshot.annotations }}</td>

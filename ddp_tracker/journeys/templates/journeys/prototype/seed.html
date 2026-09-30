@@ -1,4 +1,9 @@
 {% extends "journeys/prototype/base.html" %}
+{% block crumb_parent %}
+  <li class="breadcrumb-item">
+    <a href="{% url 'journeys:moderate' %}">Moderator dashboard</a>
+  </li>
+{% endblock %}
 {% block mockup %}
   <p>
     Writing every annotation by hand is slow. Three sources can give a first version: the platform's
@@ -39,7 +44,7 @@
         <tbody>
           {% for entry in doc_entries %}
             <tr>
-              <td>
+              <td class="text-break">
                 {% if entry.documented %}
                   <span class="badge badge--official ms-0">Official</span>
                   <strong>{{ entry.documented }}</strong>
@@ -113,7 +118,7 @@
               <td class="text-break">
                 <code>{{ row.right }}</code>
               </td>
-              <td>{{ row.evidence }}</td>
+              <td class="text-break">{{ row.evidence }}</td>
               <td>
                 {% if row.annotation %}
                   <form method="post" action="{% url 'journeys:seed' %}" class="inline-form">
@@ -153,7 +158,7 @@
                 <code>{{ suggestion.path }}</code>
               </td>
               <td>{{ suggestion.label }}</td>
-              <td>{{ suggestion.why }}</td>
+              <td class="text-break">{{ suggestion.why }}</td>
               <td>{{ suggestion.confidence }}</td>
               <td>
                 <span class="badge badge--prototype ms-0">Needs a human check</span>

@@ -1,5 +1,11 @@
 {% extends "journeys/prototype/base.html" %}
 {% block heading %}{{ concept.name }}{% endblock %}
+{% block crumb_parent %}
+  <li class="breadcrumb-item">
+    <a href="{% url 'journeys:concepts' %}">Concepts</a>
+  </li>
+{% endblock %}
+{% block crumb %}{{ concept.name }}{% endblock %}
 {% block mockup %}
   <div class="proto-toolbar">
     <form method="post"
@@ -98,7 +104,7 @@
                   </td>
                   <td>
                     {% if entry.profile.first_seen %}
-                      {{ entry.profile.first_seen|date:"Y-m-d" }} to {{ entry.profile.last_seen|date:"Y-m-d" }}
+                      <span class="text-nowrap">{{ entry.profile.first_seen|date:"Y-m-d" }}</span> to <span class="text-nowrap">{{ entry.profile.last_seen|date:"Y-m-d" }}</span>
                     {% else %}
                       not seen yet
                     {% endif %}
@@ -154,7 +160,7 @@
                 <tbody>
                   {% for title, value in entry.examples %}
                     <tr>
-                      <td class="text-break">{{ title }}</td>
+                      <td>{{ title }}</td>
                       <td class="text-break">{{ value }}</td>
                     </tr>
                   {% endfor %}

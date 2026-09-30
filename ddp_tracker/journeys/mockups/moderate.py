@@ -19,10 +19,7 @@ from ddp_tracker.schemas.models import ITEM
 # the platforms "you" moderate (a role for one or more platforms does not exist yet)
 ASSIGNED: tuple[str, ...] = ("tiktok", "instagram")
 
-HUB_NOTE = (
-    "Each platform has a hub: a group that looks after it and appoints its moderators. "
-    "The TikTok hub and the Instagram hub in this mock-up are made up."
-)
+HUB_NOTE = "Each platform has a hub: a group that looks after it and appoints its moderators."
 
 
 @dataclass(frozen=True)

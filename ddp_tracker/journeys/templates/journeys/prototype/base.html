@@ -2,9 +2,19 @@
 {% block title %}{{ mockup.title }} · Prototype · DDP Tracker{% endblock %}
 {% block content %}
   {% include "journeys/_prototype_banner.html" %}
-  <p class="breadcrumbs">
-    <a href="{% url 'journeys:index' %}">Home</a> / prototype / {{ mockup.title }}
-  </p>
+  {# the last item repeats the page's own heading: override "crumb" with "heading" #}
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{% url 'journeys:index' %}">Home</a>
+      </li>
+      <li class="breadcrumb-item">Prototype previews</li>
+      {% block crumb_parent %}{% endblock %}
+      <li class="breadcrumb-item active" aria-current="page">
+        {% block crumb %}{{ mockup.title }}{% endblock %}
+      </li>
+    </ol>
+  </nav>
   <h1>{% block heading %}{{ mockup.title }}{% endblock %}</h1>
   <p class="lead">{{ mockup.lead }}</p>
   {% block mockup %}{% endblock %}

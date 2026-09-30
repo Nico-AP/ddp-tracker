@@ -42,7 +42,8 @@ class InstructionsWithoutDataTests(TestCase):
         self.assertContains(response, "Request the same package twice")  # the pair hint
         for slug in INSTRUCTIONS:
             self.assertContains(response, page(slug))
-        self.assertContains(response, 'aria-current="page"', count=1)
+        # the chosen tab, and the last item of the breadcrumb trail
+        self.assertContains(response, 'aria-current="page"', count=2)
 
     def test_it_says_what_the_upload_form_cannot_record(self) -> None:
         content = text(self.client.get(page("tiktok")).content)

@@ -1,5 +1,6 @@
 {% extends "journeys/prototype/base.html" %}
 {% block heading %}What {{ platform_name }} keeps about you{% endblock %}
+{% block crumb %}What {{ platform_name }} keeps about you{% endblock %}
 {% block mockup %}
   {% if categories %}
     <p>
@@ -44,7 +45,7 @@
               <tbody>
                 {% for title, value in explained.examples %}
                   <tr>
-                    <td class="text-break">{{ title }}</td>
+                    <td>{{ title }}</td>
                     <td class="text-break">{{ value }}</td>
                   </tr>
                 {% endfor %}
@@ -61,7 +62,7 @@
     <p class="message message--info">No summary for {{ platform_name }} yet.</p>
   {% endif %}
   <h2 id="exercise">Try it yourself</h2>
-  <p>Click a question to see its answer.</p>
+  <p>Open a question to see its answer.</p>
   <div class="quiz">
     {% for question in quiz %}
       <details>
