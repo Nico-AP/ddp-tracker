@@ -14,7 +14,7 @@
           hx-swap="innerHTML">
     {# one slot for every row, so names line up: a list, a field of a list's items, a value #}
     <span class="review-row__icon"
-          aria-hidden="true">{% if row.is_list %}[ ]{% elif row.depth %}└{% else %}◦{% endif %}</span>
+          aria-hidden="true">{% if row.is_list %}[]{% elif row.depth %}└{% else %}◦{% endif %}</span>
     {{ row.name }}
   </button>
   <span class="review-row__type">{{ row.type_badge }}</span>

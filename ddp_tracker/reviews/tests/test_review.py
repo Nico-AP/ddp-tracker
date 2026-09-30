@@ -145,7 +145,7 @@ class ReviewStatusTests(TestCase):
         self.assertContains(page, "review-row--depth-1")  # the fields, below their list
         # one slot for every row's icon: [ ] a list, └ a field of its items, ◦ a value
         self.assertContains(
-            page, '<span class="review-row__icon" aria-hidden="true">[ ]</span>', html=True
+            page, '<span class="review-row__icon" aria-hidden="true">[]</span>', html=True
         )
         self.assertContains(
             page, '<span class="review-row__icon" aria-hidden="true">└</span>', html=True

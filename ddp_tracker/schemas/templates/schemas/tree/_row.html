@@ -10,7 +10,7 @@
           hx-get="{% url 'schemas:location' platform.slug %}?path={{ row.location.path|urlencode }}&{{ filter.query }}"
           hx-target="#node-detail"
           hx-swap="innerHTML">
-    <span class="review-row__icon" aria-hidden="true">{% if row.muted %}{% if row.observation.kind == "data" %}◦{% else %}▫{% endif %}{% elif row.is_list %}[ ]{% elif row.depth %}└{% else %}◦{% endif %}</span>{{ row.name }}
+    <span class="review-row__icon" aria-hidden="true">{% if row.muted %}{% if row.observation.kind == "data" %}◦{% else %}▫{% endif %}{% elif row.is_list %}[]{% elif row.depth %}└{% else %}◦{% endif %}</span>{{ row.name }}
   </button>
   <span class="review-row__type">{% if row.muted %}{{ row.observation.kind }}{% else %}{{ row.type_badge }}{% endif %}</span>
   <span class="review-row__summary">
