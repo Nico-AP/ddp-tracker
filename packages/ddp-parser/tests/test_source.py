@@ -1,10 +1,11 @@
 import hashlib
 import io
+import mimetypes
 import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from unittest import TestCase
+from unittest import TestCase, mock
 
 from ddp_parser.errors import LimitExceededError
 from ddp_parser.model import MimeSource, ParseWarning
@@ -217,6 +218,17 @@ class MimeTests(TestCase):
             detect_mime("posts.json", b"{}"), ("application/json", MimeSource.EXTENSION)
         )
         self.assertEqual(detect_mime("README", b"hello"), (None, None))
+
+    def test_the_extension_table_is_the_same_on_every_machine(self):
+        # the system's own table can say otherwise: with Excel installed, the Windows registry
+        # calls a .csv file "application/vnd.ms-excel"
+        system = mock.patch.object(
+            mimetypes, "guess_type", return_value=("application/vnd.ms-excel", None)
+        )
+        with system:
+            self.assertEqual(
+                detect_mime("posts.csv", b"a,b\n1,2\n"), ("text/csv", MimeSource.EXTENSION)
+            )
 
     def test_media_and_zip(self):
         self.assertTrue(is_media("video/mp4"))
