@@ -53,6 +53,12 @@ class ConventionsTests(SimpleTestCase):
             with self.subTest(template=name):
                 self.assertNotIn(".email", text)
 
+    def test_no_fictional_labels(self):
+        # the prototype banner says once per page that the data is fictional
+        for name, text in templates():
+            with self.subTest(template=name):
+                self.assertNotIn("badge--fictional", text)
+
     def test_no_em_dash(self):
         for path in [*TEMPLATES, *SOURCES]:
             with self.subTest(file=path.name):

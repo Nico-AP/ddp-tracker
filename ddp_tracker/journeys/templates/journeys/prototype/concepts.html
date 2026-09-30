@@ -40,7 +40,6 @@
          href="?field={{ field.slug }}&amp;theme={{ option.slug }}&amp;platform={{ platform }}&amp;sort={{ sort }}"
          {% if option == theme %}aria-current="true"{% endif %}>{{ option.name }}</a>
     {% endfor %}
-    <span class="badge badge--fictional">fictional</span>
   </p>
   <p class="muted">
     The demo data is in English only, so there is no language filter. Looking for every path and
@@ -82,10 +81,7 @@
             {% for option in card.themes %}<span class="chip">{{ option.name }}</span>{% endfor %}
           </p>
         {% endif %}
-        <p class="card__hint">
-          On {{ card.concept.studies }} studies' shortlists
-          <span class="badge badge--fictional">fictional</span>
-        </p>
+        <p class="card__hint">On {{ card.concept.studies }} studies' shortlists</p>
         {% if card.availability.first_seen %}
           <p class="card__hint">
             First seen {{ card.availability.first_seen|date:"Y-m-d" }}, last seen

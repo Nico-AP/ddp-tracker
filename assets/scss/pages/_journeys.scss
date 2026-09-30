@@ -69,8 +69,7 @@
   @include pill($color-danger);
 }
 
-.badge--official,
-.badge--fictional {
+.badge--official {
   @include pill($color-info);
 }
 

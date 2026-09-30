@@ -20,11 +20,8 @@
   <p>
     <span class="chip">{{ concept.meaning_label }}</span>
     On {{ concept.studies }} studies' shortlists
-    <span class="badge badge--fictional">fictional</span>
   </p>
-  <p>
-    Themes by research field <span class="badge badge--fictional">fictional</span>
-  </p>
+  <p>Themes by research field</p>
   <ul>
     {% for field_name, names in themes %}
       {% if names %}
@@ -65,7 +62,6 @@
         <p>
           <span class="badge badge--official ms-0">Official documentation</span>
           {{ view.binding.official }}
-          <span class="badge badge--fictional">fictional</span>
         </p>
       {% endif %}
       <p>
@@ -146,9 +142,7 @@
           </div>
           <h3 class="h6">Examples</h3>
           {% if entry.examples %}
-            <p class="muted">
-              Fictional values, typed by a curator. <span class="badge badge--fictional">fictional</span>
-            </p>
+            <p class="muted">Values typed by a curator.</p>
             <div class="table-scroll">
               <table class="table table-sm">
                 <thead>
@@ -179,9 +173,6 @@
   {% endfor %}
   <h2>This concept in other languages</h2>
   {% if concept.translations %}
-    <p>
-      <span class="badge badge--fictional ms-0">fictional</span>
-    </p>
     <div class="table-scroll">
       <table class="table table-sm">
         <thead>

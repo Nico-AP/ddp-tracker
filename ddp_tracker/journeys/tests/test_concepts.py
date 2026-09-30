@@ -158,13 +158,8 @@ class ConceptListTests(SeededTestCase):
         self.assertContains(
             response, f'<a href="{explorer}">full structure in the explorer</a>', html=True
         )
-        # one for the themes, one per card (the studies' shortlists)
-        self.assertContains(
-            response,
-            '<span class="badge badge--fictional">fictional</span>',
-            count=len(CONCEPTS) + 1,
-            html=True,
-        )
+        # the banner says once that the data is fictional: no label next to things
+        self.assertNotContains(response, "badge--fictional")
 
 
 def detail(slug: str) -> str:

@@ -143,13 +143,19 @@
     {% endif %}
     <h2>Preview</h2>
     <h3 class="h6">Codebook (CSV)</h3>
-    <pre class="code-sample">{{ codebook }}</pre>
+    <details class="mb-3">
+      <summary>Preview the codebook (CSV)</summary>
+      <pre class="code-sample">{{ codebook }}</pre>
+    </details>
     <h3 class="h6">DDM File Blueprints (JSON)</h3>
     <p class="muted">
       Illustrative: it follows the fields of a File Blueprint, not the import format of the Data
       Donation Module.
     </p>
-    <pre class="code-sample">{{ blueprint }}</pre>
+    <details class="mb-3">
+      <summary>Preview the DDM File Blueprints (JSON)</summary>
+      <pre class="code-sample">{{ blueprint }}</pre>
+    </details>
     {% if not is_shared %}
       <form method="post" action="{% url 'journeys:shortlist-clear' %}">
         {% csrf_token %}

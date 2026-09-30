@@ -5,6 +5,7 @@ import codecs
 import csv
 import io
 import json
+import re
 from typing import Any
 
 from django.test import SimpleTestCase, TestCase
@@ -248,6 +249,21 @@ class ShortlistWithDataTests(SeededTestCase):
         self.assertContains(
             response, "&quot;expected_file&quot;: &quot;user_data_tiktok.json&quot;"
         )
+
+    def test_the_previews_are_folded_away(self) -> None:
+        response = self.client.get(PAGE + SHARED)
+        content = response.content.decode()
+        tags = re.findall(r"<details\b[^>]*>", content)
+        self.assertEqual(len(tags), 2)
+        for tag in tags:
+            self.assertNotIn("open", tag)  # closed until the reader opens it
+        self.assertContains(response, "<summary>Preview the codebook (CSV)</summary>", html=True)
+        self.assertContains(
+            response, "<summary>Preview the DDM File Blueprints (JSON)</summary>", html=True
+        )
+        # the download buttons stay outside the folded part
+        downloads = content.index("Download the codebook (CSV)")
+        self.assertLess(downloads, content.index("<details"))
 
     def test_concept_pages_add_to_the_shortlist(self) -> None:
         for url in (reverse("journeys:concepts"), reverse("journeys:concept", args=["searched"])):
