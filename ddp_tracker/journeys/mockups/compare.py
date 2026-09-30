@@ -5,10 +5,15 @@ fictional, written to look plausible: the page says so, and nobody should quote 
 """
 
 from dataclasses import dataclass
+from operator import attrgetter
+from typing import Any
 
+from django.db.models import Max
 from django.http import HttpRequest, HttpResponse
 
-from ddp_tracker.journeys.mockups import render_mockup
+from ddp_tracker.ddps.models import Platform
+from ddp_tracker.journeys.mockups import DEMO_PLATFORMS, find_platform, render_mockup
+from ddp_tracker.journeys.mockups.concepts import CONCEPTS
 
 
 @dataclass(frozen=True)
@@ -67,8 +72,55 @@ FACTS: tuple[PlatformFacts, ...] = (
     ),
 )
 
-# --- view (placeholder; task 4.1 replaces it) -----------------------------------------------
+# --- view -------------------------------------------------------------------------------------
+
+
+def _figures(platform: Platform) -> dict[str, Any]:
+    """What this tracker holds about a platform (only uploads that count)."""
+    registered = platform.uploads.filter(registered_at__isnull=False)
+    points = platform.locations.filter(
+        observations__is_data_point=True, observations__upload__registered_at__isnull=False
+    )
+    return {
+        "uploads": registered.count(),
+        "data_points": points.distinct().count(),
+        "annotations": platform.annotations.count(),
+        "last_requested": registered.aggregate(last=Max("requested_at"))["last"],
+    }
 
 
 def compare(request: HttpRequest) -> HttpResponse:
-    return render_mockup(request, "compare", "journeys/prototype/placeholder.html")
+    """M4: concepts by platforms, and how people get at their data on each."""
+    concepts = sorted(CONCEPTS, key=attrgetter("name"))
+    matrix = [
+        (concept, [slug in concept.platforms for slug in DEMO_PLATFORMS]) for concept in concepts
+    ]
+    # the matrix's last row: how many concepts each platform discloses, in the columns' order
+    disclosed = [sum(slug in concept.platforms for concept in CONCEPTS) for slug in DEMO_PLATFORMS]
+    panels: list[dict[str, Any]] = []
+    for facts in FACTS:
+        name, platform = find_platform(facts.slug)
+        panels.append(
+            {
+                "facts": facts,
+                "name": name,
+                "platform": platform,
+                "disclosed": sum(facts.slug in concept.platforms for concept in CONCEPTS),
+                "figures": _figures(platform) if platform is not None else None,
+            }
+        )
+    context = {
+        "platforms": DEMO_PLATFORMS,
+        "matrix": matrix,
+        "disclosed": disclosed,
+        "panels": panels,
+        "total": len(CONCEPTS),
+        "has_data": any(panel["platform"] is not None for panel in panels),
+        # platforms in this database without a package that counts yet: their "No" says little
+        "no_package": [
+            panel["name"]
+            for panel in panels
+            if panel["figures"] is not None and panel["figures"]["uploads"] == 0
+        ],
+    }
+    return render_mockup(request, "compare", "journeys/prototype/compare.html", context)
