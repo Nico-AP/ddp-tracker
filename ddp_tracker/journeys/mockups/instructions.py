@@ -7,7 +7,7 @@ from datetime import date
 
 from django.http import HttpRequest, HttpResponse
 
-from ddp_tracker.journeys.mockups import find_platform, render_mockup
+from ddp_tracker.journeys.mockups import DEMO_PLATFORMS, find_platform, render_mockup
 
 
 @dataclass(frozen=True)
@@ -85,10 +85,18 @@ INSTRUCTIONS: dict[str, Instructions] = {
     ),
 }
 
-# --- view (placeholder; task 4.3 replaces it) -----------------------------------------------
+# --- view ------------------------------------------------------------------------------------
 
 
 def request_instructions(request: HttpRequest, slug: str) -> HttpResponse:
+    """M8: how to request a data download package from one platform."""
     name, platform = find_platform(slug)
-    context = {"platform_name": name, "platform": platform}
-    return render_mockup(request, "request", "journeys/prototype/placeholder.html", context)
+    context = {
+        "slug": slug,
+        "platform_name": name,
+        "platform": platform,
+        "instructions": INSTRUCTIONS.get(slug),
+        "pair_hint": PAIR_HINT,
+        "others": DEMO_PLATFORMS,
+    }
+    return render_mockup(request, "request", "journeys/prototype/request.html", context)
