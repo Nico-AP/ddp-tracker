@@ -98,6 +98,7 @@ LOCAL_APPS = [
     "ddp_tracker.annotations",
     "ddp_tracker.representations",
     "ddp_tracker.users",
+    "ddp_tracker.journeys",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
