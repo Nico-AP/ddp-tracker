@@ -97,8 +97,9 @@ class FileKindTests(TestCase):
 
     def test_kinds(self):
         nodes = children(self.root)
-        photo = nodes["photo.jpg"]
+        photo = nodes["x.jpg"]  # media names are masked (spec 3.7)
         assert isinstance(photo, MediaNode)
+        self.assertEqual((photo.path, photo.files), ("/{*}.jpg", 1))
         self.assertEqual((photo.mime, photo.mime_source), ("image/png", "magic"))
         pdf, readme, broken = nodes["notes.pdf"], nodes["README"], nodes["broken.json"]
         assert isinstance(pdf, UnmatchedNode)
@@ -149,9 +150,10 @@ class GroupTests(TestCase):
 
     def test_media_group(self):
         root = parse(make_zip({"IMG_1.jpg": PNG, "IMG_2.jpg": PNG}), name="x.zip").root
-        group = children(root)["IMG_{n}.jpg"]
+        assert isinstance(root, ContainerNode)
+        (group,) = root.children
         assert isinstance(group, MediaNode)
-        self.assertEqual(group.files, 2)
+        self.assertEqual((group.path, group.name, group.files), ("/{*}.jpg", "xsxs.jpg", 2))
 
     def test_collapsed_folders(self):
         members = {

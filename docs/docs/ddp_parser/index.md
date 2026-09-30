@@ -31,7 +31,7 @@ Every node has:
 | `container` | A zip archive (top level or nested)                                                                     | `children` (list of nodes) |
 | `folder`    | A directory inside a container, or collapsed look-alike ones (`folders`, [§3.5](#35-collapsed-folders)) | `children` (list of nodes) |
 | `file`      | A file that was **successfully parsed** (JSON, CSV, …)                                                  | `properties` / `items`     |
-| `media`     | An image / video / audio file (not parsed, metadata only)                                               | –                          |
+| `media`     | An image / video / audio file (not parsed, metadata only; named `{*}.ext`, [§3.7](#37-media-file-names)) | –                          |
 | `unmatched` | Any other file, or a file whose parse failed                                                            | –                          |
 | `data`      | A value inside parsed content: scalar, object or array                                                  | `properties` / `items`     |
 
@@ -62,6 +62,8 @@ schema tree the node sits. It is a string in
 - Variable object keys (see [Variable keys](#36-variable-keys)) appear with
   `{*}` in place of the data they held, e.g. `/WatchLiveMap/{*}` or
   `/ChatHistory/Chat History with {*}`.
+- Media files (see [Media file names](#37-media-file-names)) always appear as
+  `{*}` plus their extension, e.g. `/media/posts/{*}/{*}.jpg`.
 
 Folder entries and object keys need no separate markers: a folder or zip only
 ever contains entries, and a parsed file or object only ever contains keys, so
@@ -347,6 +349,24 @@ that applies decides:
 Single values are never merged by heuristics 3 and 4, and a single key with a
 username needs a rule. The renaming works on a finished tree, so a platform can
 add rules later and apply them to documents stored earlier.
+
+### 3.7 Media file names
+
+Media files are named after their content, the account or a date
+(`johndoe_profile.jpg`, `20240101_123456.mp4`), so their names are **always
+replaced**, with no rule needed: in each folder (or zip), the `media` nodes of one
+extension merge into one node.
+
+- Its path segment is `{*}` plus the lower-cased extension (`{*}.jpg`, or `{*}`
+  for files without one).
+- Its `name` is a mask of the original names, as for folders (`xs0.jpg`; the
+  most common mask wins).
+- `files` counts the merged files (1 for a single file), `size_bytes` is their
+  total and `modified` the newest.
+
+Only `media` nodes are merged; parsed and `unmatched` files keep their names.
+This runs on a finished tree too, so documents stored earlier get the same
+paths.
 
 ---
 

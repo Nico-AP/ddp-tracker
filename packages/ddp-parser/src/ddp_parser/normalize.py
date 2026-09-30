@@ -1,4 +1,4 @@
-"""Variable object keys (spec 3.6): keys that hold data rather than name a field.
+"""Variable object keys (spec 3.6) and media file names (spec 3.7): names that hold data.
 
 Some exports key objects by data: a live stream's ID (``WatchLiveMap/7637478253594217238``), a
 chat partner's username (``ChatHistory/Chat History with johndoe``). Kept as they are, these keys
@@ -15,17 +15,21 @@ This runs on a built tree, so the same code normalizes a fresh parse and, throug
    or objects that look alike → ``Chat History with {*}``;
 4. look-alike values: three or more keys (all that are left) holding lists or objects that look
    alike → ``{*}``.
+
+Media files are named after their content, the account or a date (``johndoe_profile.jpg``), so
+their names are always replaced: a folder's media files of one extension merge into ``{*}.jpg``.
 """
 
 import re
 from collections import Counter
 from dataclasses import dataclass
 from functools import reduce
+from pathlib import PurePosixPath
 
 import msgspec
 
 from ddp_parser.compare import within
-from ddp_parser.merge import merge_data
+from ddp_parser.merge import merge_data, merge_filesystem
 from ddp_parser.model import (
     SPEC_VERSION,
     ContainerNode,
@@ -34,6 +38,7 @@ from ddp_parser.model import (
     FileNode,
     FilesystemNode,
     FolderNode,
+    MediaNode,
     Node,
     ParseWarning,
     Shape,
@@ -242,12 +247,51 @@ class _Normalizer:
     def filesystem(self, node: FilesystemNode) -> FilesystemNode:
         match node:
             case ContainerNode() | FolderNode():
-                children = tuple(self.filesystem(child) for child in node.children)
+                children = self.media(node.path, [self.filesystem(c) for c in node.children])
                 return msgspec.structs.replace(node, children=children)
             case FileNode():
                 return self.value(node, node.path)
             case _:
                 return node
+
+    def media(self, path: str, children: list[FilesystemNode]) -> tuple[FilesystemNode, ...]:
+        """``children`` of the folder at ``path`` with its media files merged per extension into
+        ``{*}.jpg`` and the like (spec 3.7), sorted by name.
+        """
+        groups: dict[str, list[MediaNode]] = {}
+        others: list[FilesystemNode] = []
+        for child in children:
+            if isinstance(child, MediaNode):
+                groups.setdefault(VARIABLE + (child.ext or "").lower(), []).append(child)
+            else:
+                others.append(child)
+        for segment, members in groups.items():
+            renamed = {split(m.path)[-1]: segment for m in members if split(m.path)[-1] != segment}
+            if renamed:
+                self.decisions.setdefault(path, {}).update(renamed)
+            others.append(self.merged_media(join(path, segment), members))
+        return tuple(sorted(others, key=lambda node: node.name or ""))
+
+    def merged_media(self, path: str, members: list[MediaNode]) -> MediaNode:
+        if len(members) == 1 and members[0].path == path:
+            return members[0]
+        threshold = self.options.shape_threshold
+        node: FilesystemNode = members[0]
+        for member in members[1:]:
+            node = merge_filesystem(node, member, threshold)
+        if not isinstance(node, MediaNode):  # pragma: no cover - merging media gives media
+            msg = f"merged media into {node.kind}"
+            raise TypeError(msg)
+        masks: Counter[str] = Counter()
+        for member in members:
+            name = member.name or ""
+            if member.path != path:
+                stem = PurePosixPath(name)
+                name = mask_name(stem.stem) + stem.suffix.lower()
+            masks[name] += member.files or 1
+        name = min(masks, key=lambda mask: (-masks[mask], mask))  # most common, ties by name
+        files = sum(member.files or 1 for member in members)
+        return msgspec.structs.replace(node, name=name, path=path, files=files)
 
     def value[V: Valued](self, node: V, path: str) -> V:
         """``node`` moved to ``path``, its keys (and theirs, and so on) normalized."""

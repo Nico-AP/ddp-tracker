@@ -4,7 +4,17 @@ from unittest import TestCase
 import msgspec
 
 from ddp_parser import Options, normalize, parse, renormalize
-from ddp_parser.model import SPEC_VERSION, ContainerNode, DataNode, FileNode, JsonType, Stats, walk
+from ddp_parser.model import (
+    SPEC_VERSION,
+    ContainerNode,
+    DataNode,
+    FileNode,
+    FolderNode,
+    JsonType,
+    MediaNode,
+    Stats,
+    walk,
+)
 from ddp_parser.normalize import is_variable_key
 from tests.test_pipeline import PNG, make_zip
 
@@ -323,8 +333,67 @@ class RenormalizeTests(TestCase):
         document = parse(make_zip({"export/photo.png": PNG}), name="x.zip")
         root = msgspec.structs.replace(document.root, name="export.zip")
         result = renormalize(msgspec.structs.replace(document, root=root), Options())
-        self.assertEqual(result.renames["/export/photo.png"], "/photo.png")
+        self.assertEqual(result.renames["/export/{*}.png"], "/{*}.png")
 
     def test_a_single_file_is_no_wrapper(self):
         document = parse(make_zip({"export": b"{}"}), name="export.zip")
         self.assertEqual(renormalize(document, Options()).renames, {})
+
+
+class MediaTests(TestCase):
+    """Media file names are always replaced (spec 3.7)."""
+
+    def root(self, members: dict[str, bytes]):
+        return parse(make_zip(members), name="export.zip").root
+
+    def media(self, root) -> dict[str, MediaNode]:
+        return {node.path: node for node in walk(root) if isinstance(node, MediaNode)}
+
+    def test_merged_per_extension(self):
+        mp4 = b"\x00\x00\x00\x18ftypmp42" + b"\0" * 32
+        root = self.root(
+            {"m/johndoe_1.jpg": PNG, "m/anna.jpg": PNG + b"x", "m/clip.mp4": mp4, "m/a.png": PNG}
+        )
+        media = self.media(root)
+        self.assertEqual(set(media), {"/m/{*}.jpg", "/m/{*}.mp4", "/m/{*}.png"})
+        jpg = media["/m/{*}.jpg"]
+        self.assertEqual((jpg.files, jpg.size_bytes), (2, 2 * len(PNG) + 1))
+        self.assertIn(jpg.name, {"x.jpg", "xs0.jpg"})
+        self.assertEqual(media["/m/{*}.mp4"].files, 1)
+
+    def test_groups_and_single_files_merge(self):
+        media = self.media(self.root({"IMG_1.JPG": PNG, "IMG_2.JPG": PNG, "x.jpg": PNG}))
+        self.assertEqual(media["/{*}.jpg"].files, 3)
+
+    def test_in_collapsed_folders_and_nested_zips(self):
+        inner = make_zip({"p.png": PNG})
+        root = self.root(
+            {"inbox/anna_1/photos/a.png": PNG, "inbox/tom_2/photos/b.png": PNG, "in.zip": inner}
+        )
+        self.assertEqual(set(self.media(root)), {"/inbox/{*}/photos/{*}.png", "/in.zip/{*}.png"})
+
+    def test_other_files_keep_their_names(self):
+        root = self.root({"a.json": b"{}", "b.csv": b"a\n1\n", "notes.pdf": b"%PDF-1.4"})
+        self.assertEqual(
+            {node.path for node in walk(root)} - {""},
+            {"/a.json", "/b.csv", "/b.csv/[]", "/b.csv/[]/a", "/notes.pdf"},
+        )
+
+    def test_renames_and_idempotency(self):
+        # a document stored before spec 3.7: its media still under their own names
+        photos = tuple(
+            MediaNode(name=name, path=f"/d/{name}", ext=".png", size_bytes=size)
+            for name, size in (("anna.png", 10), ("tom.png", 5))
+        )
+        root = ContainerNode(
+            name="export.zip",
+            path="",
+            children=(FolderNode(name="d", path="/d", children=photos),),
+        )
+        stored = msgspec.structs.replace(parse(b"{}", name="a.json"), root=root)
+        result = renormalize(stored, Options())
+        self.assertEqual(result.renames, {"/d/anna.png": "/d/{*}.png", "/d/tom.png": "/d/{*}.png"})
+        (merged,) = self.media(result.document.root).values()
+        self.assertEqual((merged.name, merged.files, merged.size_bytes), ("x.png", 2, 15))
+        again = renormalize(result.document, Options())
+        self.assertEqual((again.renames, again.document.root), ({}, result.document.root))

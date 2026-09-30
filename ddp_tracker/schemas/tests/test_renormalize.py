@@ -174,6 +174,23 @@ class RenormalizeTests(TestCase):
         self.assertTrue(self.location("/data.json/a"))
         self.assertFalse(Location.objects.filter(path__startswith="/export-anna").exists())
 
+    def test_media_names_of_a_stored_upload(self):
+        png = b"\x89PNG\r\n\x1a\n" + b"\0" * 32
+        stored = parsed_upload(self.platform, {"media/a.png": png})
+        assert stored.document is not None
+        (media,) = stored.document["root"]["children"][0]["children"]
+        # as stored before media names were anonymized
+        media |= {"name": "photo_johndoe.png", "path": "/media/photo_johndoe.png"}
+        del media["files"]
+        stored.save()
+        register_upload(stored)
+        old = self.location("/media/photo_johndoe.png")
+        old.annotation = Annotation.objects.create(platform=self.platform, name="Photo")
+        old.save()
+        renormalize(self.platform)
+        self.assertEqual(self.location("/media/{*}.png").annotation, old.annotation)
+        self.assertFalse(Location.objects.filter(path__contains="johndoe").exists())
+
 
 class RulesTests(TestCase):
     def setUp(self):

@@ -119,7 +119,7 @@ class MergeTests(TestCase):
         png = b"\x89PNG\r\n\x1a\n" + b"\0" * 32
         members = {"p.jpg": png, "notes.pdf": b"%PDF-1.4"}
         merged = merge([doc(members), doc(members)])
-        self.assertEqual(child(merged.root, "p.jpg").size_bytes, 2 * len(png))
+        self.assertEqual(child(merged.root, "x.jpg").size_bytes, 2 * len(png))
         self.assertEqual(child(merged.root, "notes.pdf").reason, "unsupported_type")
 
     def test_format_counts_accumulate(self):

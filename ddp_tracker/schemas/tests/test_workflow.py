@@ -294,7 +294,7 @@ class ViewTests(TestCase):
         parsed_upload(
             self.platform, {"photos/p.png": b"\x89PNG\r\n\x1a\n" + b"\0" * 32}, register=True
         )
-        self.assertContains(self.client.get(detail, {"path": "/photos/p.png"}), "Add annotation")
+        self.assertContains(self.client.get(detail, {"path": "/photos/{*}.png"}), "Add annotation")
         for path in ["", "/profile", "/profile/profile.json"]:  # root, folder, object file
             with self.subTest(path=path):
                 self.assertNotContains(self.client.get(detail, {"path": path}), "Add annotation")

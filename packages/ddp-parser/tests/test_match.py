@@ -185,7 +185,7 @@ class NodeClassTests(TestCase):
             "/a.json/mixed/[]",  # an item that is a value
             "/a.json/rows/[]/at",  # a field of the items
             "/a.json/rows/[]/user/name",
-            "/d/photo.png",  # media
+            "/d/{*}.png",  # media
             "/list.json",  # a file that is a list
             "/rows.csv",  # a CSV: a list of rows
             "/list.json/[]",
@@ -209,4 +209,4 @@ class NodeClassTests(TestCase):
                 self.assertFalse(is_data_point(nodes[path]))
         self.assertTrue(is_structure(nodes["/a.json/o"]))
         self.assertFalse(is_structure(nodes["/a.json/s"]))
-        self.assertFalse(is_structure(nodes["/d/photo.png"]))  # a file, not parsed content
+        self.assertFalse(is_structure(nodes["/d/{*}.png"]))  # a file, not parsed content

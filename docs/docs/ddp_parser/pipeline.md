@@ -41,7 +41,8 @@ input (path | bytes | IO)
   ▼ 6. BUILD      builder.build() → frozen DataNode (a file's inline fields): count derived
   │               from parent, dominant shape vs threshold / mixed, format / formats /
   │               ambiguity warning, type unions, samples
-  ▼ 7. NORMALIZE  normalize(root): variable object keys → {*}, their nodes merged
+  ▼ 7. NORMALIZE  normalize(root): variable object keys → {*}, their nodes merged;
+  │               media file names → {*}.ext, merged per extension and folder
   │               (rules, key shape, shared words, look-alike values); warning paths renamed
   ▼ 8. ASSEMBLE   Document(spec_version, parser_version, created_at, source, options,
                   warnings, root)  →  to_dict / to_json / from_dict
@@ -82,7 +83,8 @@ packages/ddp-parser/
     errors.py          # LimitExceeded, ParseError, UnsafePath, …
     merge.py           # merge(documents): one tree + presence per path (spec 9.1)
     compare.py         # compare(base, new): added / removed / moved / changed (spec 9.2)
-    normalize.py       # normalize(root, options): variable object keys → {*} (spec 3.6);
+    normalize.py       # normalize(root, options): variable object keys → {*} (spec 3.6),
+                       # media file names → {*}.ext (spec 3.7);
                        # renormalize(document, options): the same, plus wrapper folders, for stored documents
     similarity.py      # look_alike(): shared by folder collapsing and variable keys
     __main__.py        # dev CLI: python -m ddp_parser export.zip > schema.json
