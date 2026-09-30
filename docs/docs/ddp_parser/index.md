@@ -463,7 +463,10 @@ schema fields of their parsed content (as in [§3.1](#31-fields)):
   single top-level folder whose name matches the zip's name without its
   extension (ignoring case and copy suffixes such as ` (1)`, ` 2` or
   ` - Copy`), the folder is dropped and its contents start at the container's
-  root, with a `wrapper_folder` warning. This applies to nested zips too.
+  root, with a `wrapper_folder` warning. The zip's name may be given masked,
+  `x` per letter and `0` per digit (as the DDP Tracker stores it): those then
+  match any letter and digit (`instagram-johndoe-…` matches
+  `instagram-xxxxxxx-…`). This applies to nested zips too.
   A top-level folder named differently (`Takeout/`) stays.
 
 ---

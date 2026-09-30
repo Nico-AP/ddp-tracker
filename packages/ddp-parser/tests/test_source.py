@@ -392,6 +392,18 @@ class UnwrapTests(TestCase):
                 self.assertTrue(same_name(folder, container))
         self.assertFalse(same_name("Takeout", self.ZIP))
 
+    def test_masked_zip_names_match(self):
+        masked = "instagram-xxxxxxxx-0000-00-00-xxxxxxx0.zip"  # as the tracker stores it
+        real = "instagram-nicacapa-2026-09-29-GXtJmmK2"
+        self.assertTrue(same_name(real, masked))
+        self.assertTrue(same_name(real, "instagram-xxxxxxxx-0000-00-00-xxxxxxx0 (0).zip"))
+        self.assertFalse(same_name("instagram-nica", masked))  # lengths differ
+        self.assertFalse(same_name("instagram-nicacap1-2026-09-29-GXtJmmK2", masked))
+        self.assertFalse(same_name("facebook-nicacapa-2026-09-29-GXtJmmK2", masked))
+        unwrapped, dropped = unwrap([entry(real, "ads", "a.json")], masked)
+        self.assertTrue(dropped)
+        self.assertEqual([e.parts for e in unwrapped], [("ads", "a.json")])
+
     def test_other_names_are_kept(self):
         entries = [entry("Takeout", "a.json")]
         self.assertEqual(unwrap(entries, "takeout-20260929.zip"), (entries, False))

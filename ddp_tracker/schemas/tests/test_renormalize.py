@@ -165,7 +165,8 @@ class RenormalizeTests(TestCase):
     def test_wrapper_folder_of_a_stored_upload(self):
         wrapped = parsed_upload(self.platform, {"export-anna/data.json": b'{"a": 1}'})
         assert wrapped.document is not None
-        wrapped.document["root"]["name"] = "export-anna.zip"  # as if uploaded under that name
+        # as if uploaded under the folder's name, which the tracker stores anonymized
+        wrapped.document["root"]["name"] = "export-xxxx.zip"
         wrapped.save()
         register_upload(wrapped)
         self.assertTrue(self.location("/export-anna/data.json/a"))

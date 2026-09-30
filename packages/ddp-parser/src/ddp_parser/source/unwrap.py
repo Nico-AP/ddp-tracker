@@ -5,6 +5,10 @@ original zip: ``instagram-johndoe-2026-09-29-AbCd1234/ads_information/…``. Tha
 username and differs per export, so it would put personal data into every path and keep the
 export from sharing paths with any other. The folder is dropped when it holds everything and its
 name matches the zip's.
+
+The zip's name may be known only masked, ``x`` per letter and ``0`` per digit, as the tracker
+stores it (``instagram-xxxxxxx-0000-00-00-xxxx0000.zip``): its ``x`` and ``0`` then match any letter
+and digit of the folder's name.
 """
 
 import re
@@ -16,13 +20,18 @@ from ddp_parser.source.entry import Entry
 
 # what operating systems and browsers append to a copy: "export (1)", "export 2", "export - Copy"
 _COPY_SUFFIX = re.compile(r"(\s*\(\d+\)|\s+\d+|\s*-?\s*copy(\s*\d+)?)$", re.IGNORECASE)
+_MASKED = {"x": r"[^\W\d_]", "0": r"\d"}  # a masked letter, a masked digit
 
 
 def same_name(folder: str, container: str) -> bool:
     """True if ``folder`` is named like the zip ``container`` (without its extension), ignoring
-    case, Unicode normalisation and copy suffixes.
+    case, Unicode normalisation and copy suffixes; ``x`` and ``0`` in ``container`` match any
+    letter and digit (a masked name).
     """
-    return _key(folder) == _key(PurePosixPath(container).stem)
+    pattern = "".join(
+        _MASKED.get(char, re.escape(char)) for char in _key(PurePosixPath(container).stem)
+    )
+    return re.fullmatch(pattern, _key(folder)) is not None
 
 
 def _key(name: str) -> str:

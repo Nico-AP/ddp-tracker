@@ -38,6 +38,6 @@ class Command(BaseCommand):
                 summary = f"changed {report.uploads} upload(s), moved {report.moved} location(s)"
             self.stdout.write(f"{platform}: {summary}, {len(report.paths)} renamed path(s)")
             for path in sorted(report.paths):
-                self.stdout.write(f"  {path}")
+                self.stdout.write(f"  {path or '/'}")  # "" is the root
             for conflict in report.conflicts:
                 self.stdout.write(self.style.WARNING(f"  conflict: {conflict}"))

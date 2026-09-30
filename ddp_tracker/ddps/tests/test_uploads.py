@@ -86,6 +86,23 @@ class UploadFlowTests(TestCase):
         self.assertEqual(upload.document["source"]["name"], "export_xxxxxxx_00.json")
         self.assertEqual(upload.document["root"]["name"], "export_xxxxxxx_00.json")
 
+    def test_re_zipped_export_loses_its_wrapper_folder(self):
+        """The parser only gets the anonymized name, and still recognises the folder."""
+        top = "instagram-nicacapa-2026-09-29-GXtJmmK2"
+        data = make_zip(
+            {
+                f"{top}/ads_information/in-app_message.json": b'{"a": 1}',
+                f"__MACOSX/{top}/ads_information/._in-app_message.json": b"",
+            }
+        )
+        self.post(data, name=f"{top}.zip")
+        upload = Upload.objects.get()
+        self.assertEqual(upload.file_name, "instagram-xxxxxxxx-0000-00-00-xxxxxxx0.zip")
+        assert upload.document is not None
+        (folder,) = upload.document["root"]["children"]
+        self.assertEqual(folder["path"], "/ads_information")
+        self.assertIn("wrapper_folder", [w["code"] for w in upload.warnings])
+
     def test_unreadable_zip_fails_and_is_deleted(self):
         # passes the form's quick check, fails parsing: the second central directory entry is
         # damaged (since Python 3.14, is_zipfile also checks the first one)
