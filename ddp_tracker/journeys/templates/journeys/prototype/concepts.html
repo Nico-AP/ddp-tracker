@@ -28,7 +28,7 @@
       </select>
     </div>
     {% if theme %}<input type="hidden" name="theme" value="{{ theme.slug }}">{% endif %}
-    <button type="submit" class="btn btn-primary">Show</button>
+    <button type="submit" class="btn btn-primary">Show concepts</button>
   </form>
   <p>
     Themes in {{ field.name }}:
@@ -60,7 +60,7 @@
       <li class="card">
         <a class="card__title"
            href="{% url 'journeys:concept' card.concept.slug %}">{{ card.concept.name }}</a>
-        {% if card.availability.pii %}<span class="badge badge--pii align-self-start">Personal data</span>{% endif %}
+        {% if card.availability.pii %}<span class="badge badge--pii align-self-start ms-0">Personal data</span>{% endif %}
         <p>{{ card.concept.description }}</p>
         <p>
           <code>{{ card.concept.statement }}</code>
@@ -83,7 +83,7 @@
           On {{ card.concept.studies }} studies' shortlists
           <span class="badge badge--fictional">fictional</span>
         </p>
-        {% if card.availability.known %}
+        {% if card.availability.first_seen %}
           <p class="card__hint">
             First seen {{ card.availability.first_seen|date:"Y-m-d" }}, last seen
             {{ card.availability.last_seen|date:"Y-m-d" }}, in

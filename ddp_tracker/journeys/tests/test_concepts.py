@@ -7,6 +7,8 @@ from typing import Any
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
+from ddp_tracker.annotations.models import Annotation
+from ddp_tracker.ddps.models import Platform
 from ddp_tracker.journeys.demo.spec import ANNOTATIONS
 from ddp_tracker.journeys.mockups.concepts import (
     CONCEPTS,
@@ -55,6 +57,22 @@ class ConceptListWithoutDataTests(TestCase):
         self.assertFalse(any(card["availability"].known for card in response.context["cards"]))
         self.assertNotContains(response, "First seen")
 
+    def test_an_annotation_without_uploads_shows_no_dates(self) -> None:
+        # the annotation exists, but no registered upload has it yet: nothing to date
+        platform = Platform.objects.create(name="TikTok", slug="tiktok")
+        Annotation.objects.create(platform=platform, name="Watched video")
+        response = self.client.get(LIST)
+        self.assertTrue(response.context["has_data"])
+        self.assertNotContains(response, "First seen")
+
+    def test_the_filter_button_says_what_it_shows(self) -> None:
+        response = self.client.get(LIST)
+        self.assertContains(
+            response,
+            '<button type="submit" class="btn btn-primary">Show concepts</button>',
+            html=True,
+        )
+
 
 class ConceptListTests(SeededTestCase):
     def test_a_theme_narrows_the_list(self) -> None:
@@ -90,6 +108,14 @@ class ConceptListTests(SeededTestCase):
         self.assertContains(
             response, "?field=health&amp;theme=wellbeing&amp;platform=tiktok&amp;sort=name"
         )
+        # and the selects keep them
+        for option in (
+            '<option value="health" selected>Public health</option>',
+            '<option value="tiktok" selected>TikTok</option>',
+            '<option value="name" selected>Name</option>',
+        ):
+            with self.subTest(option=option):
+                self.assertContains(response, option, html=True)
 
     def test_a_card_says_what_the_uploads_show(self) -> None:
         found = availability(resolve(CONCEPTS_BY_SLUG["watched-video"]))
@@ -127,5 +153,15 @@ class ConceptListTests(SeededTestCase):
         response = self.client.get(LIST)
         self.assertContains(response, "TikTok: not available")  # "Saw an ad" is Instagram only
         self.assertContains(response, reverse("journeys:concept", args=["watched-video"]))
-        self.assertContains(response, reverse("schemas:platforms"))
-        self.assertContains(response, "fictional")
+        # the page's own link and labels: the header and the banner have their own
+        explorer = reverse("schemas:platforms")
+        self.assertContains(
+            response, f'<a href="{explorer}">full structure in the explorer</a>', html=True
+        )
+        # one for the themes, one per card (the studies' shortlists)
+        self.assertContains(
+            response,
+            '<span class="badge badge--fictional">fictional</span>',
+            count=len(CONCEPTS) + 1,
+            html=True,
+        )
