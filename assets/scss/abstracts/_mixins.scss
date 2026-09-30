@@ -10,3 +10,22 @@
     outline-offset: 2px;
   }
 }
+
+// A chevron drawn with two borders of a small square, so it turns around its own center:
+// pointing right when closed, down when open.
+@mixin chevron {
+  content: "";
+  flex-shrink: 0;
+  width: 0.45em;
+  height: 0.45em;
+  margin: 0 0.4em 0 0.15em;
+  border-right: 2px solid $color-text-muted;
+  border-bottom: 2px solid $color-text-muted;
+  transform: rotate(-45deg);
+  transform-origin: center;
+  transition: transform 0.15s;
+}
+
+@mixin chevron-open {
+  transform: rotate(45deg);
+}

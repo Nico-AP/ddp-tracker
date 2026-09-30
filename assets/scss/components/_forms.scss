@@ -38,6 +38,39 @@ a.btn {
   text-decoration: none;
 }
 
+// the upload filters, folded away behind a chevron (open while a filter is active)
+.filter-panel {
+  margin-bottom: $spacing-unit * 2;
+
+  > .filter-bar {
+    margin: $spacing-unit 0 0;
+  }
+}
+
+.filter-panel__toggle {
+  display: inline-flex;
+  align-items: center;
+  color: $color-text-muted;
+  cursor: pointer;
+  list-style: none; // our own chevron
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::before {
+    @include chevron;
+  }
+
+  &:hover {
+    color: $color-text;
+  }
+}
+
+.filter-panel[open] > .filter-panel__toggle::before {
+  @include chevron-open;
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;

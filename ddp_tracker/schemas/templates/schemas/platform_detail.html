@@ -34,22 +34,28 @@
       {% endfor %}
     </ul>
   {% endif %}
-  <form method="get" class="filter-bar">
-    <input type="hidden"
-           name="request_format"
-           value="{{ filter.request_format }}">
-    <input type="hidden" name="root_format" value="{{ filter.root_format }}">
-    {% for field in filter_form.visible_fields %}
-      <fieldset class="filter-bar__field">
-        <legend>{{ field.label }}</legend>
-        {{ field }}
-      </fieldset>
-    {% endfor %}
-    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-    {% if filter.is_active %}
-      <a href="?request_format={{ filter.request_format }}&amp;root_format={{ filter.root_format }}">Reset</a>
-    {% endif %}
-  </form>
+  <details class="filter-panel" {% if filter.is_active %}open{% endif %}>
+    <summary class="filter-panel__toggle">
+      Filters
+      {% if filter.is_active %}<span class="badge rounded-pill ms-1">active</span>{% endif %}
+    </summary>
+    <form method="get" class="filter-bar">
+      <input type="hidden"
+             name="request_format"
+             value="{{ filter.request_format }}">
+      <input type="hidden" name="root_format" value="{{ filter.root_format }}">
+      {% for field in filter_form.visible_fields %}
+        <fieldset class="filter-bar__field">
+          <legend>{{ field.label }}</legend>
+          {{ field }}
+        </fieldset>
+      {% endfor %}
+      <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+      {% if filter.is_active %}
+        <a href="?request_format={{ filter.request_format }}&amp;root_format={{ filter.root_format }}">Reset</a>
+      {% endif %}
+    </form>
+  </details>
   <p class="muted">
     {% if filter.is_active %}Filtered:{% endif %}
     {{ counts.uploads }} upload{{ counts.uploads|pluralize }}, {{ counts.data_points }} data points,
