@@ -48,9 +48,11 @@
   }
 }
 
+// A light fill with darker text of the same hue: the darker text keeps small pills at WCAG AA
+// contrast (4.5:1 or more) on their own background.
 @mixin pill($color) {
   background: color.scale($color, $lightness: 85%);
-  color: $color;
+  color: color.scale($color, $lightness: -15%);
 }
 
 .badge--available,
