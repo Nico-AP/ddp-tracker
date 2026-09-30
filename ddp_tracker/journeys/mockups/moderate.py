@@ -4,10 +4,16 @@ counted from the database.
 """
 
 from dataclasses import dataclass
+from typing import Any
 
+from django.db.models import Count
 from django.http import HttpRequest, HttpResponse
 
-from ddp_tracker.journeys.mockups import render_mockup
+from ddp_tracker.ddps.models import Platform, Upload
+from ddp_tracker.journeys.mockups import DEMO_PLATFORMS, find_platform, render_mockup
+from ddp_tracker.proposals.models import Proposal
+from ddp_tracker.representations.eligibility import eligible
+from ddp_tracker.schemas.models import ITEM
 
 # the platforms "you" moderate (a role for one or more platforms does not exist yet)
 ASSIGNED: tuple[str, ...] = ("tiktok", "instagram")
@@ -63,8 +69,58 @@ CONTRIBUTORS: tuple[Contributor, ...] = (
     Contributor("#31", annotations=9, uploads=4),
 )
 
-# --- view (placeholder; task 4.4 replaces it) -----------------------------------------------
+# --- view -------------------------------------------------------------------------------------
+
+
+def _queues(platform: Platform) -> dict[str, Any]:
+    """What waits on a platform, counted as the explorer and the queues count it."""
+    points = platform.locations.filter(
+        observations__is_data_point=True, observations__upload__registered_at__isnull=False
+    ).distinct()
+    open_points = points.filter(annotation__isnull=True, ignored=False)
+    lists = platform.locations.filter(path__endswith=ITEM, representations__isnull=True)
+    return {
+        "data_points": points.count(),
+        "untriaged": open_points.count(),
+        "suggestions": Proposal.objects.filter(
+            platform=platform, status=Proposal.Status.OPEN
+        ).count(),
+        "approvals": platform.uploads.filter(plausibility=Upload.Plausibility.AWAITING).count(),
+        "unrepresented": len(eligible(lists)),
+        # the open data points that the most uploads have: annotate these first
+        "next": list(
+            open_points.annotate(seen=Count("observations__upload", distinct=True)).order_by(
+                "-seen", "path"
+            )[:5]
+        ),
+    }
 
 
 def dashboard(request: HttpRequest) -> HttpResponse:
-    return render_mockup(request, "moderate", "journeys/prototype/placeholder.html")
+    """M9: what waits on the platforms a moderator looks after."""
+    panels = []
+    for slug in ASSIGNED:
+        name, platform = find_platform(slug)
+        panels.append(
+            {
+                "slug": slug,
+                "name": name,
+                "platform": platform,
+                "queues": _queues(platform) if platform is not None else None,
+            }
+        )
+    elsewhere = (
+        Upload.objects.filter(plausibility=Upload.Plausibility.AWAITING)
+        .exclude(platform__slug__in=ASSIGNED)
+        .count()
+    )
+    context = {
+        "panels": panels,
+        "elsewhere": elsewhere,
+        "hub_note": HUB_NOTE,
+        # each question with its platform's name
+        "questions": [(DEMO_PLATFORMS[question.platform], question) for question in QUESTIONS],
+        "contributors": CONTRIBUTORS,
+        "has_data": any(panel["platform"] is not None for panel in panels),
+    }
+    return render_mockup(request, "moderate", "journeys/prototype/moderate.html", context)
