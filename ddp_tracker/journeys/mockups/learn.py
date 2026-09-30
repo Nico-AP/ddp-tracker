@@ -4,10 +4,15 @@ category has is counted from the database.
 """
 
 from dataclasses import dataclass
+from typing import Any
 
+from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
 
-from ddp_tracker.journeys.mockups import find_platform, render_mockup
+from ddp_tracker.annotations.models import Annotation
+from ddp_tracker.ddps.models import Platform
+from ddp_tracker.journeys.mockups import DEMO_PLATFORMS, find_platform, render_mockup
+from ddp_tracker.schemas.models import Location
 
 
 @dataclass(frozen=True)
@@ -15,6 +20,12 @@ class Category:
     name: str
     text: str
     prefixes: tuple[str, ...]  # the paths that belong to it
+
+    @property
+    def summary(self) -> str:
+        """The text without the name it starts with (the name is the panel's heading)."""
+        rest = self.text.removeprefix(f"{self.name}: ")
+        return rest[:1].upper() + rest[1:]
 
 
 T = "/user_data_tiktok.json"
@@ -134,10 +145,68 @@ QUIZ: tuple[Question, ...] = (
     ),
 )
 
-# --- view (placeholder; task 4.7 replaces it) -----------------------------------------------
+# --- view ------------------------------------------------------------------------------------
+
+
+def _count(platform: Platform, category: Category) -> int:
+    """How many data points of uploads that count lie under the category's paths."""
+    under = Q()
+    for prefix in category.prefixes:
+        under |= Q(path__startswith=prefix)
+    return (
+        platform.locations.filter(
+            under,
+            observations__is_data_point=True,
+            observations__upload__registered_at__isnull=False,
+        )
+        .distinct()
+        .count()
+    )
+
+
+def _explained(platform: Platform, name: str) -> dict[str, Any] | None:
+    """One annotation with the example values below its location in use now: the one created
+    last (for "Watched video", the September path)."""
+    annotation = Annotation.objects.filter(platform=platform, name=name).first()
+    if annotation is None:
+        return None
+    location = annotation.locations.order_by("-pk").first()
+    if location is None:
+        return None
+    below = (
+        Location.objects.filter(platform=platform, path__startswith=f"{location.path}/")
+        .exclude(example_values=[])
+        .order_by("position", "path")
+    )
+    return {
+        "annotation": annotation,
+        "location": location,
+        "search": next(part for part in reversed(location.path.split("/")) if part != "[]"),
+        "examples": [
+            (entry.path.removeprefix(f"{location.path}/"), str(entry.example_values[0]["value"]))
+            for entry in below
+        ],
+    }
 
 
 def learn(request: HttpRequest, slug: str) -> HttpResponse:
+    """M12: a plain summary of a platform's package, one example, and a short exercise."""
     name, platform = find_platform(slug)
-    context = {"platform_name": name, "platform": platform}
-    return render_mockup(request, "learn", "journeys/prototype/placeholder.html", context)
+    categories = [
+        (category, _count(platform, category) if platform is not None else None)
+        for category in CATEGORIES.get(slug, ())
+    ]
+    context = {
+        "slug": slug,
+        "platform_name": name,
+        "platform": platform,
+        "categories": categories,
+        "explained": (
+            _explained(platform, EXPLAINED[slug])
+            if platform is not None and slug in EXPLAINED
+            else None
+        ),
+        "quiz": QUIZ,
+        "others": [(other, DEMO_PLATFORMS[other]) for other in CATEGORIES if other != slug],
+    }
+    return render_mockup(request, "learn", "journeys/prototype/learn.html", context)

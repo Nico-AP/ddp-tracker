@@ -1,0 +1,96 @@
+{% extends "journeys/prototype/base.html" %}
+{% block heading %}What {{ platform_name }} keeps about you{% endblock %}
+{% block mockup %}
+  {% if categories %}
+    <p>
+      When you ask {{ platform_name }} for your data, you get a package: one or more files with
+      everything the platform has stored about you. This page says what is in it, part by part, in
+      plain words and without the technical detail.
+    </p>
+    {% if platform is None %}
+      <p class="message message--info">
+        No demo data in this database yet, so the page cannot count what is in each part. Create it
+        with <code>uv run manage.py seed_demo</code>.
+      </p>
+    {% endif %}
+    <div class="proto-columns">
+      {% for category, count in categories %}
+        <section class="proto-panel">
+          <h2>{{ category.name }}</h2>
+          <p>{{ category.summary }}</p>
+          {% if count is not None %}
+            <p class="mb-0">
+              <strong>{{ count }} kind{{ count|pluralize }} of information</strong>
+            </p>
+          {% endif %}
+        </section>
+      {% endfor %}
+    </div>
+    {% if explained %}
+      <h2>One example, looked at closely</h2>
+      <section class="proto-panel mb-4" aria-labelledby="explained">
+        <h3 id="explained" class="h5">{{ explained.annotation.name }}</h3>
+        {% if explained.annotation.description %}<p>{{ explained.annotation.description }}</p>{% endif %}
+        {% if explained.examples %}
+          <p class="muted">What one entry could look like: values typed by a curator, not anyone's real data.</p>
+          <div class="table-scroll">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th scope="col">Title</th>
+                  <th scope="col">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for title, value in explained.examples %}
+                  <tr>
+                    <td class="text-break">{{ title }}</td>
+                    <td class="text-break">{{ value }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+        <p class="mb-0">
+          <a href="{% url 'schemas:platform' platform.slug %}?q={{ explained.search|urlencode }}">Find {{ explained.annotation.name }} in {{ platform_name }}'s explorer</a>
+        </p>
+      </section>
+    {% endif %}
+  {% else %}
+    <p class="message message--info">No summary for {{ platform_name }} yet.</p>
+  {% endif %}
+  <h2 id="exercise">Try it yourself</h2>
+  <p>Click a question to see its answer.</p>
+  <div class="quiz">
+    {% for question in quiz %}
+      <details>
+        <summary>{{ question.text }}</summary>
+        <p>{{ question.answer }}</p>
+      </details>
+    {% endfor %}
+  </div>
+  <h2>For teachers and study designers</h2>
+  <p>
+    In the real feature, these explanations could also reach donation tools through the tracker's
+    API, so that people see them when they decide what to donate.
+  </p>
+  <ul>
+    <li>
+      <a href="{% url 'journeys:api' %}#explainers">See how the API could serve explanations</a>
+    </li>
+    <li>
+      <a href="{% url 'docs' '' %}">Read the DDP Tracker's user guide</a>
+    </li>
+  </ul>
+  {% if others %}
+    <h2>Other platforms</h2>
+    <ul>
+      {% for other, other_name in others %}
+        <li>
+          <a href="{% url 'journeys:learn' other %}">What {{ other_name }} keeps about you</a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}
