@@ -83,8 +83,10 @@ SNAPSHOTS: tuple[Snapshot, ...] = (
     ),
 )
 
-# --- view (placeholder; task 4.2 replaces it) -----------------------------------------------
+# --- view ------------------------------------------------------------------------------------
 
 
 def snapshots(request: HttpRequest) -> HttpResponse:
-    return render_mockup(request, "snapshots", "journeys/prototype/placeholder.html")
+    """M7: dated releases of the knowledge base, to cite and to pin."""
+    context = {"snapshots": SNAPSHOTS, "latest": SNAPSHOTS[0]}
+    return render_mockup(request, "snapshots", "journeys/prototype/snapshots.html", context)

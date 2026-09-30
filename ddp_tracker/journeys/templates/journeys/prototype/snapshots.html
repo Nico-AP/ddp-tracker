@@ -1,0 +1,85 @@
+{% extends "journeys/prototype/base.html" %}
+{% load static %}
+{% block mockup %}
+  <script src="{% static 'js/journeys.js' %}" defer></script>
+  <p>
+    The tracker changes all the time: new packages come in, and curators add and correct
+    annotations. A snapshot fixes one state of the knowledge base, with a version and a DOI, so
+    that a methods section, a preregistration or a report can point at exactly what it used.
+  </p>
+  <h2>Releases</h2>
+  <p>One release a month, newest first.</p>
+  <div class="table-scroll">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th scope="col">Version</th>
+          <th scope="col">Released</th>
+          <th scope="col">Platforms</th>
+          <th scope="col">Data points</th>
+          <th scope="col">Annotations</th>
+          <th scope="col">Representations</th>
+          <th scope="col">DOI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for snapshot in snapshots %}
+          <tr>
+            <td>{{ snapshot.version }}</td>
+            <td>{{ snapshot.released|date:"j F Y" }}</td>
+            <td>{{ snapshot.platforms }}</td>
+            <td>{{ snapshot.data_points }}</td>
+            <td>{{ snapshot.annotations }}</td>
+            <td>{{ snapshot.representations }}</td>
+            <td class="text-break">
+              <code>{{ snapshot.doi }}</code>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <h2>What changed</h2>
+  {% for snapshot in snapshots %}
+    <h3 class="h6">Version {{ snapshot.version }}</h3>
+    <ul>
+      {% for change in snapshot.changes %}<li>{{ change }}</li>{% endfor %}
+    </ul>
+  {% endfor %}
+  <h2>Cite this</h2>
+  <p>To cite the latest release, version {{ latest.version }}:</p>
+  <p class="cite-box text-break">{{ latest.citation }}</p>
+  {# no copy-button class here: the reviews' Sass styles .copy-button as a bare icon button #}
+  <p>
+    <button type="button"
+            class="btn btn-secondary btn-sm"
+            data-copy="{{ latest.citation }}"
+            data-copied="Citation copied to the clipboard.">Copy the citation</button>
+    <span class="ms-2" role="status" data-copy-status></span>
+  </p>
+  <h2 id="pin">Pin a snapshot</h2>
+  <p>
+    A script or a tool that reads the tracker should ask for a version, not for "latest". The
+    answer then stays the same, however the tracker changes later, and the analysis can be run
+    again with the same input.
+  </p>
+  <pre class="code-sample">curl {{ latest.pinned_url }}</pre>
+  <h2>Download</h2>
+  <p class="proto-toolbar">
+    <button type="button" class="btn btn-secondary btn-sm" disabled>
+      Download the JSON Schema of version {{ latest.version }}
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm" disabled>
+      Download the codebook of version {{ latest.version }}
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm" disabled>
+      Download everything in version {{ latest.version }} as a zip
+    </button>
+  </p>
+  <p class="muted">In the real feature, this would download the release.</p>
+  <h2>Licence</h2>
+  <p>
+    Each release would carry a licence that says how others may reuse and cite it: see
+    <a href="{% url 'journeys:api' %}#licence">the licence question on the API page</a>.
+  </p>
+{% endblock %}
