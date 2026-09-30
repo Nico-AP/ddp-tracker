@@ -9,6 +9,7 @@ from html import unescape
 from html.parser import HTMLParser
 from typing import Any
 
+from django.test import SimpleTestCase
 from django.urls import reverse
 
 from ddp_tracker.journeys.content import ROLES
@@ -32,8 +33,7 @@ class Outline(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.headings: list[int] = []  # levels, in order
-        self.tables = 0
-        self.header_cells = 0  # th with a scope
+        self.header_cells: list[int] = []  # per table, in order: its th with a scope
         self.fields: list[str | None] = []  # ids of visible fields ("" if none, None: aria-label)
         self.labels: set[str] = set()  # the ids that labels are for
         self.unnamed: list[str] = []  # links and buttons without text or an aria-label
@@ -44,15 +44,15 @@ class Outline(HTMLParser):
         if tag in {"h1", "h2", "h3", "h4", "h5", "h6"}:
             self.headings.append(int(tag[1]))
         elif tag == "table":
-            self.tables += 1
-        elif tag == "th" and found.get("scope") in {"col", "row"}:
-            self.header_cells += 1
+            self.header_cells.append(0)
+        elif tag == "th" and found.get("scope") in {"col", "row"} and self.header_cells:
+            self.header_cells[-1] += 1
         elif tag == "label":
             self.labels.add(found.get("for") or "")
         elif tag in {"select", "textarea"} or (
             tag == "input" and found.get("type") not in {"hidden", "submit", "button"}
         ):
-            self.fields.append((found.get("id") or "") if "aria-label" not in found else None)
+            self.fields.append(None if found.get("aria-label") else (found.get("id") or ""))
         if tag in {"a", "button"}:
             self._open.append([tag, bool(found.get("aria-label"))])
 
@@ -157,8 +157,8 @@ class AccessibilityTests(SeededTestCase):
     def test_tables_have_header_cells(self) -> None:
         for name, outline in self.outlines():
             with self.subTest(page=name):
-                if outline.tables:
-                    self.assertGreaterEqual(outline.header_cells, outline.tables)
+                for count in outline.header_cells:
+                    self.assertGreater(count, 0, outline.header_cells)
 
     def test_fields_have_labels(self) -> None:
         for name, outline in self.outlines():
@@ -202,3 +202,20 @@ class AccessibilityTests(SeededTestCase):
                 for kept in (BANNER, SOURCE, DOI_PREFIX):
                     text = text.replace(kept, "")
                 self.assertEqual(FICTIONAL.findall(text), [])
+
+
+class OutlineTests(SimpleTestCase):
+    """The checks above catch what they are meant to catch."""
+
+    def test_every_table_needs_its_own_header_cells(self) -> None:
+        outline = Outline()
+        outline.feed(
+            '<table><tr><th scope="col">A</th><th scope="col">B</th></tr></table>'
+            "<table><tr><td>no header</td></tr></table>"
+        )
+        self.assertEqual(outline.header_cells, [2, 0])
+
+    def test_an_empty_aria_label_is_no_label(self) -> None:
+        outline = Outline()
+        outline.feed('<input type="text" aria-label=""><input type="text" aria-label="Name">')
+        self.assertEqual(outline.fields, ["", None])

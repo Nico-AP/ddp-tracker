@@ -19,7 +19,7 @@ from ddp_tracker.journeys.mockups.concepts import CONCEPTS
 @dataclass(frozen=True)
 class PlatformFacts:
     slug: str
-    request_modes: tuple[str, ...]  # how people can request their data
+    request_modes: tuple[str, ...]  # how people can request their data, joined into one line
     formats: tuple[str, ...]  # the formats they can choose
     delivery: str  # how long it takes
     documentation: str  # does the platform document its package?
@@ -32,7 +32,7 @@ class PlatformFacts:
 FACTS: tuple[PlatformFacts, ...] = (
     PlatformFacts(
         slug="tiktok",
-        request_modes=("In the app", "In the browser", "Portability API"),
+        request_modes=("In the app", "in the browser", "Portability API"),
         formats=("JSON", "TXT"),
         delivery="Up to 4 days",
         documentation="Partial: a help page lists the sections, not the fields",
@@ -42,7 +42,7 @@ FACTS: tuple[PlatformFacts, ...] = (
     ),
     PlatformFacts(
         slug="instagram",
-        request_modes=("In the app", "In the browser", "Portability API"),
+        request_modes=("In the app", "in the browser", "Portability API"),
         formats=("JSON", "HTML"),
         delivery="Up to 48 hours",
         documentation="Partial: descriptions for some files",
@@ -52,7 +52,7 @@ FACTS: tuple[PlatformFacts, ...] = (
     ),
     PlatformFacts(
         slug="facebook",
-        request_modes=("In the app", "In the browser", "Portability API"),
+        request_modes=("In the app", "in the browser", "Portability API"),
         formats=("JSON", "HTML"),
         delivery="Up to 48 hours",
         documentation="Partial: descriptions for some files",
