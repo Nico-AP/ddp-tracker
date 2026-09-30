@@ -58,7 +58,11 @@ pre {
 }
 
 a {
-  color: $color-primary;
+  color: #284993;
+  text-decoration: none;
+}
+a:hover {
+  color: #1c3773;
 }
 
 .explorer {
