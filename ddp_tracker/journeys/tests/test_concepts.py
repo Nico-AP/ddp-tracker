@@ -165,3 +165,69 @@ class ConceptListTests(SeededTestCase):
             count=len(CONCEPTS) + 1,
             html=True,
         )
+
+
+def detail(slug: str) -> str:
+    return reverse("journeys:concept", args=[slug])
+
+
+class ConceptDetailWithoutDataTests(TestCase):
+    def test_an_unknown_concept_is_not_found(self) -> None:
+        self.assertEqual(self.client.get(detail("nope")).status_code, 404)
+
+    def test_without_demo_data_it_still_explains_the_concept(self) -> None:
+        response = self.client.get(detail("watched-video"))
+        self.assertContains(response, "<h1>Watched a video</h1>", html=True)
+        self.assertContains(response, "Not in this database yet", count=3)  # three platforms
+        self.assertContains(response, "UTC (assumed")
+
+    def test_every_concept_answers(self) -> None:
+        for concept in CONCEPTS:
+            with self.subTest(concept=concept.slug):
+                self.assertEqual(self.client.get(detail(concept.slug)).status_code, 200)
+
+
+class ConceptDetailTests(SeededTestCase):
+    def test_it_shows_where_and_how_each_platform_provides_it(self) -> None:
+        response = self.client.get(detail("watched-video"))
+        for text in (
+            f"{T}/Your Activity/Watch History/VideoList/[]",
+            f"{T}/Activity/Video Browsing History/VideoList/[]",  # the older path
+            "/ads_information/ads_and_topics/videos_watched.json/[]",  # Instagram
+            "%Y-%m-%d %H:%M:%S",
+            "2026-09-01 08:15:42",  # an example value
+            "Agreed by curators",
+            "tz_whos",
+            "UTC (a Unix timestamp",
+            "Official documentation",
+            "Video bekeken",  # a translation
+        ):
+            with self.subTest(text=text):
+                self.assertContains(response, text)
+        self.assertNotContains(response, "Not in this database yet")
+
+    def test_it_links_to_the_pages_that_exist(self) -> None:
+        response = self.client.get(detail("watched-video"))
+        for view in resolve(CONCEPTS_BY_SLUG["watched-video"]):
+            assert view.annotation is not None
+            self.assertContains(response, f'href="{view.annotation.get_absolute_url()}"')
+        explorer = reverse("schemas:platform", args=["tiktok"])
+        self.assertContains(response, f'href="{explorer}?q=VideoList"')
+        # the page's own link back: the navigation links to the list too
+        self.assertContains(response, f'<a href="{LIST}">All concepts</a>', html=True)
+
+    def test_examples_are_a_table_of_title_and_value(self) -> None:
+        response = self.client.get(detail("watched-video"))
+        self.assertContains(response, '<th scope="col">Title</th>', html=True)
+        self.assertContains(response, '<th scope="col">Value</th>', html=True)
+
+    def test_markers_for_no_data_and_personal_data(self) -> None:
+        response = self.client.get(detail("commented"))
+        self.assertContains(response, "No data markers")
+        self.assertContains(response, "<code>N/A</code>", html=True)
+        self.assertContains(self.client.get(detail("sent-message")), "Personal data")
+
+    def test_every_concept_answers(self) -> None:
+        for concept in CONCEPTS:
+            with self.subTest(concept=concept.slug):
+                self.assertEqual(self.client.get(detail(concept.slug)).status_code, 200)

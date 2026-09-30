@@ -12,7 +12,7 @@ from datetime import date
 from typing import Any
 
 from django.db.models import QuerySet
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 
 from ddp_tracker.annotations.models import Annotation
 from ddp_tracker.ddps.models import Upload
@@ -300,6 +300,13 @@ class LocationView:
     fields: list[FieldView]  # a list's item: its direct fields; a single value: itself
     examples: list[tuple[str, str]]  # (title, value) rows for the examples table
 
+    @property
+    def search(self) -> str:
+        """What to search for in the explorer: the last named segment of the path (the key of
+        the list, for a list's item)."""
+        named = [segment for segment in self.location.path.split("/") if segment not in {"", "[]"}]
+        return named[-1] if named else ""
+
 
 @dataclass
 class PlatformView:
@@ -409,7 +416,7 @@ def availability(views: list[PlatformView]) -> Availability:
     )
 
 
-# --- views (task 3.2 replaces the placeholder concept_detail) -------------------------------
+# --- views ----------------------------------------------------------------------------------
 
 
 def _by_name(concept: Concept) -> str:
@@ -470,4 +477,18 @@ def concept_list(request: HttpRequest) -> HttpResponse:
 
 
 def concept_detail(request: HttpRequest, slug: str) -> HttpResponse:
-    return render_mockup(request, "concept", "journeys/prototype/placeholder.html")
+    """M2: what one concept means, and where and how each platform provides it."""
+    concept = CONCEPTS_BY_SLUG.get(slug)
+    if concept is None:
+        raise Http404
+    context = {
+        "concept": concept,
+        "views": resolve(concept),
+        "has_official": any(binding.official for binding in concept.bindings),
+        # its themes, per research field
+        "themes": [
+            (field.name, [theme.name for theme in field.themes if theme.slug in concept.themes])
+            for field in FIELDS
+        ],
+    }
+    return render_mockup(request, "concept", "journeys/prototype/concept.html", context)

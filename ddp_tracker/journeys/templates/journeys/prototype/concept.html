@@ -1,0 +1,198 @@
+{% extends "journeys/prototype/base.html" %}
+{% block heading %}{{ concept.name }}{% endblock %}
+{% block mockup %}
+  <p>{{ concept.description }}</p>
+  <p>
+    <code>{{ concept.statement }}</code>
+  </p>
+  <p>
+    <span class="chip">{{ concept.meaning_label }}</span>
+    On {{ concept.studies }} studies' shortlists
+    <span class="badge badge--fictional">fictional</span>
+  </p>
+  <p>
+    Themes by research field <span class="badge badge--fictional">fictional</span>
+  </p>
+  <ul>
+    {% for field_name, names in themes %}
+      {% if names %}
+        <li>
+          {{ field_name }}:
+          {% for name in names %}<span class="chip">{{ name }}</span>{% endfor %}
+        </li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+  {% if has_official %}
+    <p class="muted">
+      Where a platform documents this data itself, its text is shown as
+      <span class="badge badge--official ms-0">Official documentation</span>. In the real feature,
+      official documentation would be kept as its own kind of annotation, next to the curator's.
+    </p>
+  {% endif %}
+  {% for view in views %}
+    <section class="proto-panel mb-4">
+      <h2>{{ view.name }}</h2>
+      {% if view.annotation %}
+        <p>
+          <a href="{{ view.annotation.get_absolute_url }}">{{ view.annotation.name }}</a>
+          <span class="badge badge--annotated">Curator annotation</span>
+          {% if view.annotation.pii %}<span class="badge badge--pii">Personal data</span>{% endif %}
+        </p>
+        {% if view.annotation.description %}<p>{{ view.annotation.description }}</p>{% endif %}
+        {% if view.annotation.note %}
+          <h3 class="h6">Sources and notes</h3>
+          <p>{{ view.annotation.note|linebreaksbr }}</p>
+        {% endif %}
+      {% else %}
+        <p class="message message--info">
+          Not in this database yet. Create the demo data with <code>uv run manage.py seed_demo</code>.
+        </p>
+      {% endif %}
+      {% if view.binding.official %}
+        <p>
+          <span class="badge badge--official ms-0">Official documentation</span>
+          {{ view.binding.official }}
+          <span class="badge badge--fictional">fictional</span>
+        </p>
+      {% endif %}
+      <p>
+        <strong>Whose time?</strong> {{ view.binding.tz_whos }}
+        <span class="muted">(proposed attribute: tz_whos)</span>
+      </p>
+      {% if view.binding.no_data %}
+        <p>
+          <strong>No data markers:</strong>
+          {% for marker in view.binding.no_data %}<code>{{ marker }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}
+          (values that mean the field is empty)
+        </p>
+      {% endif %}
+      {% if view.locations %}
+        <h3 class="h6">Where it is</h3>
+        <div class="table-scroll">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th scope="col">Path</th>
+                <th scope="col">Seen</th>
+                <th scope="col">Uploads</th>
+                <th scope="col">Languages</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in view.locations %}
+                <tr>
+                  <td class="text-break">
+                    <code>{{ entry.location.path }}</code>
+                    {% if forloop.first and view.locations|length > 1 %}
+                      <span class="badge badge--done">in use now</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if entry.profile.first_seen %}
+                      {{ entry.profile.first_seen|date:"Y-m-d" }} to {{ entry.profile.last_seen|date:"Y-m-d" }}
+                    {% else %}
+                      not seen yet
+                    {% endif %}
+                  </td>
+                  <td>{{ entry.profile.uploads }}</td>
+                  <td>{{ entry.languages|join:", " }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% with entry=view.locations.0 %}
+          <h3 class="h6">Fields</h3>
+          <div class="table-scroll">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th scope="col">Field</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Format</th>
+                  <th scope="col">Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for field in entry.fields %}
+                  <tr>
+                    <td>{{ field.name }}</td>
+                    <td>{{ field.profile.main_type }}</td>
+                    <td>
+                      {% if field.profile.main_format %}
+                        <code>{{ field.profile.main_format }}</code>
+                      {% else %}
+                        {{ field.profile.shape_hint }}
+                      {% endif %}
+                    </td>
+                    <td class="text-break">{{ field.example }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <h3 class="h6">Examples</h3>
+          {% if entry.examples %}
+            <p class="muted">
+              Fictional values, typed by a curator. <span class="badge badge--fictional">fictional</span>
+            </p>
+            <div class="table-scroll">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th scope="col">Title</th>
+                    <th scope="col">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for title, value in entry.examples %}
+                    <tr>
+                      <td class="text-break">{{ title }}</td>
+                      <td class="text-break">{{ value }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <p class="muted">No example values yet.</p>
+          {% endif %}
+          <p>
+            <a href="{% url 'schemas:platform' view.binding.platform %}?q={{ entry.search|urlencode }}">Open in {{ view.name }}'s explorer</a>
+          </p>
+        {% endwith %}
+      {% endif %}
+    </section>
+  {% endfor %}
+  <h2>This concept in other languages</h2>
+  {% if concept.translations %}
+    <p>
+      <span class="badge badge--fictional ms-0">fictional</span>
+    </p>
+    <div class="table-scroll">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th scope="col">Language</th>
+            <th scope="col">Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for language, name in concept.translations %}
+            <tr>
+              <td>{{ language }}</td>
+              <td>{{ name }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p>No translations yet.</p>
+  {% endif %}
+  <p>In the real feature, curators could add a translation here.</p>
+  <p>
+    <a href="{% url 'journeys:concepts' %}">All concepts</a>
+  </p>
+{% endblock %}
