@@ -1,0 +1,96 @@
+{% extends "journeys/prototype/base.html" %}
+{% block mockup %}
+  <form method="get" class="proto-toolbar">
+    <div>
+      <label class="form-label" for="concept-field">Research field</label>
+      <select class="form-select" id="concept-field" name="field">
+        {% for option in fields %}
+          <option value="{{ option.slug }}"
+                  {% if option == field %} selected{% endif %}>{{ option.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="concept-platform">Platform</label>
+      <select class="form-select" id="concept-platform" name="platform">
+        <option value="">All platforms</option>
+        {% for slug, name in platforms.items %}
+          <option value="{{ slug }}"
+                  {% if slug == platform %} selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="concept-sort">Sort by</label>
+      <select class="form-select" id="concept-sort" name="sort">
+        <option value="relevance"{% if sort == "relevance" %} selected{% endif %}>Relevance</option>
+        <option value="name"{% if sort == "name" %} selected{% endif %}>Name</option>
+      </select>
+    </div>
+    {% if theme %}<input type="hidden" name="theme" value="{{ theme.slug }}">{% endif %}
+    <button type="submit" class="btn btn-primary">Show</button>
+  </form>
+  <p>
+    Themes in {{ field.name }}:
+    <a class="chip{% if not theme %} chip--active{% endif %}"
+       href="?field={{ field.slug }}&amp;platform={{ platform }}&amp;sort={{ sort }}"
+       {% if not theme %}aria-current="true"{% endif %}>All themes</a>
+    {% for option in field.themes %}
+      <a class="chip{% if option == theme %} chip--active{% endif %}"
+         href="?field={{ field.slug }}&amp;theme={{ option.slug }}&amp;platform={{ platform }}&amp;sort={{ sort }}"
+         {% if option == theme %}aria-current="true"{% endif %}>{{ option.name }}</a>
+    {% endfor %}
+    <span class="badge badge--fictional">fictional</span>
+  </p>
+  <p class="muted">
+    The demo data is in English only, so there is no language filter. Looking for every path and
+    type? Open the <a href="{% url 'schemas:platforms' %}">full structure in the explorer</a>.
+  </p>
+  {% if not has_data %}
+    <p class="message message--info">
+      No demo data in this database yet, so the concepts come without dates and paths. Create
+      it with <code>uv run manage.py seed_demo</code>.
+    </p>
+  {% endif %}
+  <h2>
+    {{ cards|length }} concept{{ cards|length|pluralize }}{% if theme %} for {{ theme.name }}{% endif %}
+  </h2>
+  <ul class="cards">
+    {% for card in cards %}
+      <li class="card">
+        <a class="card__title"
+           href="{% url 'journeys:concept' card.concept.slug %}">{{ card.concept.name }}</a>
+        {% if card.availability.pii %}<span class="badge badge--pii align-self-start">Personal data</span>{% endif %}
+        <p>{{ card.concept.description }}</p>
+        <p>
+          <code>{{ card.concept.statement }}</code>
+        </p>
+        <p>
+          {% for name, available in card.platforms %}
+            {% if available %}
+              <span class="chip chip--on">{{ name }}</span>
+            {% else %}
+              <span class="chip chip--off">{{ name }}: not available</span>
+            {% endif %}
+          {% endfor %}
+        </p>
+        {% if card.themes %}
+          <p>
+            {% for option in card.themes %}<span class="chip">{{ option.name }}</span>{% endfor %}
+          </p>
+        {% endif %}
+        <p class="card__hint">
+          On {{ card.concept.studies }} studies' shortlists
+          <span class="badge badge--fictional">fictional</span>
+        </p>
+        {% if card.availability.known %}
+          <p class="card__hint">
+            First seen {{ card.availability.first_seen|date:"Y-m-d" }}, last seen
+            {{ card.availability.last_seen|date:"Y-m-d" }}, in
+            {{ card.availability.uploads }} upload{{ card.availability.uploads|pluralize }}
+          </p>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

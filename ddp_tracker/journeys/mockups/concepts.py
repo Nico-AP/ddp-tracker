@@ -8,10 +8,17 @@ examples are read from there.
 """
 
 from dataclasses import dataclass
+from datetime import date
+from typing import Any
 
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 
-from ddp_tracker.journeys.mockups import render_mockup
+from ddp_tracker.annotations.models import Annotation
+from ddp_tracker.ddps.models import Upload
+from ddp_tracker.journeys.mockups import DEMO_PLATFORMS, render_mockup
+from ddp_tracker.schemas.models import ITEM, Location, Observation
+from ddp_tracker.schemas.profiles import Profile, profiles
 
 
 @dataclass(frozen=True)
@@ -263,11 +270,203 @@ CONCEPTS: tuple[Concept, ...] = (
 CONCEPTS_BY_SLUG = {concept.slug: concept for concept in CONCEPTS}
 
 
-# --- views (placeholders; task 3.1 replaces concept_list, task 3.2 concept_detail) ----------
+# --- what the database knows about a concept ------------------------------------------------
+
+
+@dataclass
+class FieldView:
+    """One data point: a field of a list's item, or a value on its own."""
+
+    location: Location
+    profile: Profile
+
+    @property
+    def name(self) -> str:
+        return self.location.display_name
+
+    @property
+    def example(self) -> str:
+        examples = self.location.example_values
+        return str(examples[0]["value"]) if examples else ""
+
+
+@dataclass
+class LocationView:
+    """An annotated location, with what the uploads that count say about it."""
+
+    location: Location
+    profile: Profile
+    languages: list[str]
+    fields: list[FieldView]  # a list's item: its direct fields; a single value: itself
+    examples: list[tuple[str, str]]  # (title, value) rows for the examples table
+
+
+@dataclass
+class PlatformView:
+    """A concept on one platform: the annotation that describes it there, if this database has
+    it (``seed_demo``), and its locations, the path in use now first."""
+
+    binding: Binding
+    name: str
+    annotation: Annotation | None
+    locations: list[LocationView]
+
+
+@dataclass(frozen=True)
+class Availability:
+    """A concept at a glance, over all its platforms."""
+
+    known: bool  # this database has at least one of the annotations
+    first_seen: date | None
+    last_seen: date | None
+    uploads: int  # uploads that count and contain it, all platforms
+    pii: bool
+
+
+def _counted() -> QuerySet[Observation]:
+    """Only uploads that count: registered."""
+    return Observation.objects.filter(upload__registered_at__isnull=False)
+
+
+def _examples(location: Location) -> list[tuple[str, str]]:
+    """Example values as rows of title and value: for a list's item, the data points below it
+    that have examples (by their path below the item); for a single value, its own."""
+    if not location.path.endswith(ITEM):
+        return [
+            (location.display_name, str(example["value"])) for example in location.example_values
+        ]
+    below = (
+        Location.objects.filter(platform=location.platform_id, path__startswith=f"{location.path}/")
+        .exclude(example_values=[])
+        .order_by("position", "path")
+    )
+    return [
+        (entry.path.removeprefix(f"{location.path}/"), str(entry.example_values[0]["value"]))
+        for entry in below
+    ]
+
+
+def _location_view(location: Location) -> LocationView:
+    children: list[Location] = []
+    if location.path.endswith(ITEM):  # a list's item: its direct fields
+        children = list(
+            Location.objects.filter(platform=location.platform_id, parent_path=location.path)
+            .exclude(name=None)
+            .order_by("position")
+        )
+    found = profiles([location.pk, *(child.pk for child in children)], _counted())
+    fields = [FieldView(child, found[child.pk]) for child in children]
+    seen = location.observations.filter(upload__registered_at__isnull=False)
+    languages = sorted(
+        {code or "unknown" for code in seen.values_list("upload__language", flat=True)}
+    )
+    return LocationView(
+        location=location,
+        profile=found[location.pk],
+        languages=languages,
+        fields=fields or [FieldView(location, found[location.pk])],
+        examples=_examples(location),
+    )
+
+
+def _last_seen(entry: LocationView) -> date:
+    return entry.profile.last_seen or date.min
+
+
+def resolve(concept: Concept) -> list[PlatformView]:
+    """The concept on each platform it is bound to, with what this database knows about it."""
+    views = []
+    for binding in concept.bindings:
+        annotation = (
+            Annotation.objects.filter(platform__slug=binding.platform, name=binding.annotation)
+            .select_related("platform")
+            .first()
+        )
+        if annotation is None:  # no demo data: the binding alone
+            views.append(PlatformView(binding, DEMO_PLATFORMS[binding.platform], None, []))
+            continue
+        locations = [_location_view(location) for location in annotation.locations.all()]
+        locations.sort(key=_last_seen, reverse=True)
+        views.append(PlatformView(binding, annotation.platform.name, annotation, locations))
+    return views
+
+
+def availability(views: list[PlatformView]) -> Availability:
+    """A concept at a glance, over all its platforms."""
+    entries = [entry for view in views for entry in view.locations]
+    firsts = [entry.profile.first_seen for entry in entries if entry.profile.first_seen]
+    lasts = [entry.profile.last_seen for entry in entries if entry.profile.last_seen]
+    uploads = Upload.objects.filter(
+        registered_at__isnull=False,
+        observations__location__in=[entry.location.pk for entry in entries],
+    )
+    return Availability(
+        known=any(view.annotation is not None for view in views),
+        first_seen=min(firsts, default=None),
+        last_seen=max(lasts, default=None),
+        uploads=uploads.distinct().count(),
+        pii=any(view.annotation.pii for view in views if view.annotation is not None),
+    )
+
+
+# --- views (task 3.2 replaces the placeholder concept_detail) -------------------------------
+
+
+def _by_name(concept: Concept) -> str:
+    return concept.name
+
+
+def _by_relevance(concept: Concept) -> int:
+    return -concept.studies
 
 
 def concept_list(request: HttpRequest) -> HttpResponse:
-    return render_mockup(request, "concepts", "journeys/prototype/placeholder.html")
+    """M1: the concepts, narrowed by a research field's theme and by platform, sorted by
+    relevance (how many studies use them: fictional) or by name."""
+    chosen_field = FIELDS_BY_SLUG.get(request.GET.get("field", ""), FIELDS[0])
+    themes = {theme.slug: theme for theme in chosen_field.themes}
+    theme = themes.get(request.GET.get("theme", ""))  # a theme of another field: ignored
+    platform = request.GET.get("platform", "")
+    platforms = {
+        slug: name
+        for slug, name in DEMO_PLATFORMS.items()
+        if any(slug in concept.platforms for concept in CONCEPTS)
+    }
+    if platform not in platforms:
+        platform = ""
+    sort = "name" if request.GET.get("sort") == "name" else "relevance"
+    chosen = [
+        concept
+        for concept in CONCEPTS
+        if (theme is None or theme.slug in concept.themes)
+        and (not platform or platform in concept.platforms)
+    ]
+    chosen.sort(key=_by_name if sort == "name" else _by_relevance)
+    cards: list[dict[str, Any]] = []
+    for concept in chosen:
+        views = resolve(concept)
+        cards.append(
+            {
+                "concept": concept,
+                "availability": availability(views),
+                # every platform that has concepts, with whether this concept is there
+                "platforms": [
+                    (name, slug in concept.platforms) for slug, name in platforms.items()
+                ],
+                "themes": [t for t in chosen_field.themes if t.slug in concept.themes],
+            }
+        )
+    context = {
+        "fields": FIELDS,
+        "field": chosen_field,
+        "theme": theme,
+        "platforms": platforms,
+        "platform": platform,
+        "sort": sort,
+        "cards": cards,
+        "has_data": any(card["availability"].known for card in cards),
+    }
+    return render_mockup(request, "concepts", "journeys/prototype/concepts.html", context)
 
 
 def concept_detail(request: HttpRequest, slug: str) -> HttpResponse:
