@@ -18,8 +18,6 @@ from ddp_tracker.journeys.demo import ddps
 ADMIN, CURATOR = "admin", "curator"
 ADMIN_EMAIL = "demo-admin@example.org"  # staff and superuser
 CURATOR_EMAIL = "demo-curator@example.org"  # not staff: uploads and suggests
-# the password of both, when DEBUG is on (seed_demo makes a random one otherwise)
-DEMO_PASSWORD = "noor-demo-2026"  # noqa: S105 - a local demo login, never used without DEBUG
 
 # --- platforms --------------------------------------------------------------------------------
 

@@ -5,8 +5,13 @@ from typing import Any
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 
+import environ
+
 from ddp_tracker.journeys.demo.seed import SeedError, reset, seed
-from ddp_tracker.journeys.demo.spec import ADMIN_EMAIL, CURATOR_EMAIL, DEMO_PASSWORD
+from ddp_tracker.journeys.demo.spec import ADMIN_EMAIL, CURATOR_EMAIL
+
+# the environment variable that holds the demo users' password
+LOGIN_VARIABLE = "DJANGO_DEMO_PASSWORD"
 
 
 class Command(BaseCommand):
@@ -17,11 +22,15 @@ class Command(BaseCommand):
         uv run manage.py seed_demo            # create what is missing
         uv run manage.py seed_demo --reset    # remove what it created
 
-    For local demos: it refuses to run when DEBUG is off, unless forced, and then the demo
-    users get a random password instead of the documented one.
+    For local demos: it refuses to run when DEBUG is off, unless forced. Both demo users get
+    the password in the environment variable ``DJANGO_DEMO_PASSWORD``, or a random one when it
+    is not set or empty; the command prints it once, and where it came from.
     """
 
-    help = "Create fictional demo data (platforms, uploads, annotations, representations)."
+    help = (
+        "Create fictional demo data (platforms, uploads, annotations, representations). "
+        f"The demo users' password is {LOGIN_VARIABLE}, or a random one if that is not set."
+    )
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
@@ -36,7 +45,7 @@ class Command(BaseCommand):
         if options["reset"]:
             self._report("Removed", reset())
             return
-        password = DEMO_PASSWORD if settings.DEBUG else secrets.token_urlsafe(12)
+        password, source = self._password()
         try:
             created = seed(password)
         except SeedError as error:
@@ -45,10 +54,22 @@ class Command(BaseCommand):
         users = f"{ADMIN_EMAIL} (staff) or {CURATOR_EMAIL} (not staff)"
         if created["users"]:
             self.stdout.write(f"Log in as {users}. Password for both: {password}")
+            self.stdout.write(f"The password is {source}.")
         else:
             self.stdout.write(
                 f"The demo users exist already: {users}. Their passwords are unchanged."
             )
+
+    def _password(self) -> tuple[str, str]:
+        """The demo users' password, and where it came from (in words)."""
+        # read like the settings read theirs, but here: only this command needs it
+        password = environ.Env().str(LOGIN_VARIABLE, default="")
+        if password:
+            return password, f"from {LOGIN_VARIABLE}"
+        return (
+            secrets.token_urlsafe(12),
+            f"made up at random; set {LOGIN_VARIABLE} to choose your own",
+        )
 
     def _report(self, verb: str, counts: Counter[str]) -> None:
         # every kind is a plural ending in "s": one of a kind drops it ("1 suggestion")

@@ -1,6 +1,10 @@
 """``manage.py seed_demo``: an empty database becomes a demo, through the site's own code."""
 
+import os
+import re
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 from unittest import mock
@@ -18,7 +22,6 @@ from ddp_tracker.journeys.demo.spec import (
     ADMIN_EMAIL,
     ANNOTATIONS,
     CURATOR_EMAIL,
-    DEMO_PASSWORD,
     EXAMPLES,
     REPRESENTATIONS,
     SUGGESTION_PATH,
@@ -37,8 +40,27 @@ T = "/user_data_tiktok.json"
 MODELS = (User, Platform, Upload, Location, Observation, Annotation, Representation, Proposal)
 
 
+VARIABLE = "DJANGO_DEMO_PASSWORD"
+
+
 def counts():
     return {model.__name__: model.objects.count() for model in MODELS}
+
+
+@contextmanager
+def demo_password(value: str | None) -> Iterator[None]:
+    """``DJANGO_DEMO_PASSWORD`` set to ``value``, or not set at all (``None``)."""
+    with mock.patch.dict(os.environ):
+        os.environ.pop(VARIABLE, None)
+        if value is not None:
+            os.environ[VARIABLE] = value
+        yield
+
+
+def printed_password(output: str) -> str:
+    found = re.search(r"Password for both: (\S+)", output)
+    assert found, output
+    return found.group(1)
 
 
 class DemoDataTests(SeededTestCase):
@@ -191,15 +213,49 @@ class SeedDemoCommandTests(TestCase):
         self.assertEqual(counts(), before)
         self.assertFalse(Annotation.objects.filter(platform__slug="tiktok", name="Search term"))
 
-    def test_the_documented_password_needs_debug(self):
-        seed_demo()  # DEBUG is off under test: a random password
-        self.assertFalse(User.objects.get(email=ADMIN_EMAIL).check_password(DEMO_PASSWORD))
+    def test_refuses_without_debug_although_a_password_is_set(self):
+        with (
+            demo_password("test-only-password"),
+            self.assertRaisesMessage(CommandError, "DEBUG is off"),
+        ):
+            call_command("seed_demo")
+        self.assertFalse(Platform.objects.exists())
+
+    def test_the_password_from_the_environment_is_used_for_both_users(self):
+        with demo_password("test-only-password"):
+            output = seed_demo()
+        for email in (ADMIN_EMAIL, CURATOR_EMAIL):
+            self.assertTrue(User.objects.get(email=email).check_password("test-only-password"))
+        self.assertEqual(printed_password(output), "test-only-password")
+        self.assertIn(f"from {VARIABLE}", output)
 
     @override_settings(DEBUG=True)
-    def test_with_debug_the_password_is_the_documented_one(self):
-        seed_demo(force=False)  # no need to force it: DEBUG is on
-        for email in (ADMIN_EMAIL, CURATOR_EMAIL):
-            self.assertTrue(User.objects.get(email=email).check_password(DEMO_PASSWORD))
+    def test_with_debug_it_runs_unforced_and_uses_the_password_from_the_environment(self):
+        with demo_password("test-only-password"):
+            seed_demo(force=False)  # no need to force it: DEBUG is on
+        self.assertTrue(User.objects.get(email=CURATOR_EMAIL).check_password("test-only-password"))
+
+    def test_without_the_variable_the_password_is_random(self):
+        passwords = []
+        for _ in range(2):  # two fresh runs
+            with demo_password(None):
+                output = seed_demo()
+            password = printed_password(output)
+            for email in (ADMIN_EMAIL, CURATOR_EMAIL):
+                self.assertTrue(User.objects.get(email=email).check_password(password))
+            self.assertIn(f"made up at random; set {VARIABLE} to choose your own", output)
+            self.assertEqual(output.count(password), 1)  # printed once
+            passwords.append(password)
+            seed_demo(reset=True)
+        self.assertNotEqual(passwords[0], passwords[1])
+
+    def test_an_empty_variable_counts_as_not_set(self):
+        with demo_password(""):
+            output = seed_demo()
+        password = printed_password(output)
+        self.assertTrue(password)
+        self.assertTrue(User.objects.get(email=ADMIN_EMAIL).check_password(password))
+        self.assertIn("made up at random", output)
 
     def test_reset_removes_the_demo_data(self):
         terms = ActivityType.objects.count()
