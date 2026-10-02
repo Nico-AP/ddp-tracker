@@ -17,6 +17,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("proposals/", include("ddp_tracker.proposals.urls")),
     path("", include("ddp_tracker.schemas.urls")),
     path("", include("ddp_tracker.reviews.urls")),
+    path("", include("ddp_tracker.journeys.urls")),  # the landing page ("/"), the journeys
     path("", include("ddp_tracker.core.urls")),
 ]
 

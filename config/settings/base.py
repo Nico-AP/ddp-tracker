@@ -98,6 +98,7 @@ LOCAL_APPS = [
     "ddp_tracker.annotations",
     "ddp_tracker.representations",
     "ddp_tracker.users",
+    "ddp_tracker.journeys",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -113,8 +114,8 @@ AUTHENTICATION_BACKENDS = [
 # https://docs.djangoproject.com/en/dev/ref/settings/#auth-user-model
 AUTH_USER_MODEL = "users.User"
 # https://docs.djangoproject.com/en/dev/ref/settings/#login-redirect-url
-LOGIN_REDIRECT_URL = "core:index"
-LOGOUT_REDIRECT_URL = "core:index"
+LOGIN_REDIRECT_URL = "journeys:index"
+LOGOUT_REDIRECT_URL = "journeys:index"
 # https://docs.djangoproject.com/en/dev/ref/settings/#login-url
 LOGIN_URL = "account_login"
 

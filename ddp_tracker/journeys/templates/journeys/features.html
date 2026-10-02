@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Feature cards · DDP Tracker{% endblock %}
+{% block content %}
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{% url 'journeys:index' %}">Home</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Feature cards</li>
+    </ol>
+  </nav>
+  <h1>Feature cards</h1>
+  <p class="lead">
+    Planned features of the infrastructure track, written in the template of the hackathon
+    document, so that they can be compared with the hackathon document and pasted into it.
+  </p>
+  <p>
+    Each card ends with a link to the prototype page that shows what the feature could look
+    like. Proposals for discussion, not decisions.
+  </p>
+  <nav aria-labelledby="contents">
+    <h2 id="contents">Contents</h2>
+    <ol>
+      {% for card in cards %}
+        <li>
+          <a href="#{{ card.slug }}">{{ card.title }}</a>
+        </li>
+      {% endfor %}
+    </ol>
+  </nav>
+  {% for card in cards %}
+    <article class="proto-panel mb-4" id="{{ card.slug }}">
+      <h2>{{ card.title }}</h2>
+      {% if card.from_hackathon_document %}
+        <p>
+          <span class="badge ms-0">In the hackathon document</span>
+        </p>
+      {% endif %}
+      <table class="table table-sm">
+        <colgroup>
+          <col class="w-25">
+          <col>
+        </colgroup>
+        <thead class="visually-hidden">
+          <tr>
+            <th scope="col">Part of the template</th>
+            <th scope="col">This feature</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Title</th>
+            <td>{{ card.title }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Problem</th>
+            <td>{{ card.problem }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Description of solution</th>
+            <td>{{ card.solution }}</td>
+          </tr>
+          <tr>
+            <th scope="row">User group</th>
+            <td>{{ card.user_group }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Technical implementation</th>
+            <td>{{ card.technical }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        <a href="{{ card.see_url }}">See it in the prototype: {{ card.see_label }}</a>
+      </p>
+    </article>
+  {% endfor %}
+  <p>
+    <a href="{% url 'journeys:index' %}">Back to the landing page</a>
+    ·
+    <a href="{% url 'journeys:index' %}#roles">Choose a journey</a>
+  </p>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}DDP Tracker{% endblock %}
+{% block content %}
+  <section class="landing-hero">
+    <h1>DDP Tracker</h1>
+    <p class="fs-5 text-black">
+      Find out what platforms' data downloads contain, what it means, and how it changes.
+    </p>
+    <p>
+      People upload the data download package (DDP) they requested from a platform. The tracker
+      keeps only its structure, never the data in it, and curators describe what each data
+      point means.
+    </p>
+  </section>
+  <h2 id="roles">What brings you here?</h2>
+  <ul class="cards" aria-labelledby="roles">
+    {% for role in roles %}
+      <li class="card role-card">
+        <a class="card__title" href="{% url 'journeys:journey' role.slug %}">{{ role.name }}</a>
+        <p class="role-card__line">I want to {{ role.card_line }}.</p>
+        <p class="card__hint role-card__meta">
+          {{ role.steps|length }} steps: {{ role.available_count }} available today,
+          {{ role.prototype_count }} prototype
+        </p>
+      </li>
+    {% endfor %}
+  </ul>
+  <h2>How it works</h2>
+  <ol class="how-it-works">
+    <li>
+      <strong>Upload</strong>
+      <p>Someone requests their DDP from a platform and uploads it.</p>
+    </li>
+    <li>
+      <strong>Parse</strong>
+      <p>The tracker notes the structure (which fields exist, of what type) and deletes the file.</p>
+    </li>
+    <li>
+      <strong>Annotate</strong>
+      <p>Curators describe what each data point means, in terms shared across platforms.</p>
+    </li>
+    <li>
+      <strong>Explore</strong>
+      <p>Everyone can explore the result, platform by platform.</p>
+    </li>
+  </ol>
+  <h2>In this tracker today</h2>
+  <ul class="stat-tiles">
+    {% for label, count in counts %}
+      <li class="stat-tile">
+        <span class="stat-tile__value">{{ count }}</span>
+        <span class="stat-tile__label">{{ label }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+  <p>
+    Prefer a list of everything you can do today? See
+    <a href="{% url 'core:index' %}">all tasks on one page</a>.
+    Curious what is planned? See the
+    <a href="{% url 'journeys:features' %}">planned features as feature cards</a>.
+  </p>
+{% endblock %}

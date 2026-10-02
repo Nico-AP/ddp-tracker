@@ -1,0 +1,61 @@
+{% extends "journeys/prototype/base.html" %}
+{% block heading %}Request your data from {{ platform_name }}{% endblock %}
+{% block crumb %}Request your data from {{ platform_name }}{% endblock %}
+{% block mockup %}
+  <nav aria-label="Platforms">
+    <ul class="nav nav-pills mb-4">
+      {% for other, label in others.items %}
+        <li class="nav-item">
+          <a class="nav-link{% if other == slug %} active{% endif %}"
+             href="{% url 'journeys:request' other %}"
+             {% if other == slug %}aria-current="page"{% endif %}><span class="visually-hidden">Request your data from</span> {{ label }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+  {% if instructions %}
+    <p>
+      <span class="badge badge--prototype ms-0">To be verified by curators</span>
+      Last checked {{ instructions.last_checked|date:"j F Y" }}.
+    </p>
+    <p>
+      These steps are not {{ platform_name }}'s official instructions. Platforms change their menus:
+      if a step is wrong, say so (in the real feature, through a suggestion that curators check).
+    </p>
+    <h2>Steps</h2>
+    <ol>
+      {% for step in instructions.steps %}<li>{{ step }}</li>{% endfor %}
+    </ol>
+    <dl class="facts">
+      <dt>Choose</dt>
+      <dd>
+        {{ instructions.choose }}
+      </dd>
+      <dt>How long it takes</dt>
+      <dd>
+        {{ instructions.wait }}
+      </dd>
+      <dt>What you receive</dt>
+      <dd>
+        {{ instructions.receive }}
+      </dd>
+    </dl>
+    <section class="proto-panel mb-4" aria-labelledby="pair">
+      <h2 id="pair" class="h5">Make it a pair</h2>
+      <p class="mb-0">{{ pair_hint }}</p>
+    </section>
+  {% else %}
+    <p class="message message--info">No instructions for {{ platform_name }} yet.</p>
+  {% endif %}
+  <h2>Then</h2>
+  <p class="proto-toolbar">
+    <a class="btn btn-primary"
+       href="{% url 'ddps:upload-create' %}{% if platform %}?platform={{ platform.pk }}{% endif %}">Upload your DDP</a>
+    <a href="{% url 'docs' 'guide/privacy/' %}">What happens to your data</a>
+  </p>
+  <p>Uploading needs an account.</p>
+  <p class="muted">
+    Still missing in the upload form: a way of requesting other than app, browser or Portability
+    API cannot be recorded yet.
+  </p>
+{% endblock %}

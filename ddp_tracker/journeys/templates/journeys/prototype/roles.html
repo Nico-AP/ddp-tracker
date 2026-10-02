@@ -1,0 +1,158 @@
+{% extends "journeys/prototype/base.html" %}
+{% block mockup %}
+  <h2 id="roles">Roles</h2>
+  <p>
+    Four roles, from the widest to the narrowest. Moderators and curators work on the platforms they are given, not on all of them.
+  </p>
+  <div class="table-scroll">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th scope="col">Role</th>
+          <th scope="col">May</th>
+          <th scope="col">The closest thing today</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for definition in definitions %}
+          <tr>
+            <td>
+              <strong>{{ definition.name }}</strong>
+            </td>
+            <td>{{ definition.may }}</td>
+            <td>{{ definition.today }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <h3>People</h3>
+  <p>
+    Accounts appear as numbers. In the real feature, an administrator would change a role here, and a moderator would appoint the curators of their platforms.
+  </p>
+  <div class="table-scroll">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th scope="col">Account</th>
+          <th scope="col">Role</th>
+          <th scope="col">Platforms</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for person in people %}
+          <tr>
+            <td>{{ person.account }}</td>
+            <td>{{ person.role }}</td>
+            <td>
+              {% if person.platforms %}
+                {{ person.platforms|join:", " }}
+              {% else %}
+                All
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <h3>Hubs</h3>
+  <p>
+    Each platform has a hub, the institution that looks after it, and a working group that meets about it.
+  </p>
+  <div class="table-scroll">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th scope="col">Platform</th>
+          <th scope="col">Hub</th>
+          <th scope="col">Working group</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for hub in hubs %}
+          <tr>
+            <td>{{ hub.platform }}</td>
+            <td>{{ hub.hub }}</td>
+            <td>{{ hub.working_group }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <h2 id="platforms">Platforms</h2>
+  {% if platforms %}
+    <p>The platforms of this database. Only uploads that count (registered ones) are counted.</p>
+    <div class="table-scroll">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th scope="col">Platform</th>
+            <th scope="col">Uploads that count</th>
+            <th scope="col">Data points</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for platform in platforms %}
+            <tr>
+              <td>{{ platform.name }}</td>
+              <td>{{ platform.upload_count }}</td>
+              <td>{{ platform.data_point_count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="message message--info">
+      No demo data in this database yet, so there are no platforms to show.
+      Create it with <code>uv run manage.py seed_demo</code>.
+    </p>
+  {% endif %}
+  <h3>Add a platform</h3>
+  <form method="post"
+        action="{% url 'journeys:roles' %}"
+        class="proto-toolbar mb-4">
+    {% csrf_token %}
+    <div>
+      <label class="form-label" for="platform-name">Name of the new platform</label>
+      <input class="form-control"
+             type="text"
+             id="platform-name"
+             name="name"
+             maxlength="100"
+             required>
+    </div>
+    <button type="submit" class="btn btn-primary">Add platform</button>
+  </form>
+  <h3>Path rules</h3>
+  <p>
+    The parser renames keys that are personal, such as a username in the key of a chat, so that no one's name ends up in the schema. A path rule tells it which keys those are, where it cannot tell on its own.
+  </p>
+  {% if rules %}
+    <ul>
+      {% for rule in rules %}
+        <li class="text-break">
+          {{ rule.platform.name }}, {{ rule.get_kind_display }}:
+          <code>{{ rule.pattern }}</code>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>This database has no path rule yet, so here is an example (TikTok, a variable key):</p>
+    <p class="text-break">
+      <code>{{ example_rule }}</code>
+      <br>
+      {{ example_rule_note }}
+    </p>
+  {% endif %}
+  {% if user.is_staff %}
+    <p>
+      Today this is done in the Django admin:
+      <a href="{% url 'admin:ddps_platform_changelist' %}">platforms in the Django admin</a>,
+      <a href="{% url 'admin:ddps_pathrule_changelist' %}">path rules in the Django admin</a>.
+    </p>
+  {% else %}
+    <p>Today this is done in the Django admin, which only staff can open.</p>
+  {% endif %}
+{% endblock %}

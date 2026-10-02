@@ -1,0 +1,143 @@
+{% extends "journeys/prototype/base.html" %}
+{% block mockup %}
+  {% if not has_data %}
+    <p class="message message--info">
+      No demo data in this database yet, so the panels below have nothing to count.
+      Create it with <code>uv run manage.py seed_demo</code>.
+    </p>
+  {% endif %}
+  <h2>Your platforms</h2>
+  <p>
+    A moderator looks after one or more platforms; on this page, you moderate the platforms below.
+    {{ hub_note }}
+  </p>
+  <div class="proto-columns mb-4">
+    {% for panel in panels %}
+      <section class="proto-panel" aria-labelledby="queues-{{ panel.slug }}">
+        <h3 id="queues-{{ panel.slug }}">{{ panel.name }}</h3>
+        {% if panel.queues %}
+          {% with queues=panel.queues %}
+            <ul class="list-group list-group-flush mb-3">
+              <li class="list-group-item bg-transparent px-0">
+                {% if queues.data_points %}
+                  <strong>{{ queues.untriaged }} of {{ queues.data_points }}</strong> data points to triage
+                  <br>
+                  <a href="{% url 'schemas:platform' panel.slug %}?show=annotations">Triage {{ panel.name }}'s data points in the explorer</a>
+                {% else %}
+                  No counted uploads of {{ panel.name }} yet.
+                {% endif %}
+              </li>
+              <li class="list-group-item bg-transparent px-0">
+                <strong>{{ queues.suggestions }}</strong> annotation suggestion{{ queues.suggestions|pluralize }} to decide
+                <br>
+                {% if user.is_staff %}
+                  <a href="{% url 'proposals:annotations' %}?platform={{ panel.slug }}">Decide {{ panel.name }}'s annotation suggestions</a>
+                {% else %}
+                  <span class="muted">Deciding is for staff only today.</span>
+                {% endif %}
+              </li>
+              <li class="list-group-item bg-transparent px-0">
+                {% if user.is_staff %}
+                  <strong>{{ queues.approvals }}</strong> upload{{ queues.approvals|pluralize }} to approve
+                  {% if queues.approvals %}
+                    <br>
+                    <a href="{% url 'ddps:approvals' %}">Open the uploads waiting for approval</a>
+                  {% endif %}
+                {% else %}
+                  Uploads to approve
+                  <br>
+                  <span class="muted">Approving is for staff only today.</span>
+                {% endif %}
+              </li>
+              <li class="list-group-item bg-transparent px-0">
+                <strong>{{ queues.unrepresented }}</strong> list{{ queues.unrepresented|pluralize }} without a representation
+                <br>
+                <a href="{% url 'schemas:platform' panel.slug %}?show=representations">Describe {{ panel.name }}'s lists in the explorer</a>
+              </li>
+            </ul>
+            {% if queues.data_points %}
+              <h4 class="h6">Annotate next</h4>
+              {% if queues.next %}
+                <ol>
+                  {% for location in queues.next %}
+                    <li>
+                      <code class="text-break">{{ location.path }}</code>
+                      <span class="muted">in {{ location.seen }} upload{{ location.seen|pluralize }}</span>
+                    </li>
+                  {% endfor %}
+                </ol>
+                <p class="muted mb-0">
+                  The data points that occur in the most uploads come first. In the real feature, the
+                  order would also use how often researchers shortlist a data point.
+                </p>
+              {% else %}
+                <p class="mb-0">Every data point of {{ panel.name }} has an annotation.</p>
+              {% endif %}
+            {% endif %}
+          {% endwith %}
+        {% else %}
+          <p class="mb-0">This database has no data from {{ panel.name }}, so there is nothing to count yet.</p>
+        {% endif %}
+      </section>
+    {% endfor %}
+  </div>
+  <h2>Elsewhere</h2>
+  <p>
+    {% if not user.is_staff %}
+      Today, only staff see how many uploads wait on platforms you do not moderate.
+    {% elif elsewhere %}
+      {{ elsewhere }} upload{{ elsewhere|pluralize:" waits,s wait" }} on
+      {% if elsewhere == 1 %}
+        a platform
+      {% else %}
+        platforms
+      {% endif %}
+      you do not moderate.
+    {% else %}
+      No uploads wait on platforms you do not moderate.
+    {% endif %}
+    A role scoped to platforms keeps your dashboard to your own platforms: other platforms'
+    moderators look after theirs.
+  </p>
+  <section class="proto-panel mb-4" aria-labelledby="seed-heading">
+    <h2 id="seed-heading" class="h5">Seed annotations</h2>
+    <p>
+      Writing every annotation by hand is slow. Start from the platform's documentation, a paired
+      upload or a suggestion by a language model, and check it before it counts.
+    </p>
+    <a href="{% url 'journeys:seed' %}">Seed annotations for your platforms</a>
+  </section>
+  <h2>Questions from the community</h2>
+  <p>Curators ask everyone what one person cannot know, and anyone may answer.</p>
+  <ul class="list-unstyled">
+    {% for name, question in questions %}
+      <li class="proto-panel mb-3">
+        <p class="mb-1">
+          {{ name }}: <code class="text-break">{{ question.path }}</code>
+        </p>
+        <p class="mb-1">{{ question.text }}</p>
+        <p class="muted mb-0">{{ question.answers }} answer{{ question.answers|pluralize }}</p>
+      </li>
+    {% endfor %}
+  </ul>
+  <h2>Top contributors this month</h2>
+  <p>Accounts appear as numbers: the tracker never shows who is behind an account.</p>
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th scope="col">Account</th>
+        <th scope="col">Annotations</th>
+        <th scope="col">Uploads</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for contributor in contributors %}
+        <tr>
+          <td>{{ contributor.account }}</td>
+          <td>{{ contributor.annotations }}</td>
+          <td>{{ contributor.uploads }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

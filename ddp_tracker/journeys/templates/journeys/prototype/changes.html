@@ -1,0 +1,151 @@
+{% extends "journeys/prototype/base.html" %}
+{% block heading %}{{ platform_name }}: changelog{% endblock %}
+{% block crumb %}{{ platform_name }}: changelog{% endblock %}
+{% block mockup %}
+  <div class="proto-toolbar">
+    <button type="button" class="btn btn-secondary btn-sm" disabled>Compare two dates</button>
+    <button type="button"
+            class="btn btn-secondary btn-sm"
+            disabled>Tell me when {{ platform_name }} changes</button>
+  </div>
+  <ul class="muted">
+    <li>
+      Compare two dates. In the real feature, this would let you pick any two requests and see
+      what changed between them.
+    </li>
+    <li>
+      Tell me when {{ platform_name }} changes. In the real feature, this would send you a message
+      when a newer {{ platform_name }} package adds, moves, changes or removes data points.
+    </li>
+  </ul>
+  {% if platform is None %}
+    <p class="message message--info">
+      No demo data in this database yet. Create it with <code>uv run manage.py seed_demo</code>.
+    </p>
+  {% elif not entries %}
+    <p class="message message--info">
+      No package counts for {{ platform_name }} yet. A package counts once it has been checked and
+      added to the collected schema.
+    </p>
+  {% else %}
+    <ol class="timeline">
+      {% for entry in entries %}
+        <li class="timeline__entry">
+          <h2 class="timeline__date">Requested on {{ entry.upload.requested_at|date:"j F Y" }}</h2>
+          {% if entry.first %}
+            <p>
+              First package: {{ entry.data_points }} data point{{ entry.data_points|pluralize }}.
+              There is nothing earlier to compare it with.
+            </p>
+          {% elif entry.summary %}
+            <p>
+              {{ entry.data_points }} data point{{ entry.data_points|pluralize }}.
+              {{ entry.summary }}, compared with the requests before it.
+            </p>
+          {% else %}
+            <p>
+              {{ entry.data_points }} data point{{ entry.data_points|pluralize }}.
+              Nothing changed compared with the requests before it.
+            </p>
+          {% endif %}
+          {% if entry.added %}
+            <h3 class="h6">Added</h3>
+            <ul class="mb-3">
+              {% for path in entry.added|slice:":8" %}
+                <li class="text-break">
+                  <code>{{ path }}</code>
+                </li>
+              {% endfor %}
+              {% if entry.added|length > 8 %}<li>and {{ entry.added|length|add:"-8" }} more</li>{% endif %}
+            </ul>
+          {% endif %}
+          {% if entry.moved %}
+            <h3 class="h6">Moved or renamed</h3>
+            <div class="table-scroll">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th scope="col">From</th>
+                    <th scope="col">To</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for source, target in entry.moved|slice:":8" %}
+                    <tr>
+                      <td class="text-break">
+                        <code>{{ source }}</code>
+                      </td>
+                      <td class="text-break">
+                        <code>{{ target }}</code>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% if entry.moved|length > 8 %}<p>and {{ entry.moved|length|add:"-8" }} more</p>{% endif %}
+          {% endif %}
+          {% if entry.changed %}
+            <h3 class="h6">Changed</h3>
+            <div class="table-scroll">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th scope="col">Path</th>
+                    <th scope="col">Field</th>
+                    <th scope="col">Before</th>
+                    <th scope="col">Now</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for change in entry.changed|slice:":8" %}
+                    <tr>
+                      <td class="text-break">
+                        <code>{{ change.path }}</code>
+                      </td>
+                      <td>{{ change.field }}</td>
+                      <td>
+                        {% if change.before %}
+                          <code>{{ change.before }}</code>
+                        {% else %}
+                          not recorded
+                        {% endif %}
+                      </td>
+                      <td>
+                        <code>{{ change.now }}</code>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% if entry.changed|length > 8 %}<p>and {{ entry.changed|length|add:"-8" }} more</p>{% endif %}
+          {% endif %}
+          {% if entry.removed %}
+            <h3 class="h6">Removed</h3>
+            <ul class="mb-3">
+              {% for path in entry.removed|slice:":8" %}
+                <li class="text-break">
+                  <code>{{ path }}</code>
+                </li>
+              {% endfor %}
+              {% if entry.removed|length > 8 %}<li>and {{ entry.removed|length|add:"-8" }} more</li>{% endif %}
+            </ul>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  {% endif %}
+  <p class="muted">
+    Today, what changed is only visible per upload, in the upload's review, and only to the person
+    who uploaded it and to staff. This page would show it for the whole platform, to everyone.
+  </p>
+  <h2>Other platforms</h2>
+  <ul>
+    {% for other, label in others %}
+      <li>
+        <a href="{% url 'journeys:changes' other %}">{{ label }}: changelog</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

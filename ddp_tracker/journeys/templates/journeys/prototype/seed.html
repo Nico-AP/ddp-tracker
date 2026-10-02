@@ -1,0 +1,191 @@
+{% extends "journeys/prototype/base.html" %}
+{% block crumb_parent %}
+  <li class="breadcrumb-item">
+    <a href="{% url 'journeys:moderate' %}">Moderator dashboard</a>
+  </li>
+{% endblock %}
+{% block mockup %}
+  <p>
+    Writing every annotation by hand is slow. Three sources can give a first version: the platform's
+    own documentation, a pair of uploads that differ in one setting, and labels suggested by AI.
+    A person then checks each one before it counts.
+  </p>
+  <nav aria-label="Sources">
+    <ul class="nav nav-pills mb-4">
+      {% for key, label in sources %}
+        <li class="nav-item">
+          <a class="nav-link{% if key == source %} active{% endif %}"
+             href="{% url 'journeys:seed' %}?source={{ key }}"
+             {% if key == source %}aria-current="page"{% endif %}><span class="visually-hidden">Seed annotations from</span> {{ label }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+  {% if source == "docs" %}
+    <h2>Official documentation</h2>
+    <p>Platform: {{ doc_platform }}. Source: {{ doc_source }}.</p>
+    <p>
+      {% for label, count in doc_summary %}{{ count }} {{ label|lower }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+    </p>
+    <p>
+      An official annotation is kept as its own kind, next to the curator's, so that the gap between
+      what a platform says and what its packages contain stays visible.
+    </p>
+    <div class="table-scroll">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th scope="col">The documentation says</th>
+            <th scope="col">Seen in uploads</th>
+            <th scope="col">Status</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in doc_entries %}
+            <tr>
+              <td class="text-break">
+                {% if entry.documented %}
+                  <span class="badge badge--official ms-0">Official</span>
+                  <strong>{{ entry.documented }}</strong>
+                  <br>
+                  {{ entry.text }}
+                {% else %}
+                  <span class="muted">Not in the documentation</span>
+                {% endif %}
+              </td>
+              <td class="text-break">
+                {% if entry.path %}
+                  <code>{{ entry.path }}</code>
+                {% else %}
+                  <span class="muted">In none of the uploads</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge {{ entry.status_badge }} ms-0">{{ entry.status_label }}</span>
+              </td>
+              <td>
+                {% if entry.status == "matched" %}
+                  <form method="post" action="{% url 'journeys:seed' %}" class="inline-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="source" value="{{ source }}">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                      Accept {{ entry.documented }} as an official annotation
+                    </button>
+                  </form>
+                {% elif entry.path %}
+                  <span class="muted">A curator annotates it by hand.</span>
+                {% else %}
+                  <span class="muted">Nothing to annotate yet.</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% elif source == "pairs" %}
+    <h2>Paired uploads</h2>
+    <p>
+      The same account, requested twice with one setting changed. A data point in the first upload
+      that has an annotation gives its match in the second a first version.
+    </p>
+    <p>
+      {{ pair_title }}
+      <br>
+      Differs in: {{ pair_differs_in }}
+    </p>
+    <div class="table-scroll">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th scope="col">First upload</th>
+            <th scope="col">Second upload</th>
+            <th scope="col">Why they match</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in pair_rows %}
+            <tr>
+              <td class="text-break">
+                <code>{{ row.left }}</code>
+                {% if row.annotation %}
+                  <br>
+                  <span class="muted">Annotation: {{ row.annotation }}</span>
+                {% endif %}
+              </td>
+              <td class="text-break">
+                <code>{{ row.right }}</code>
+              </td>
+              <td class="text-break">{{ row.evidence }}</td>
+              <td>
+                {% if row.annotation %}
+                  <form method="post" action="{% url 'journeys:seed' %}" class="inline-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="source" value="{{ source }}">
+                    <button type="submit"
+                            class="btn btn-primary btn-sm">Carry {{ row.annotation }} across</button>
+                  </form>
+                {% else %}
+                  <span class="muted">No annotation to carry across.</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <h2>AI suggestions</h2>
+    <p>{{ ai_note }}</p>
+    <div class="table-scroll">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th scope="col">Data point</th>
+            <th scope="col">Suggested label</th>
+            <th scope="col">Why</th>
+            <th scope="col">Confidence</th>
+            <th scope="col">Status</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for suggestion in ai_suggestions %}
+            <tr>
+              <td class="text-break">
+                <code>{{ suggestion.path }}</code>
+              </td>
+              <td>{{ suggestion.label }}</td>
+              <td class="text-break">{{ suggestion.why }}</td>
+              <td>{{ suggestion.confidence }}</td>
+              <td>
+                <span class="badge badge--prototype ms-0">Needs a human check</span>
+              </td>
+              <td>
+                <form method="post"
+                      action="{% url 'journeys:seed' %}"
+                      class="proto-toolbar">
+                  {% csrf_token %}
+                  <input type="hidden" name="source" value="{{ source }}">
+                  <button type="submit"
+                          name="decision"
+                          value="accept"
+                          class="btn btn-primary btn-sm">Accept {{ suggestion.label }}</button>
+                  <button type="submit"
+                          name="decision"
+                          value="reject"
+                          class="btn btn-secondary btn-sm">Reject {{ suggestion.label }}</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+  <p>
+    <a href="{% url 'journeys:moderate' %}">Back to the moderator dashboard</a>
+  </p>
+{% endblock %}

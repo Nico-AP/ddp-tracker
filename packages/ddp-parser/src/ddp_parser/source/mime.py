@@ -12,13 +12,17 @@ import filetype
 from ddp_parser.model import MimeSource
 
 _MEDIA_PREFIXES = ("image/", "video/", "audio/")
+# Python's built-in table only. The module-level functions also read the system's own table
+# (the Windows registry, /etc/mime.types), so the same file would get another type on another
+# machine: with Excel installed, Windows calls a .csv file "application/vnd.ms-excel".
+_TYPES = mimetypes.MimeTypes()
 
 
 def detect_mime(name: str, header: bytes) -> tuple[str | None, MimeSource | None]:
     magic = filetype.guess_mime(header)
     if magic is not None:
         return magic, MimeSource.MAGIC
-    guessed, _ = mimetypes.guess_type(name, strict=False)
+    guessed, _ = _TYPES.guess_type(name, strict=False)
     return (guessed, MimeSource.EXTENSION) if guessed else (None, None)
 
 

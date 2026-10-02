@@ -1,0 +1,108 @@
+{% extends "journeys/prototype/base.html" %}
+{% block mockup %}
+  {% if not has_data %}
+    <p class="message message--info">
+      No demo data in this database yet, so the panels below come without figures from the
+      tracker. Create it with <code>uv run manage.py seed_demo</code>.
+    </p>
+  {% endif %}
+  <h2>What each platform discloses</h2>
+  <div class="table-scroll">
+    <table class="table table-sm matrix">
+      <caption class="visually-hidden">Concepts by platform: whether each platform's data download package contains the concept</caption>
+      <thead>
+        <tr>
+          <th scope="col" class="text-start">Concept</th>
+          {% for name in platforms.values %}<th scope="col">{{ name }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for concept, cells in matrix %}
+          <tr>
+            <th scope="row">
+              <a href="{% url 'journeys:concept' concept.slug %}">{{ concept.name }}</a>
+            </th>
+            {% for yes in cells %}
+              {% if yes %}
+                <td class="matrix__yes">Yes</td>
+              {% else %}
+                <td class="matrix__no">No</td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th scope="row">Concepts disclosed</th>
+          {% for count in disclosed %}<td>{{ count }} of {{ total }}</td>{% endfor %}
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  <p class="muted">
+    No means: not seen in the packages uploaded so far.
+    {% if no_package %}
+      {% for name in no_package %}
+        {{ name }}{% if not forloop.last %}{% if forloop.revcounter == 2 %} and{% else %},{% endif %}{% endif %}
+      {% endfor %}
+      {{ no_package|length|pluralize:"has,have" }} no package that counts yet.
+    {% endif %}
+  </p>
+  <h2>How people get their data</h2>
+  <div class="proto-columns">
+    {% for panel in panels %}
+      <section class="proto-panel" aria-labelledby="facts-{{ panel.facts.slug }}">
+        <h3 id="facts-{{ panel.facts.slug }}">{{ panel.name }}</h3>
+        <dl class="facts">
+          <dt>Ways to request</dt>
+          <dd>
+            {{ panel.facts.request_modes|join:", " }}
+          </dd>
+          <dt>Formats</dt>
+          <dd>
+            {{ panel.facts.formats|join:", " }}
+          </dd>
+          <dt>How long it takes</dt>
+          <dd>
+            {{ panel.facts.delivery }}
+          </dd>
+          <dt>Documentation</dt>
+          <dd>
+            {{ panel.facts.documentation }}
+          </dd>
+          <dt>Machine-readable</dt>
+          <dd>
+            {{ panel.facts.machine_readable }}
+          </dd>
+        </dl>
+        <p>
+          Documentation gap: {{ panel.facts.documented_not_observed }} documented but not observed,
+          {{ panel.facts.observed_not_documented }} observed but not documented.
+          <a href="{% url 'journeys:seed' %}?source=docs">Seed annotations from {{ panel.name }}'s documentation</a>
+        </p>
+        {% if panel.figures %}
+          <p>
+            {% if panel.figures.uploads %}
+              In this tracker: {{ panel.figures.uploads }} upload{{ panel.figures.uploads|pluralize }},
+              {{ panel.figures.data_points }} data point{{ panel.figures.data_points|pluralize }},
+              {{ panel.figures.annotations }} annotation{{ panel.figures.annotations|pluralize }},
+              last requested {{ panel.figures.last_requested|date:"j F Y" }}.
+            {% else %}
+              In this tracker: no package from {{ panel.name }} counts yet. A package counts once it
+              has been checked and added to the collected schema.
+            {% endif %}
+          </p>
+          <ul class="list-unstyled mb-0">
+            <li>
+              <a href="{% url 'schemas:platform' panel.facts.slug %}">Explore {{ panel.name }}'s structure</a>
+            </li>
+            <li>
+              <a href="{% url 'journeys:changes' panel.facts.slug %}">{{ panel.name }}'s changelog</a>
+            </li>
+          </ul>
+        {% endif %}
+      </section>
+    {% endfor %}
+  </div>
+{% endblock %}

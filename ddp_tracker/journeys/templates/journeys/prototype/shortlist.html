@@ -1,0 +1,166 @@
+{% extends "journeys/prototype/base.html" %}
+{% load static %}
+{% block mockup %}
+  <script src="{% static 'js/journeys.js' %}" defer></script>
+  {% if is_shared %}
+    <div class="proto-panel mb-4">
+      <p>A shared shortlist: what a researcher chose for a study.</p>
+      {% if entries %}
+        <form method="post" action="{% url 'journeys:shortlist-add' %}">
+          {% csrf_token %}
+          {% for entry in entries %}
+            <input type="hidden" name="concept" value="{{ entry.concept.slug }}">
+          {% endfor %}
+          <button type="submit" class="btn btn-primary btn-sm">Add these to my shortlist</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+  {% if not entries %}
+    {% if is_shared %}
+      <p>This link names no concepts that this site knows.</p>
+    {% else %}
+      <p>Your shortlist is empty.</p>
+    {% endif %}
+    <p>
+      Choose concepts in the <a href="{% url 'journeys:concepts' %}">concept view</a>, or
+      <a href="?{{ example_query }}">load an example shortlist</a>.
+    </p>
+  {% else %}
+    <h2>Chosen concepts</h2>
+    <ul class="list-unstyled">
+      {% for entry in entries %}
+        <li class="proto-panel mb-3">
+          <h3 class="h5">
+            <a href="{% url 'journeys:concept' entry.concept.slug %}">{{ entry.concept.name }}</a>
+          </h3>
+          {% if not is_shared %}
+            <form method="post"
+                  action="{% url 'journeys:shortlist-add' %}"
+                  class="proto-toolbar">
+              {% csrf_token %}
+              <input type="hidden" name="concept" value="{{ entry.concept.slug }}">
+              <div>
+                <label class="form-label" for="note-{{ entry.concept.slug }}">Why this study needs it<span class="visually-hidden"> ({{ entry.concept.name }})</span></label>
+                <input class="form-control"
+                       type="text"
+                       id="note-{{ entry.concept.slug }}"
+                       name="note"
+                       maxlength="{{ max_note }}"
+                       value="{{ entry.note }}">
+              </div>
+              <button type="submit" class="btn btn-secondary btn-sm">
+                Save note<span class="visually-hidden"> for {{ entry.concept.name }}</span>
+              </button>
+            </form>
+            <form method="post" action="{% url 'journeys:shortlist-remove' %}">
+              {% csrf_token %}
+              <input type="hidden" name="concept" value="{{ entry.concept.slug }}">
+              <button type="submit"
+                      class="btn btn-secondary btn-sm">Remove {{ entry.concept.name }}</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    <h2>Data points</h2>
+    {% if rows %}
+      <div class="table-scroll">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th scope="col">Concept</th>
+              <th scope="col">Platform</th>
+              <th scope="col">Path</th>
+              <th scope="col">Type</th>
+              <th scope="col">Format</th>
+              <th scope="col">Personal data</th>
+              <th scope="col">Whose time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td>{{ row.concept }}</td>
+                <td>{{ row.platform }}</td>
+                <td class="text-break">
+                  <code>{{ row.path }}</code>
+                </td>
+                <td>{{ row.value_type }}</td>
+                <td>
+                  {% if row.value_format %}<code>{{ row.value_format }}</code>{% endif %}
+                </td>
+                <td>
+                  {% if row.pii %}
+                    <span class="badge badge--pii ms-0">Personal data</span>
+                  {% else %}
+                    no
+                  {% endif %}
+                </td>
+                <td>{{ row.tz_whos }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="message message--info">
+        No demo data in this database yet. Create it with <code>uv run manage.py seed_demo</code>.
+      </p>
+    {% endif %}
+    <h2 id="share">Hand over</h2>
+    <p>Send the link to the engineer who builds the data donation, or download what they need.</p>
+    {# no copy-button class here: the reviews' Sass styles .copy-button as a bare icon button #}
+    <p>
+      <button type="button"
+              class="btn btn-primary"
+              data-copy="{{ share_url }}"
+              data-copied="Link copied to the clipboard.">Copy the link for your engineer</button>
+      <span class="ms-2" role="status" data-copy-status></span>
+    </p>
+    <div class="mb-3">
+      <label class="form-label" for="share-link">The link to this shortlist</label>
+      <input class="form-control"
+             type="text"
+             id="share-link"
+             readonly
+             value="{{ share_url }}">
+    </div>
+    <p class="proto-toolbar">
+      <a class="btn btn-secondary"
+         href="{% url 'journeys:shortlist-codebook' %}?{{ query }}">Download the codebook (CSV)</a>
+      <a class="btn btn-secondary"
+         href="{% url 'journeys:shortlist-blueprint' %}?{{ query }}">Download DDM File Blueprints (JSON)</a>
+    </p>
+    {% if rows %}
+      <h2>Ethics summary</h2>
+      <p>
+        {{ personal }} of {{ rows|length }} data point{{ rows|length|pluralize }}
+        {{ personal|pluralize:"is,are" }} flagged as personal data.
+        This helps with an ethics application or a data protection impact assessment: it shows
+        which data the study asks for, and which of it is about people.
+      </p>
+    {% endif %}
+    <h2>Preview</h2>
+    <h3 class="h6">Codebook (CSV)</h3>
+    <details class="mb-3">
+      <summary>Preview the codebook (CSV)</summary>
+      <pre class="code-sample">{{ codebook }}</pre>
+    </details>
+    <h3 class="h6">DDM File Blueprints (JSON)</h3>
+    <p class="muted">
+      Illustrative: it follows the fields of a File Blueprint, not the import format of the Data
+      Donation Module.
+    </p>
+    <details class="mb-3">
+      <summary>Preview the DDM File Blueprints (JSON)</summary>
+      <pre class="code-sample">{{ blueprint }}</pre>
+    </details>
+    {% if not is_shared %}
+      <form method="post" action="{% url 'journeys:shortlist-clear' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger btn-sm">Clear my shortlist</button>
+      </form>
+    {% endif %}
+  {% endif %}
+{% endblock %}
