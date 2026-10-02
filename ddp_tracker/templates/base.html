@@ -28,6 +28,10 @@
     <script src="{% static 'js/modal.js' %}" defer></script>
   </head>
   <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    {% if DEV_BANNER %}
+      <p class="site-banner"
+         role="status">This is a prototype version and only open to invited users.</p>
+    {% endif %}
     <header class="site-header">
       <a class="site-header__brand" href="{% url 'core:index' %}">
         <img class="site-header__logo"
@@ -40,7 +44,9 @@
         DDP Tracker
       </a>
       <nav class="site-nav">
-        <a href="{% url 'schemas:platforms' %}">Explore</a>
+        {% if user.is_authenticated or not PRIVATE_MODE %}
+          <a href="{% url 'schemas:platforms' %}">Explore</a>
+        {% endif %}
         {% if user.is_authenticated %}
           <a href="{% url 'ddps:uploads' %}">{% if user.is_staff %}Uploads{% else %}My uploads{% endif %}</a>
           {% approvals_waiting as waiting %}

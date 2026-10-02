@@ -154,6 +154,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "ddp_tracker.core.middleware.PrivateModeMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
@@ -206,6 +207,7 @@ TEMPLATES = [
                 "django.template.context_processors.tz",
                 "django.contrib.messages.context_processors.messages",
                 "ddp_tracker.users.context_processors.allauth_settings",
+                "ddp_tracker.core.context_processors.site_flags",
             ],
         },
     },
@@ -412,7 +414,10 @@ REDIS_SSL = REDIS_URL.startswith("rediss://")
 
 # django-allauth
 # ------------------------------------------------------------------------------
-ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
+# Sign-up is closed unless switched on: accounts are by invitation (staff create them in the admin).
+ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", default=False)
+# https://docs.allauth.org/en/latest/account/adapter.html (closes the signup view itself)
+ACCOUNT_ADAPTER = "ddp_tracker.users.adapters.AccountAdapter"
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_LOGIN_METHODS = {"email"}
 # https://docs.allauth.org/en/latest/account/configuration.html
@@ -425,6 +430,15 @@ ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_FORMS = {"signup": "ddp_tracker.users.forms.UserSignupForm"}
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_FORMS = {"signup": "ddp_tracker.users.forms.UserSocialSignupForm"}
+
+
+# Invite-only phase
+# ------------------------------------------------------------------------------
+# The "development version, only open to invited users" banner on every page.
+DEV_BANNER = env.bool("DJANGO_DEV_BANNER", default=True)
+# Every view needs a login, except the (greyed-out) landing page and what it takes to log in
+# (ddp_tracker/core/middleware.py).
+PRIVATE_MODE = env.bool("DJANGO_PRIVATE_MODE", default=False)
 
 
 # DDP uploads

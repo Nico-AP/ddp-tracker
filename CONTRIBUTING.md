@@ -130,6 +130,18 @@ Upload-related settings: `DDP_INCOMING_DIR`, `DDP_MAX_UPLOAD_SIZE`, `DDP_SIMILAR
 (below it, an upload is unusual and needs the uploader's confirmation and a staff approval before
 it counts) and `TASKS_BACKEND` (see `.env.example`).
 
+Invite-only switches (see `.env.example`; change the variable and restart to reverse):
+
+- `DJANGO_ACCOUNT_ALLOW_REGISTRATION` (default `False`) — the signup form is closed. Staff create
+  an invited user's account in the admin; the user then sets a password with "Forgot password"
+  on the login page.
+- `DJANGO_DEV_BANNER` (default `True`) — the "development version, only open to invited users"
+  banner on every page.
+- `DJANGO_PRIVATE_MODE` (default `False`) — every view needs a login
+  (`ddp_tracker/core/middleware.py`), except those marked `login_not_required`: the landing page
+  (greyed out, with a login link), the health check and logging in. A new view that must stay
+  reachable in private mode needs that decorator.
+
 `manage.py` defaults to `local`; `config/wsgi.py`/`config/asgi.py` default to `production`. Override
 with the `DJANGO_SETTINGS_MODULE` environment variable when you need something else.
 

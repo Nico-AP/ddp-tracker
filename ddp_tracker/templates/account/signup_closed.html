@@ -1,0 +1,14 @@
+{% extends "account/base_entrance.html" %}
+{% load allauth %}
+{% block head_title %}
+  Sign up closed
+{% endblock head_title %}
+{% block content %}
+  {% element h1 %}
+  Sign up closed
+{% endelement %}
+{% element p %}
+The DDP Tracker is a development version and only open to invited users.
+If you were invited, <a href="{% url 'account_login' %}">log in</a>.
+{% endelement %}
+{% endblock content %}

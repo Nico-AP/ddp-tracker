@@ -63,6 +63,13 @@
   }
 }
 
+// the landing page in private mode, signed out: shown but not usable (the wrapper is inert)
+.landing-locked {
+  opacity: 0.45;
+  filter: grayscale(1);
+  user-select: none;
+}
+
 .plain-list {
   padding-left: $spacing-unit * 2;
 }
