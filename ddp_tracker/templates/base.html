@@ -28,6 +28,10 @@
     <script src="{% static 'js/modal.js' %}" defer></script>
   </head>
   <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    {% if DEV_BANNER %}
+      <p class="site-banner"
+         role="status">This is a development version and only open to invited users.</p>
+    {% endif %}
     <header class="site-header">
       <a class="site-header__brand" href="{% url 'journeys:index' %}">
         <img class="site-header__logo"
@@ -41,8 +45,10 @@
       </a>
       <nav class="site-nav">
         <a href="{% url 'journeys:index' %}">Home</a>
-        <a href="{% url 'schemas:platforms' %}">Explore</a>
-        <a href="{% url 'docs' '' %}">Docs</a>
+        {% if user.is_authenticated or not PRIVATE_MODE %}
+          <a href="{% url 'schemas:platforms' %}">Explore</a>
+          <a href="{% url 'docs' '' %}">Docs</a>
+        {% endif %}
         {% if user.is_authenticated %}
           <a href="{% url 'ddps:uploads' %}">{% if user.is_staff %}Uploads{% else %}My uploads{% endif %}</a>
           {% approvals_waiting as waiting %}
@@ -61,12 +67,16 @@
             <button type="submit" class="link-button">Log out</button>
           </form>
         {% else %}
-          <a href="{% url 'journeys:journey' 'contributor' %}">Contribute</a>
+          {% if not PRIVATE_MODE %}
+            <a href="{% url 'journeys:journey' 'contributor' %}">Contribute</a>
+          {% endif %}
           <a href="{% url 'account_login' %}">Log in</a>
         {% endif %}
       </nav>
     </header>
-    {% include "journeys/_prototype_nav.html" %}
+    {% if user.is_authenticated or not PRIVATE_MODE %}
+      {% include "journeys/_prototype_nav.html" %}
+    {% endif %}
     <main class="container">
       {% for message in messages %}<p class="message message--{{ message.tags }}">{{ message }}</p>{% endfor %}
       {% block content %}{% endblock %}

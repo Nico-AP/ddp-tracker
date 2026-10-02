@@ -149,6 +149,9 @@ these steps would have failed locally too.
   `uv run manage.py makemigrations` and commit the result.
 - Settings differences between environments belong in `config/settings/`, never as
   `if DEBUG:`-style branching inside application code.
+- With `DJANGO_PRIVATE_MODE` on, every view needs a login (`ddp_tracker/core/middleware.py`). A
+  view that must stay reachable signed out (like the landing page and health check) is marked
+  `@login_not_required`; don't add it to anything else.
 - Secrets/config come from environment variables via `django-environ` (see `.env.example`) — never
   hardcode a secret, and never commit a real `.env` file.
 - Keep `CONTRIBUTING.md` in sync if you change the dev workflow (new required env var, new

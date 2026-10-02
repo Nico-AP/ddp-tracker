@@ -2,7 +2,7 @@
 
 from django.conf import settings
 from django.shortcuts import resolve_url
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.html import escape  # pages escape apostrophes: compare with escaped text
 
@@ -197,3 +197,58 @@ class NavigationTests(TestCase):
         for text in ("My uploads", "My suggestions", "Upload a DDP", "Log out"):
             self.assertIn(text, main)
         self.assertNotIn("Contribute", main)  # they have the upload button
+
+
+@override_settings(PRIVATE_MODE=True)
+class PrivateModeTests(TestCase):
+    """With the prototype gate on (core/middleware.py), "/" shows the locked overview to people
+    who are signed out, and everything else of ours needs a login."""
+
+    def nav(self, response, css_class: str) -> str:
+        return response.content.decode().split(f'<nav class="{css_class}"')[1].split("</nav>")[0]
+
+    def test_signed_out_the_home_page_is_locked(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "core/index.html")
+        self.assertTemplateNotUsed(response, "journeys/index.html")
+        login = reverse("account_login")
+        self.assertContains(
+            response, f'<a class="btn btn-primary" href="{login}">Log in</a>', html=True
+        )
+        self.assertNotContains(response, "What brings you here?")
+        for role in ROLES:
+            self.assertNotContains(response, f'href="{journey_url(role.slug)}"')
+
+    def test_signed_out_our_pages_need_a_login(self):
+        login = reverse("account_login")
+        for url in (
+            journey_url("contributor"),
+            reverse("journeys:concepts"),
+            reverse("journeys:features"),
+        ):
+            with self.subTest(url=url):
+                self.assertRedirects(
+                    self.client.get(url), f"{login}?next={url}", fetch_redirect_response=False
+                )
+
+    def test_signed_out_the_header_offers_only_logging_in(self):
+        response = self.client.get("/")
+        main = self.nav(response, "site-nav")
+        self.assertIn("Log in", main)
+        for text in ("Explore", "Docs", "Contribute"):
+            self.assertNotIn(text, main)
+        self.assertNotContains(response, 'class="prototype-nav"')
+
+    def test_signed_in_the_home_page_is_the_role_picker(self):
+        self.client.force_login(User.objects.create_user("someone@example.org"))
+        response = self.client.get("/")
+        self.assertTemplateUsed(response, "journeys/index.html")
+        self.assertContains(response, "What brings you here?")
+        for role in ROLES:
+            self.assertContains(response, f'href="{journey_url(role.slug)}"')
+        main = self.nav(response, "site-nav")
+        for text in ("Home", "Explore", "Docs"):
+            self.assertIn(text, main)
+        strip = self.nav(response, "prototype-nav")
+        self.assertIn(f'href="{reverse("journeys:concepts")}"', strip)

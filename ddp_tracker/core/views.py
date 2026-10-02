@@ -2,6 +2,7 @@ import posixpath
 from pathlib import Path
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_not_required
 from django.core.exceptions import SuspiciousFileOperation
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
 from django.shortcuts import redirect, render
@@ -10,10 +11,13 @@ from django.utils._os import safe_join
 from django.views.static import serve
 
 
+@login_not_required
 def index(request: HttpRequest) -> HttpResponse:
     """What the app offers and where to go for it (the platforms are on the Explore page,
-    ``schemas.views.platform_list``)."""
-    return render(request, "core/index.html", {"project_name": "DDP Tracker"})
+    ``schemas.views.platform_list``). In private mode, signed-out visitors see it greyed out
+    (``locked``), with only a login link."""
+    locked = settings.PRIVATE_MODE and not request.user.is_authenticated
+    return render(request, "core/index.html", {"project_name": "DDP Tracker", "locked": locked})
 
 
 def docs(request: HttpRequest, path: str) -> HttpResponseBase:
@@ -32,12 +36,14 @@ def docs(request: HttpRequest, path: str) -> HttpResponseBase:
     return serve(request, path, document_root=str(settings.MKDOCS_ROOT))
 
 
+@login_not_required
 def favicon(request: HttpRequest) -> HttpResponseBase:
     """Browsers ask for /favicon.ico where a page doesn't name its icon (e.g. the MkDocs docs).
     Resolved per request: in production the static URL comes from collectstatic's manifest."""
     return redirect(static("img/favicons/favicon.ico"), permanent=True)
 
 
+@login_not_required
 def health(request: HttpRequest) -> JsonResponse:
     """Liveness check: returns 200 if the process is serving requests."""
     return JsonResponse({"status": "ok"})

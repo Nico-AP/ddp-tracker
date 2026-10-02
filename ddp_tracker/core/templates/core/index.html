@@ -27,112 +27,121 @@
       unless you decide to share them with the community.
     </p>
   </div>
-  <h2>What do you want to do?</h2>
-  {% url 'schemas:platforms' as explore_url %}
-  <section class="goal-group" aria-labelledby="goal-explore">
-    <h3 id="goal-explore">Explore</h3>
-    <ul class="cards">
-      <li class="card">
-        <a class="card__title" href="{{ explore_url }}">See what a platform's DDP contains</a>
-        <p>
-          Every data point of its takeouts as a tree, with its type,
-          examples and meaning. Filter by request date and account language.
-        </p>
-      </li>
-      <li class="card">
-        <a class="card__title"
-           href="{{ explore_url }}">Platform annotations: Look up what a data point means</a>
-        <p>
-          Each data point with its description, where it is found and
-          in which languages.
-        </p>
-      </li>
-      <li class="card">
-        <a class="card__title"
-           href="{% url 'representations:representations' %}">Representations: Compare meanings across platforms</a>
-        <p>
-          What a list's entries mean, like a watched video, and the data points that
-          describe them. The <a href="{% url 'representations:vocabulary' %}">vocabulary</a>
-          lists the terms they use.
-        </p>
-      </li>
-      <li class="card">
-        <a class="card__title"
-           href="{% url 'docs' '' %}">Documentation: Learn how the DDP Tracker works</a>
-        <p>
-          What "new", "changed" and "missing" mean, how uploads are checked,
-          how your privacy is protected, etc.
-        </p>
-      </li>
-    </ul>
-  </section>
-  <section class="goal-group" aria-labelledby="goal-contribute">
-    <h3 id="goal-contribute">Contribute</h3>
-    {% if not user.is_authenticated %}
-      <p class="muted">
-        These need an account:
-        <a href="{% url 'account_login' %}">log in</a>
-        {% if ACCOUNT_ALLOW_REGISTRATION %}
-          or <a href="{% url 'account_signup' %}">sign up</a>
-        {% endif %}
-      </p>
-    {% endif %}
-    <ul class="cards">
-      <li class="card">
-        {% url 'ddps:upload-create' as upload_url %}
-        <a class="card__title"
-           href="{% if user.is_authenticated %}{{ upload_url }}{% else %}{% url 'account_login' %}?next={{ upload_url|urlencode }}{% endif %}">Upload your DDP</a>
-        <p>
-          See what is new in your takeout, what is known, what changed and what is missing,
-          compared with the uploads before it.
-        </p>
-        {% if not user.is_authenticated %}<p class="card__hint">Sign in to upload.</p>{% endif %}
-      </li>
-      <li class="card">
-        {% url 'ddps:uploads' as uploads_url %}
-        <a class="card__title"
-           href="{% if user.is_authenticated %}{{ uploads_url }}{% else %}{% url 'account_login' %}?next={{ uploads_url|urlencode }}{% endif %}">Your uploads and reviews</a>
-        <p>Every upload with its status, and its review: the data points to go through and annotate.</p>
-        {% if not user.is_authenticated %}<p class="card__hint">Sign in to see them.</p>{% endif %}
-      </li>
-      <li class="card">
-        <a class="card__title" href="{{ explore_url }}">Annotate and link data points</a>
-        <p>
-          In a platform's explorer or an upload's review: describe what a data point means, and
-          what a list's entries represent.
-          {% if user.is_staff %}
-            Your changes apply right away.
-          {% else %}
-            Your changes are suggestions that staff review{% if user.is_authenticated %}: see <a href="{% url 'proposals:mine' %}">my suggestions</a>{% endif %}.
-          {% endif %}
-        </p>
-        {% if not user.is_authenticated %}<p class="card__hint">Sign in to annotate.</p>{% endif %}
-      </li>
-    </ul>
-  </section>
-  {% if user.is_staff %}
-    {% approvals_waiting as waiting %}
-    {% proposals_waiting as suggestions %}
-    <section class="goal-group" aria-labelledby="goal-curate">
-      <h3 id="goal-curate">Curate</h3>
+  {% if locked %}
+    <div class="message message--info mb-4">
+      <p>The DDP Tracker is currently only open to invited users.</p>
+      <a class="btn btn-primary" href="{% url 'account_login' %}">Log in</a>
+    </div>
+  {% endif %}
+  {# inert: nothing in it can be clicked or focused #}
+  <div {% if locked %}class="landing-locked" inert{% endif %}>
+    <h2>What do you want to do?</h2>
+    {% url 'schemas:platforms' as explore_url %}
+    <section class="goal-group" aria-labelledby="goal-explore">
+      <h3 id="goal-explore">Explore</h3>
       <ul class="cards">
         <li class="card">
-          <a class="card__title" href="{% url 'ddps:approvals' %}">Approvals ({{ waiting }})</a>
+          <a class="card__title" href="{{ explore_url }}">See what a platform's DDP contains</a>
           <p>
-            Uploads that don't count yet: the first of their kind, or unusual ones their uploader
-            confirmed. Inspect, then approve or reject.
+            Every data point of its takeouts as a tree, with its type,
+            examples and meaning. Filter by request date and account language.
           </p>
         </li>
         <li class="card">
           <a class="card__title"
-             href="{% url 'proposals:annotations' %}">Suggestions ({{ suggestions.total }})</a>
+             href="{{ explore_url }}">Platform annotations: Look up what a data point means</a>
           <p>
-            Changes other users suggested:
-            <a href="{% url 'proposals:annotations' %}">annotations ({{ suggestions.annotations }})</a> and
-            <a href="{% url 'proposals:representations' %}">representations ({{ suggestions.representations }})</a>.
+            Each data point with its description, where it is found and
+            in which languages.
+          </p>
+        </li>
+        <li class="card">
+          <a class="card__title"
+             href="{% url 'representations:representations' %}">Representations: Compare meanings across platforms</a>
+          <p>
+            What a list's entries mean, like a watched video, and the data points that
+            describe them. The <a href="{% url 'representations:vocabulary' %}">vocabulary</a>
+            lists the terms they use.
+          </p>
+        </li>
+        <li class="card">
+          <a class="card__title"
+             href="{% url 'docs' '' %}">Documentation: Learn how the DDP Tracker works</a>
+          <p>
+            What "new", "changed" and "missing" mean, how uploads are checked,
+            how your privacy is protected, etc.
           </p>
         </li>
       </ul>
     </section>
-  {% endif %}
+    <section class="goal-group" aria-labelledby="goal-contribute">
+      <h3 id="goal-contribute">Contribute</h3>
+      {% if not user.is_authenticated and not locked %}
+        <p class="muted">
+          These need an account:
+          <a href="{% url 'account_login' %}">log in</a>
+          {% if ACCOUNT_ALLOW_REGISTRATION %}
+            or <a href="{% url 'account_signup' %}">sign up</a>
+          {% endif %}
+        </p>
+      {% endif %}
+      <ul class="cards">
+        <li class="card">
+          {% url 'ddps:upload-create' as upload_url %}
+          <a class="card__title"
+             href="{% if user.is_authenticated %}{{ upload_url }}{% else %}{% url 'account_login' %}?next={{ upload_url|urlencode }}{% endif %}">Upload your DDP</a>
+          <p>
+            See what is new in your takeout, what is known, what changed and what is missing,
+            compared with the uploads before it.
+          </p>
+          {% if not user.is_authenticated %}<p class="card__hint">Sign in to upload.</p>{% endif %}
+        </li>
+        <li class="card">
+          {% url 'ddps:uploads' as uploads_url %}
+          <a class="card__title"
+             href="{% if user.is_authenticated %}{{ uploads_url }}{% else %}{% url 'account_login' %}?next={{ uploads_url|urlencode }}{% endif %}">Your uploads and reviews</a>
+          <p>Every upload with its status, and its review: the data points to go through and annotate.</p>
+          {% if not user.is_authenticated %}<p class="card__hint">Sign in to see them.</p>{% endif %}
+        </li>
+        <li class="card">
+          <a class="card__title" href="{{ explore_url }}">Annotate and link data points</a>
+          <p>
+            In a platform's explorer or an upload's review: describe what a data point means, and
+            what a list's entries represent.
+            {% if user.is_staff %}
+              Your changes apply right away.
+            {% else %}
+              Your changes are suggestions that staff review{% if user.is_authenticated %}: see <a href="{% url 'proposals:mine' %}">my suggestions</a>{% endif %}.
+            {% endif %}
+          </p>
+          {% if not user.is_authenticated %}<p class="card__hint">Sign in to annotate.</p>{% endif %}
+        </li>
+      </ul>
+    </section>
+    {% if user.is_staff %}
+      {% approvals_waiting as waiting %}
+      {% proposals_waiting as suggestions %}
+      <section class="goal-group" aria-labelledby="goal-curate">
+        <h3 id="goal-curate">Curate</h3>
+        <ul class="cards">
+          <li class="card">
+            <a class="card__title" href="{% url 'ddps:approvals' %}">Approvals ({{ waiting }})</a>
+            <p>
+              Uploads that don't count yet: the first of their kind, or unusual ones their uploader
+              confirmed. Inspect, then approve or reject.
+            </p>
+          </li>
+          <li class="card">
+            <a class="card__title"
+               href="{% url 'proposals:annotations' %}">Suggestions ({{ suggestions.total }})</a>
+            <p>
+              Changes other users suggested:
+              <a href="{% url 'proposals:annotations' %}">annotations ({{ suggestions.annotations }})</a> and
+              <a href="{% url 'proposals:representations' %}">representations ({{ suggestions.representations }})</a>.
+            </p>
+          </li>
+        </ul>
+      </section>
+    {% endif %}
+  </div>
 {% endblock %}

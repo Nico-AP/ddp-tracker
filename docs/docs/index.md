@@ -37,8 +37,9 @@ See [Privacy](guide/privacy.md).
 | know what happens to my data                  | [Privacy](guide/privacy.md)                                         |
 | look up a term                                | [Glossary](guide/glossary.md)                                       |
 
-Exploring is open to everyone. Uploading, annotating and suggesting need an account,
-which can be created through the signup form.
+The DDP Tracker is currently a development version and only open to invited users: accounts
+are created by the team, there is no signup form. Uploading, annotating and suggesting need an
+account; while the site is private, so does exploring.
 
 For developers and researchers working with the underlying data, the
 [technical reference](tracker/concepts.md) has the precise definitions and the

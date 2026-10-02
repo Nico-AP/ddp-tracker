@@ -9,3 +9,14 @@
 
   @include spacing(2);
 }
+
+// site-wide notice above the header (settings.DEV_BANNER)
+.site-banner {
+  margin: 0;
+  padding: ($spacing-unit * 0.75) ($spacing-unit * 2);
+  background: $color-bg-darker;
+  color: $color-warning;
+  font-size: $font-size-small;
+  font-weight: 600;
+  text-align: center;
+}
